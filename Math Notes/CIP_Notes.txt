@@ -1,0 +1,5 @@
+WANRING: info marked with a star* was produced by chatgpt
+
+Optimal CIP fluid cleaning temperature*: 30-35C/86-95F
+Optimal Low PH*: 2
+Optimal High PH*: 12

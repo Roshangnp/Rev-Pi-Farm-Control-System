@@ -1,0 +1,17 @@
+Pnumatic Valves:
+Flow Gaurd 1
+Flow Gaurd 2
+Inlet Valve
+Flush Valve
+Permeate CIP Valve
+Consentrate CIP Valve
+
+Pumps:
+Feed Pump
+RO Pump
+Anti Scaling Pump
+Low PH Pump
+High PH Pump
+
+Heaters:
+CIP Heater

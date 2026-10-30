@@ -1,0 +1,34 @@
+TDS:
+Feed TDS
+Permeate TDS
+
+Flow:
+Feed Flow
+Permeate Flow
+Consentrate Flow
+
+Pressure:
+Media Inlet
+Media Outlet
+Aqualine Outlet
+RO Feed
+Permeate Outlet
+Consentrate Outlet
+CIP Inlet
+CIP Outlet
+
+Floats:
+Low PH Float
+High PH Float
+Ant Scaling Float
+Feed Tank Float
+Product Tank Float 1
+Product Tank Float 2
+Upper Tank Float
+CIP Tank Float
+
+PH:
+CIP PH Float
+
+Temp:
+CIP Temp (Maybe)

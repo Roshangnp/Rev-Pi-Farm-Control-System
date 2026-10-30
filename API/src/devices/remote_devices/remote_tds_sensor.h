@@ -1,0 +1,18 @@
+#pragma once
+#include <string>
+#include "devices.h"
+#include "remote_link.h"
+
+
+// A TDS sensor owned by another RevPi. link must outlive the sensor.
+class remote_tds_sensor : public tds_sensor{
+    public:
+    remote_tds_sensor(remote_link& link, std::string device_name)
+    : link_(&link), device_name_(std::move(device_name)){};
+
+    bool readTds(float& ppm) override;
+
+    private:
+    remote_link* link_;
+    std::string device_name_;
+};
