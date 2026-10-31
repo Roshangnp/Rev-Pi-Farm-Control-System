@@ -4,6 +4,7 @@
 #include "devices/local_devices/local_float_switch.h"
 #include "devices/local_devices/local_level_sensor.h"
 #include "devices/remote_devices/device_server.h"
+#include "webUI/web_ui.h"
 
 // ---------------------------------------------------------------------------
 // Upper tank RevPi (192.168.1.195). Wiring from API/hardware_setup.csv.
@@ -21,6 +22,9 @@ local_level_sensor local_upper_tank_water_level(&upper_tank_water_level_input, 0
 
 // Shares the devices wired to this RevPi with the other machines
 device_server server;
+
+// Web page on port 8080 listing the devices above
+web_ui ui;
 
 }  // namespace
 
@@ -44,4 +48,14 @@ bool startDeviceServer() {
 
 void serviceDeviceServer(int timeout_ms) {
     server.poll(timeout_ms);
+}
+
+bool startWebUI() {
+    bool ok = ui.addDevice("upper_tank_high_float", upper_tank_high_float)
+           && ui.addDevice("upper_tank_water_level", upper_tank_water_level);
+    return ok && ui.start();
+}
+
+void serviceWebUI(int timeout_ms) {
+    ui.poll(timeout_ms);
 }
