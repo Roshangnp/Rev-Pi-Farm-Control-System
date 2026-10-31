@@ -16,6 +16,10 @@ class pump{
     virtual bool setOn() = 0;
     virtual bool setOff() = 0;
     virtual bool setSpeed(float speed) = 0; // 0-1
+
+    // Read back the outputs as last written (not a running feedback signal)
+    virtual bool readOn(bool& on) = 0;
+    virtual bool readSpeed(float& speed) = 0; // 0-1, false if no speed control
 };
 
 class float_switch{
@@ -31,6 +35,9 @@ class valve{
 
     virtual bool setOpen() = 0;
     virtual bool setClosed() = 0;
+
+    // Reads back the output as last written (not a position feedback signal)
+    virtual bool readOpen(bool& open) = 0;
 };
 
 class pressure_transducer{

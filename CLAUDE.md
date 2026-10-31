@@ -27,7 +27,12 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps it last commanded go off and valves it last commanded close
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
   - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; each config registers its local devices under their public names (snake_case of the CSV name)
-- `controllers/` - control applications that use the public header
+  - `API/src/webUI/web_ui` - minimal HTTP server (port 8080), same level as `device_server`: single threaded, only handles requests inside `poll()`. Lists the devices its config registers (local or remote) with values; switch for pump run / valve open, number box + Send for pump speed. `GET /`, `GET /api/devices` (JSON), `POST /api/command` (body = device protocol line, commands only). Page is embedded in web_ui.cpp and polls every 1 s
+    - `config.h` exposes `startWebUI()` / `serviceWebUI(timeout_ms)`; each config adds its devices in `startWebUI()`
+    - No authentication: firewall port 8080 on RevPis; `config_host_pc` binds 127.0.0.1 only
+    - Each page refresh does one read per device signal; for remote devices that blocks the loop ~1 ms per read, up to 300 ms per read if the owner is down. Reading a flow sensor from the UI shortens the averaging window the control code sees
+  - Output readback: `pump::readOn/readSpeed`, `valve::readOpen` read the output process image as last written (not run/position feedback)
+- `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`: attach + device server; `main_host_pc`: web UI over the remote devices)
 - `Math Notes/` - personal notes, do not read unless asked
 
 ## Hardware
@@ -74,6 +79,7 @@ Farm control system running on Revolution Pi Connect 4 units.
   startDeviceServer();
   while (true) {
       // control logic
+      serviceWebUI(0);           // if the web UI is started
       serviceDeviceServer(20);   // handles remote requests, doubles as the loop sleep
   }
   ```
@@ -92,7 +98,7 @@ Farm control system running on Revolution Pi Connect 4 units.
 
 ## Build and test
 
-- CMake (top-level `CMakeLists.txt`): `cmake -B build -DDEVICE_CONFIG=<test|uppertank|host_pc> && cmake --build build`. Builds the `farm_api` library (API/src minus the configs, plus the chosen config) and one executable per `controllers/src/*.cpp`
+- CMake (top-level `CMakeLists.txt`): `cmake -B build -DDEVICE_CONFIG=<test|uppertank|host_pc> && cmake --build build`. Builds the `farm_api` library (API/src minus the configs, plus the chosen config) and one executable per `user_space/src/*.cpp` (`main_<other config>.cpp` skipped)
 - Builds natively on the RevPi (g++ 12, C++17) and on the Ubuntu PC (all configs compile there; piControl just fails to open at runtime); no cross compiler
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):

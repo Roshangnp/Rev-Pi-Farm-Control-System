@@ -18,6 +18,8 @@ class remote_pump : public pump{
     bool setOn() override;
     bool setOff() override;
     bool setSpeed(float speed) override; // 0-1
+    bool readOn(bool& on) override;
+    bool readSpeed(float& speed) override;
 
     private:
     remote_link* link_;

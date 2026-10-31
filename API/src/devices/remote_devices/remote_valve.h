@@ -12,6 +12,7 @@ class remote_valve : public valve{
 
     bool setOpen() override;
     bool setClosed() override;
+    bool readOpen(bool& open) override;
 
     private:
     remote_link* link_;

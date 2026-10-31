@@ -20,6 +20,8 @@ class local_pump : public pump{
     bool setOn() override;
     bool setOff() override;
     bool setSpeed(float speed) override; // 0-1
+    bool readOn(bool& on) override;
+    bool readSpeed(float& speed) override;
 
     private:
     electrical_interface* electrical_interface_speed_control_;

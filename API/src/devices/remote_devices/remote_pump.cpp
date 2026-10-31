@@ -27,3 +27,11 @@ bool remote_pump::setOff() {
 bool remote_pump::setSpeed(float speed) {
     return link_->command(device_name_, "setSpeed", std::to_string(speed));
 }
+
+bool remote_pump::readOn(bool& on) {
+    return link_->queryBool(device_name_, "readOn", on);
+}
+
+bool remote_pump::readSpeed(float& speed) {
+    return link_->queryFloat(device_name_, "readSpeed", speed);
+}

@@ -10,6 +10,7 @@
 #include "devices/remote_devices/device_server.h"
 #include "devices/remote_devices/remote_link.h"
 #include "devices/remote_devices/remote_pump.h"
+#include "webUI/web_ui.h"
 
 // ---------------------------------------------------------------------------
 // Test bench RevPi (192.168.1.116). Example wiring - one device per type.
@@ -47,6 +48,9 @@ local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 75.0f);            
 // Shares the devices wired to this RevPi with the other RevPis
 device_server server;
 
+// Web page on port 8080 listing the devices above
+web_ui ui;
+
 }  // namespace
 
 // Public devices declared in config.h
@@ -81,4 +85,18 @@ bool startDeviceServer() {
 
 void serviceDeviceServer(int timeout_ms) {
     server.poll(timeout_ms);
+}
+
+bool startWebUI() {
+    bool ok = ui.addDevice("feed_pump", feed_pump)
+           && ui.addDevice("feed_tank_float", feed_tank_float)
+           && ui.addDevice("inlet_valve", inlet_valve)
+           && ui.addDevice("feed_pressure", feed_pressure)
+           && ui.addDevice("permeate_tds", permeate_tds)
+           && ui.addDevice("permeate_flow", permeate_flow);
+    return ok && ui.start();
+}
+
+void serviceWebUI(int timeout_ms) {
+    ui.poll(timeout_ms);
 }

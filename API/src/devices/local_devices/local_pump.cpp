@@ -24,6 +24,21 @@ bool setRunOutput(electrical_interface* output, bool on) {
     return output->setHardwareState();
 }
 
+bool readRunOutput(electrical_interface* output, bool& on) {
+    if (output == nullptr || !output->getHardwareState()) return false;
+
+    switch (output->getType()) {
+        case electrical_interface_type::RELAY:
+            on = output->get<relay>().value;
+            return true;
+        case electrical_interface_type::DIGITAL_OUT:
+            on = output->get<digital_out>().value;
+            return true;
+        default:
+            return false;
+    }
+}
+
 }  // namespace
 
 bool local_pump::readAlarm() {
@@ -60,4 +75,28 @@ bool local_pump::setSpeed(float speed) {
             return false;
     }
     return output.setHardwareState();
+}
+
+bool local_pump::readOn(bool& on) {
+    return readRunOutput(on_off_control_, on);
+}
+
+bool local_pump::readSpeed(float& speed) {
+    if (electrical_interface_speed_control_ == nullptr) return false;
+
+    electrical_interface& output = *electrical_interface_speed_control_;
+    if (!output.getHardwareState()) return false;
+    switch (output.getType()) {
+        case electrical_interface_type::ANALOG_VOLTAGE_OUT:
+            speed = (output.get<analog_voltage_out>().value - SPEED_VOLTAGE_MIN) / (SPEED_VOLTAGE_MAX - SPEED_VOLTAGE_MIN);
+            return true;
+        case electrical_interface_type::ANALOG_CURRENT_OUT:
+            speed = (output.get<analog_current_out>().value - SPEED_CURRENT_MIN) / (SPEED_CURRENT_MAX - SPEED_CURRENT_MIN);
+            return true;
+        case electrical_interface_type::PWM_DUTY_OUT:
+            speed = output.get<pwm_duty_out>().value / SPEED_DUTY_MAX;
+            return true;
+        default:
+            return false;
+    }
 }

@@ -33,10 +33,14 @@ target_compile_options(farm_api PRIVATE -Wall -Wextra)
 find_package(Threads REQUIRED)
 target_link_libraries(farm_api PUBLIC Threads::Threads)
 
-# Controllers: one executable per controllers/src/*.cpp, named after the file
-file(GLOB controller_sources CONFIGURE_DEPENDS controllers/src/*.cpp)
-foreach(source ${controller_sources})
+# User space: one executable per user_space/src/*.cpp, named after the file.
+# main_<config>.cpp is only built with that config; other files with every config.
+file(GLOB user_sources CONFIGURE_DEPENDS user_space/src/*.cpp)
+foreach(source ${user_sources})
     get_filename_component(name ${source} NAME_WE)
+    if(name MATCHES "^main_(.+)$" AND NOT CMAKE_MATCH_1 STREQUAL DEVICE_CONFIG)
+        continue()
+    endif()
     add_executable(${name} ${source})
     target_compile_options(${name} PRIVATE -Wall -Wextra)
     target_link_libraries(${name} PRIVATE farm_api)

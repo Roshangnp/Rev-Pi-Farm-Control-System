@@ -161,6 +161,16 @@ std::string device_server::handleRequest(client& c, const std::string& line) {
             if (method == "hasSpeedControl") reply = okBool(device->hasSpeedControl());
             else if (method == "hasAlarm") reply = okBool(device->hasAlarm());
             else if (method == "readAlarm") reply = okBool(device->readAlarm());
+            else if (method == "readOn") {
+                bool on = false;
+                bool success = device->readOn(on);
+                reply = success ? okBool(on) : "fail";
+            }
+            else if (method == "readSpeed") {
+                float speed = 0.0f;
+                bool success = device->readSpeed(speed);
+                reply = okFloat(success, speed);
+            }
             else if (method == "setOn") {is_command = true; reply = okIf(device->setOn());}
             else if (method == "setOff") {is_command = true; reply = okIf(device->setOff());}
             else if (method == "setSpeed") {
@@ -172,6 +182,11 @@ std::string device_server::handleRequest(client& c, const std::string& line) {
         } else if constexpr (std::is_same_v<T, valve>) {
             if (method == "setOpen") {is_command = true; reply = okIf(device->setOpen());}
             else if (method == "setClosed") {is_command = true; reply = okIf(device->setClosed());}
+            else if (method == "readOpen") {
+                bool open = false;
+                bool success = device->readOpen(open);
+                reply = success ? okBool(open) : "fail";
+            }
         } else if constexpr (std::is_same_v<T, float_switch>) {
             if (method == "readSubmerged") {
                 bool submerged = false;

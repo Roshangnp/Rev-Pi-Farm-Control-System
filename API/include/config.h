@@ -35,3 +35,11 @@ bool attachAllInterfaces();
 // so it can replace the loop's sleep.
 bool startDeviceServer();
 void serviceDeviceServer(int timeout_ms);
+
+// Web page listing this machine's devices (local and remote) with their values,
+// and controls for outputs. Call startWebUI() once at startup, then
+// serviceWebUI() every control cycle: like the device server, requests are only
+// handled inside it. No authentication: restrict the port with the firewall.
+// When both run, give one of them the sleep: serviceWebUI(0); serviceDeviceServer(20);
+bool startWebUI();
+void serviceWebUI(int timeout_ms);

@@ -12,6 +12,7 @@ class local_valve : public valve{
 
     bool setOpen() override;
     bool setClosed() override;
+    bool readOpen(bool& open) override;
 
     private:
     electrical_interface* open_control_;
