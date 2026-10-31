@@ -43,7 +43,7 @@ extern conductivity_sensor& feed_conductivity;
 extern temperature_sensor& cip_temp;
 
 extern pump& feed_pump;        // run relay + VFD alarm
-extern pump& ro_pump;          // run relay + VFD alarm
+extern pump& ro_pump;          // run relay + VFD alarm + 4-20 mA speed
 extern pump& repressure_pump;
 extern pump& asa_pump;
 extern pump& high_ph_pump;

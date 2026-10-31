@@ -61,9 +61,10 @@ electrical_interface concentrate_cip_valve_solenoid(42, relay{}, "Output_Bit_13"
 electrical_interface media_backwash_1_valve_solenoid(43, relay{}, "Output_Bit_14");
 electrical_interface permeate_cip_valve_solenoid(44, relay{}, "Output_Bit_15");
 electrical_interface media_backwash_2_valve_solenoid(45, relay{}, "Output_Bit_16");
+electrical_interface ro_pump_speed(46, analog_current_out{}, "OutputValue_1");
 
-// Devices wired to this RevPi. Pumps have no speed control; feed and RO pump
-// alarms are the VFD alarm inputs, the dosing pumps have none.
+// Devices wired to this RevPi. Feed and RO pump alarms are the VFD alarm inputs;
+// only the RO pump has speed control (4-20 mA to its VFD).
 local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 1.0f);
 local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 1.0f);
 local_flow_sensor local_feed_flow(&feed_flow_pulses, 1.0f);
@@ -91,7 +92,7 @@ local_conductivity_sensor local_permeate_conductivity(&permeate_conductivity_inp
 local_conductivity_sensor local_feed_conductivity(&feed_conductivity_input, 0.0f, 5000.0f);
 local_temperature_sensor local_cip_temp(&cip_temp_input, 32.0f, 212.0f);
 local_pump local_feed_pump(nullptr, &feed_pump_run, &feed_pump_alarm);
-local_pump local_ro_pump(nullptr, &ro_pump_run, &ro_pump_alarm);
+local_pump local_ro_pump(&ro_pump_speed, &ro_pump_run, &ro_pump_alarm);
 local_pump local_repressure_pump(nullptr, &repressure_pump_run, nullptr);
 local_switched_load local_lights(&lights_relay);
 local_switched_load local_cip_heater(&cip_heater_relay);
@@ -170,7 +171,7 @@ bool attachAllInterfaces() {
                                     &asa_pump_run, &high_ph_pump_run, &low_ph_pump_run,
                                     &flush_valve_solenoid, &cip_inlet_valve_solenoid, &inlet_valve_solenoid,
                                     &concentrate_cip_valve_solenoid, &media_backwash_1_valve_solenoid, &permeate_cip_valve_solenoid,
-                                    &media_backwash_2_valve_solenoid}) {
+                                    &media_backwash_2_valve_solenoid, &ro_pump_speed}) {
         ok = e->attach() && ok;
     }
     return ok;

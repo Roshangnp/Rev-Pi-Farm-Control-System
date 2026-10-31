@@ -11,7 +11,7 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `config.h` - shared by every machine: every farm device as an `extern` base-class reference (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
   - `API/src/config/config_<name>.cpp` - one per machine, exactly one is built (`cmake -DDEVICE_CONFIG=<name>`, no default). The wiring: `electrical_interface`s and `local_*`/`remote_*` devices (anonymous namespace), bound to the references declared in config.h. A config only binds the devices that machine uses; a program using an unbound device fails to link
     - `config_test` - test bench RevPi (192.168.1.116), example devices. Same RevPi as `config_ro`; shares the names `feed_pump`, `inlet_valve`, `permeate_flow`
-    - `config_ro` - RO RevPi (192.168.1.116), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm, no speed), 2 switched loads, 7 valves on the RS485 relays; no web UI
+    - `config_ro` - RO RevPi (192.168.1.116), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm; RO pump speed = AIO pos 32 `OutputValue_1`, 4-20 mA, `Output1Range` = 9), 2 switched loads, 7 valves on the RS485 relays; no web UI
     - `config_uppertank` - upper tank RevPi (192.168.1.195, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
     - `config_host_pc` - Ubuntu dev PC, all devices remote, no device server (`serviceDeviceServer` just sleeps)
   - `API/hardware_setup.csv` - user's device list (name, id, host IP, interface type, pin, analog range); configs are written by hand from it
