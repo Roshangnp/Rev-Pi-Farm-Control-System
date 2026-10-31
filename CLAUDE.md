@@ -7,10 +7,11 @@ Farm control system running on Revolution Pi Connect 4 units.
 - `API/` - hardware API, the layer between the RevPi I/O and the controllers
   - Include roots are `-IAPI/include -IAPI/src`; `API/include` headers are included by bare name (`"devices.h"`), cross-folder `API/src` includes are written relative to `API/src` (e.g. `"HAL/electronics.h"`), same-folder includes use the bare name
   - `API/include/` - what external programs (e.g. the controller) include from the API
-    - `devices.h` - public device interface: abstract base classes `pump`, `float_switch`, `valve`, `pressure_transducer`, `tds_sensor`, `flow_sensor`, `level_sensor` (pure virtual, no hardware includes). Controller code uses only these, so local and remote devices are interchangeable
-    - `config.h` - shared by every machine: device counts, every farm device as an `extern` base-class reference (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
+    - `devices.h` - public device interface: abstract base classes `pump`, `float_switch`, `valve`, `pressure_transducer`, `tds_sensor`, `flow_sensor`, `level_sensor`, `conductivity_sensor` (uS/cm), `temperature_sensor` (deg F), `switched_load` (on/off only: lights, heater) (pure virtual, no hardware includes). Controller code uses only these, so local and remote devices are interchangeable
+    - `config.h` - shared by every machine: every farm device as an `extern` base-class reference (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
   - `API/src/config/config_<name>.cpp` - one per machine, exactly one is built (`cmake -DDEVICE_CONFIG=<name>`, no default). The wiring: `electrical_interface`s and `local_*`/`remote_*` devices (anonymous namespace), bound to the references declared in config.h. A config only binds the devices that machine uses; a program using an unbound device fails to link
-    - `config_test` - test bench RevPi (192.168.1.116), example devices
+    - `config_test` - test bench RevPi (192.168.1.116), example devices. Same RevPi as `config_ro`; shares the names `feed_pump`, `inlet_valve`, `permeate_flow`
+    - `config_ro` - RO RevPi (192.168.1.116), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm, no speed), 2 switched loads, 7 valves on the RS485 relays; no web UI
     - `config_uppertank` - upper tank RevPi (192.168.1.195, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
     - `config_host_pc` - Ubuntu dev PC, all devices remote, no device server (`serviceDeviceServer` just sleeps)
   - `API/hardware_setup.csv` - user's device list (name, id, host IP, interface type, pin, analog range); configs are written by hand from it
@@ -20,11 +21,11 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `piControl.h` - vendored KUNBUS driver header (MIT), do not edit
   - `API/src/devices/local_devices/local_*.h/.cpp` - devices wired to this RevPi, each inherits its base from `devices.h`
     - `local_pump`: non-owning pointers to on/off, speed and alarm interfaces; nullptr = not fitted. Speed 0-1 maps to 0-10 V, 4-20 mA or 0-100 % PWM
-    - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor`, `local_level_sensor` - one interface each; reads return false on failure and fill an out param
+    - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor`, `local_level_sensor`, `local_conductivity_sensor`, `local_temperature_sensor`, `local_switched_load` - one interface each; reads return false on failure and fill an out param
   - `API/src/devices/remote_devices/` - devices owned by another RevPi on the LAN. One owner per device
     - `remote_link` - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s
     - `remote_*` - one proxy per base class, `(remote_link&, device_name)`; network failure returns false (`readAlarm` returns true)
-    - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps it last commanded go off and valves it last commanded close
+    - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps and switched loads it last commanded go off and valves it last commanded close
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
   - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; each config registers its local devices under their public names (snake_case of the CSV name)
   - `API/src/webUI/web_ui` - minimal HTTP server (port 8080), same level as `device_server`: single threaded, only handles requests inside `poll()`. Lists the devices its config registers (local or remote) with values; switch for pump run / valve open, number box + Send for pump speed. `GET /`, `GET /api/devices` (JSON), `POST /api/command` (body = device protocol line, commands only). Page is embedded in web_ui.cpp and polls every 1 s
@@ -32,7 +33,7 @@ Farm control system running on Revolution Pi Connect 4 units.
     - No authentication: firewall port 8080 on RevPis; `config_host_pc` binds 127.0.0.1 only
     - Each page refresh does one read per device signal; for remote devices that blocks the loop ~1 ms per read, up to 300 ms per read if the owner is down. Reading a flow sensor from the UI shortens the averaging window the control code sees
   - Output readback: `pump::readOn/readSpeed`, `valve::readOpen` read the output process image as last written (not run/position feedback)
-- `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`: attach + device server; `main_host_pc`: web UI over the remote devices)
+- `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`, `main_ro`: attach + device server; `main_host_pc`: web UI over the remote devices)
 - `Math Notes/` - personal notes, do not read unless asked
 
 ## Hardware
@@ -64,7 +65,7 @@ Farm control system running on Revolution Pi Connect 4 units.
 - `setSpeed()` rejects values outside 0-1 (no clamping); analog reads are not clamped, so unwired 0-10 V inputs can read slightly negative (e.g. -0.2 ppm)
 - Flow: first `readFlow()` returns false (no previous sample); a counter reset makes that one read return false
 - PiCtory, before real use: DIO inputs for flow sensors must be in counter mode (`InputMode_N`); AIO input ranges must match each sensor (all currently ±10 V); AIO output ranges must be set for VFD speed (currently 0 = off)
-- On the current RevPi, DIO `I_1` and `I_2` read on with nothing known to be wired (example config uses them as feed pump alarm and feed tank float)
+- RO RevPi (192.168.1.116, hostname RevPi212936): DIO pos 31 = unsuffixed `I_N` (floats `I_1..9`, VFD alarms `I_10..11`), DIO pos 30 = `_i03` (flow counters `Counter_1..3_i03`, already `InputMode` = 1 counter). On 2026-10-31 floats `I_1..5,8,9` read on, `I_6,7` off; float polarity (on = submerged?) not yet confirmed at the tanks
 
 ## Remote devices (two RevPis)
 
@@ -90,7 +91,7 @@ Farm control system running on Revolution Pi Connect 4 units.
   pump& transfer_pump = remote_transfer_pump;
   ```
   Device names must match on both RevPis (no discovery yet)
-- Watchdog safe state is fixed: pumps off, valves closed. Make it configurable per device if a valve must fail open
+- Watchdog safe state is fixed: pumps and switched loads off, valves closed. Make it configurable per device if a valve must fail open
 - If both RevPis read the same flow sensor, each sees flow since whichever read came last (owner averages between reads)
 - Remote call cost: ~20 us on the same machine, expect ~1 ms between RevPis. Owner unreachable: calls fail within the 300 ms connect timeout, then instantly during the 1 s backoff
 - Tested: 25/25 end-to-end on the PC (owner in a separate process, fake hardware); on the RevPi with real hardware over loopback (relay 1 switched remotely, watchdog turned it off after disconnect). Not yet tested between two physical RevPis
@@ -98,7 +99,7 @@ Farm control system running on Revolution Pi Connect 4 units.
 
 ## Build and test
 
-- CMake (top-level `CMakeLists.txt`): `cmake -B build -DDEVICE_CONFIG=<test|uppertank|host_pc> && cmake --build build`. Builds the `farm_api` library (API/src minus the configs, plus the chosen config) and one executable per `user_space/src/*.cpp` (`main_<other config>.cpp` skipped)
+- CMake (top-level `CMakeLists.txt`): `cmake -B build -DDEVICE_CONFIG=<test|uppertank|ro|host_pc> && cmake --build build`. Builds the `farm_api` library (API/src minus the configs, plus the chosen config) and one executable per `user_space/src/*.cpp` (`main_<other config>.cpp` skipped)
 - Builds natively on the RevPi (g++ 12, C++17) and on the Ubuntu PC (all configs compile there; piControl just fails to open at runtime); no cross compiler
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):

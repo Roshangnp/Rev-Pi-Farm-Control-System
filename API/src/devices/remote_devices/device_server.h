@@ -15,7 +15,7 @@
 //
 // Watchdog: if a remote controller disconnects or sends nothing for
 // watchdog_ms, every pump it last commanded is turned off and every valve it
-// last commanded is closed.
+// last commanded is closed, and every switched load it last commanded is turned off.
 class device_server{
     public:
     device_server(uint16_t port = DEVICE_SERVER_PORT, int watchdog_ms = 2000)
@@ -33,6 +33,9 @@ class device_server{
     bool addDevice(const std::string& name, tds_sensor& device);
     bool addDevice(const std::string& name, flow_sensor& device);
     bool addDevice(const std::string& name, level_sensor& device);
+    bool addDevice(const std::string& name, conductivity_sensor& device);
+    bool addDevice(const std::string& name, temperature_sensor& device);
+    bool addDevice(const std::string& name, switched_load& device);
 
     // Opens the listening socket. False if the port can't be opened.
     bool start();
@@ -44,7 +47,8 @@ class device_server{
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*,
                                     pressure_transducer*, tds_sensor*, flow_sensor*,
-                                    level_sensor*>;
+                                    level_sensor*, conductivity_sensor*, temperature_sensor*,
+                                    switched_load*>;
 
     struct client {
         int fd;

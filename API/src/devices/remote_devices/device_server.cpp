@@ -54,6 +54,9 @@ bool device_server::addDevice(const std::string& name, pressure_transducer& devi
 bool device_server::addDevice(const std::string& name, tds_sensor& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, flow_sensor& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, level_sensor& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, conductivity_sensor& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, temperature_sensor& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, switched_load& device) {return addDeviceRef(name, &device);}
 
 bool device_server::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos || name == "ping") return false;
@@ -217,6 +220,26 @@ std::string device_server::handleRequest(client& c, const std::string& line) {
                 bool success = device->readLevel(level);
                 reply = okFloat(success, level);
             }
+        } else if constexpr (std::is_same_v<T, conductivity_sensor>) {
+            if (method == "readConductivity") {
+                float us_per_cm = 0.0f;
+                bool success = device->readConductivity(us_per_cm);
+                reply = okFloat(success, us_per_cm);
+            }
+        } else if constexpr (std::is_same_v<T, temperature_sensor>) {
+            if (method == "readTemperature") {
+                float deg_f = 0.0f;
+                bool success = device->readTemperature(deg_f);
+                reply = okFloat(success, deg_f);
+            }
+        } else if constexpr (std::is_same_v<T, switched_load>) {
+            if (method == "setOn") {is_command = true; reply = okIf(device->setOn());}
+            else if (method == "setOff") {is_command = true; reply = okIf(device->setOff());}
+            else if (method == "readOn") {
+                bool on = false;
+                bool success = device->readOn(on);
+                reply = success ? okBool(on) : "fail";
+            }
         }
 
         if (is_command) commanded_by_[name] = c.id;
@@ -241,6 +264,7 @@ void device_server::applySafeState(int client_id) {
             using T = std::remove_pointer_t<decltype(device)>;
             if constexpr (std::is_same_v<T, pump>) device->setOff();
             else if constexpr (std::is_same_v<T, valve>) device->setClosed();
+            else if constexpr (std::is_same_v<T, switched_load>) device->setOff();
         }, devices_.at(it->first));
         it = commanded_by_.erase(it);
     }

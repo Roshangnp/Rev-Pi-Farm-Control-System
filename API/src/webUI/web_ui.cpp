@@ -203,6 +203,9 @@ bool web_ui::addDevice(const std::string& name, pressure_transducer& device) {re
 bool web_ui::addDevice(const std::string& name, tds_sensor& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, flow_sensor& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, level_sensor& device) {return addDeviceRef(name, &device);}
+bool web_ui::addDevice(const std::string& name, conductivity_sensor& device) {return addDeviceRef(name, &device);}
+bool web_ui::addDevice(const std::string& name, temperature_sensor& device) {return addDeviceRef(name, &device);}
+bool web_ui::addDevice(const std::string& name, switched_load& device) {return addDeviceRef(name, &device);}
 
 bool web_ui::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos) return false;
@@ -374,6 +377,18 @@ std::string web_ui::devicesJson() {
                 float level = 0.0f;
                 bool success = device->readLevel(level);
                 return readOnlyField("level", "value", jsonFloat(success, level));
+            } else if constexpr (std::is_same_v<T, conductivity_sensor>) {
+                float us_per_cm = 0.0f;
+                bool success = device->readConductivity(us_per_cm);
+                return readOnlyField("conductivity", "value", jsonFloat(success, us_per_cm), "uS/cm");
+            } else if constexpr (std::is_same_v<T, temperature_sensor>) {
+                float deg_f = 0.0f;
+                bool success = device->readTemperature(deg_f);
+                return readOnlyField("temperature", "value", jsonFloat(success, deg_f), "°F");
+            } else if constexpr (std::is_same_v<T, switched_load>) {
+                bool on = false;
+                bool success = device->readOn(on);
+                return switchField("on", jsonBool(success, on), "setOn", "setOff");
             }
         }, ref);
 
@@ -406,6 +421,9 @@ std::string web_ui::runCommand(const std::string& line) {
         } else if constexpr (std::is_same_v<T, valve>) {
             if (method == "setOpen") return device->setOpen() ? "ok" : "fail";
             if (method == "setClosed") return device->setClosed() ? "ok" : "fail";
+        } else if constexpr (std::is_same_v<T, switched_load>) {
+            if (method == "setOn") return device->setOn() ? "ok" : "fail";
+            if (method == "setOff") return device->setOff() ? "ok" : "fail";
         }
         return "err unknown method";
     }, found->second);

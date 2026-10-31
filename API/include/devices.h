@@ -70,3 +70,29 @@ class level_sensor{
     // false if the sensor can't be read or the wire is broken
     virtual bool readLevel(float& level) = 0;
 };
+
+class conductivity_sensor{
+    public:
+    virtual ~conductivity_sensor() = default;
+
+    virtual bool readConductivity(float& us_per_cm) = 0; // false if the sensor can't be read or the wire is broken
+};
+
+class temperature_sensor{
+    public:
+    virtual ~temperature_sensor() = default;
+
+    virtual bool readTemperature(float& deg_f) = 0; // false if the sensor can't be read or the wire is broken
+};
+
+// A load that is only switched on or off, e.g. lights or a heater
+class switched_load{
+    public:
+    virtual ~switched_load() = default;
+
+    virtual bool setOn() = 0;
+    virtual bool setOff() = 0;
+
+    // Reads back the output as last written (not a feedback signal)
+    virtual bool readOn(bool& on) = 0;
+};

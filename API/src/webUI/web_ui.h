@@ -37,6 +37,9 @@ class web_ui{
     bool addDevice(const std::string& name, tds_sensor& device);
     bool addDevice(const std::string& name, flow_sensor& device);
     bool addDevice(const std::string& name, level_sensor& device);
+    bool addDevice(const std::string& name, conductivity_sensor& device);
+    bool addDevice(const std::string& name, temperature_sensor& device);
+    bool addDevice(const std::string& name, switched_load& device);
 
     // Opens the listening socket. False if the port can't be opened.
     bool start();
@@ -47,7 +50,8 @@ class web_ui{
 
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*, pressure_transducer*,
-                                    tds_sensor*, flow_sensor*, level_sensor*>;
+                                    tds_sensor*, flow_sensor*, level_sensor*,
+                                    conductivity_sensor*, temperature_sensor*, switched_load*>;
 
     struct client {
         int fd;
