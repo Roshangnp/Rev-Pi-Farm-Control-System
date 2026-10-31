@@ -53,6 +53,7 @@ bool device_server::addDevice(const std::string& name, valve& device) {return ad
 bool device_server::addDevice(const std::string& name, pressure_transducer& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, tds_sensor& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, flow_sensor& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, level_sensor& device) {return addDeviceRef(name, &device);}
 
 bool device_server::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos || name == "ping") return false;
@@ -194,6 +195,12 @@ std::string device_server::handleRequest(client& c, const std::string& line) {
                 float gpm = 0.0f;
                 bool success = device->readFlow(gpm);
                 reply = okFloat(success, gpm);
+            }
+        } else if constexpr (std::is_same_v<T, level_sensor>) {
+            if (method == "readLevel") {
+                float level = 0.0f;
+                bool success = device->readLevel(level);
+                reply = okFloat(success, level);
             }
         }
 

@@ -7,22 +7,26 @@ Farm control system running on Revolution Pi Connect 4 units.
 - `API/` - hardware API, the layer between the RevPi I/O and the controllers
   - Include roots are `-IAPI/include -IAPI/src`; `API/include` headers are included by bare name (`"devices.h"`), cross-folder `API/src` includes are written relative to `API/src` (e.g. `"HAL/electronics.h"`), same-folder includes use the bare name
   - `API/include/` - what external programs (e.g. the controller) include from the API
-    - `devices.h` - public device interface: abstract base classes `pump`, `float_switch`, `valve`, `pressure_transducer`, `tds_sensor`, `flow_sensor` (pure virtual, no hardware includes). Controller code uses only these, so local and remote devices are interchangeable
-    - `config.h` - device counts, the devices as `extern` base-class references (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
-  - `API/src/config.cpp` - the wiring: `electrical_interface`s and `local_*` devices (anonymous namespace), bound to the references declared in config.h. Swap a device to `remote_*` here without touching controller code
+    - `devices.h` - public device interface: abstract base classes `pump`, `float_switch`, `valve`, `pressure_transducer`, `tds_sensor`, `flow_sensor`, `level_sensor` (pure virtual, no hardware includes). Controller code uses only these, so local and remote devices are interchangeable
+    - `config.h` - shared by every machine: device counts, every farm device as an `extern` base-class reference (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
+  - `API/src/config/config_<name>.cpp` - one per machine, exactly one is built (`cmake -DDEVICE_CONFIG=<name>`, no default). The wiring: `electrical_interface`s and `local_*`/`remote_*` devices (anonymous namespace), bound to the references declared in config.h. A config only binds the devices that machine uses; a program using an unbound device fails to link
+    - `config_test` - test bench RevPi (192.168.1.116), example devices
+    - `config_uppertank` - upper tank RevPi (192.168.1.195, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
+    - `config_host_pc` - Ubuntu dev PC, all devices remote, no device server (`serviceDeviceServer` just sleeps)
+  - `API/hardware_setup.csv` - user's device list (name, id, host IP, interface type, pin, analog range); configs are written by hand from it
   - `API/src/HAL/` - hardware abstraction layer
     - `electronics.h/.cpp` - `electrical_interface`: one I/O point bound to a PiCtory variable
     - `analog_input.h/.cpp` - shared 4-20 mA / 0-10 V scaling for pressure and TDS; < 3.5 mA = broken wire
     - `piControl.h` - vendored KUNBUS driver header (MIT), do not edit
   - `API/src/devices/local_devices/local_*.h/.cpp` - devices wired to this RevPi, each inherits its base from `devices.h`
     - `local_pump`: non-owning pointers to on/off, speed and alarm interfaces; nullptr = not fitted. Speed 0-1 maps to 0-10 V, 4-20 mA or 0-100 % PWM
-    - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor` - one interface each; reads return false on failure and fill an out param
+    - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor`, `local_level_sensor` - one interface each; reads return false on failure and fill an out param
   - `API/src/devices/remote_devices/` - devices owned by another RevPi on the LAN. One owner per device
     - `remote_link` - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s
     - `remote_*` - one proxy per base class, `(remote_link&, device_name)`; network failure returns false (`readAlarm` returns true)
     - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps it last commanded go off and valves it last commanded close
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
-  - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; config.cpp registers the local devices under their public names
+  - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; each config registers its local devices under their public names (snake_case of the CSV name)
 - `controllers/` - control applications that use the public header
 - `Math Notes/` - personal notes, do not read unless asked
 
@@ -73,7 +77,7 @@ Farm control system running on Revolution Pi Connect 4 units.
       serviceDeviceServer(20);   // handles remote requests, doubles as the loop sleep
   }
   ```
-- Using a device owned by the other RevPi, in config.cpp:
+- Using a device owned by the other RevPi, in that machine's config:
   ```cpp
   remote_link revpi_b("192.168.1.117");
   remote_pump remote_transfer_pump(revpi_b, "transfer_pump");   // name the owner registered in its device_server
@@ -88,10 +92,11 @@ Farm control system running on Revolution Pi Connect 4 units.
 
 ## Build and test
 
-- Builds on the RevPi with g++ 12 (C++17); no cross compiler on the dev PC
+- CMake (top-level `CMakeLists.txt`): `cmake -B build -DDEVICE_CONFIG=<test|uppertank|host_pc> && cmake --build build`. Builds the `farm_api` library (API/src minus the configs, plus the chosen config) and one executable per `controllers/src/*.cpp`
+- Builds natively on the RevPi (g++ 12, C++17) and on the Ubuntu PC (all configs compile there; piControl just fails to open at runtime); no cross compiler
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):
-  `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp") -o <test>`
+  `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp" -not -path "*/config/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice)
 - firewalld is active on the RevPi: port 47100/tcp must be opened (only for the other RevPi's IP) before RevPis can reach each other, see Remote devices
 - Tests in `~/ro_api_test/tests`: `config_test` + `other` (read-only), `pump_test` and `sensors_hw_test` (switch relay 1), `owner_main` + `controller_main` (remote over loopback, switch relay 1). PC-side logic tests use a fake `electrical_interface` (attach/get/set just succeed) to feed exact signals
 - Controller code needs only `-IAPI/include` (`#include "config.h"` / `"devices.h"`), then links against the API objects (built with `-IAPI/include -IAPI/src`)

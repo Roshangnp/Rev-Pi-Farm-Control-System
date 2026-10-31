@@ -1,0 +1,43 @@
+cmake_minimum_required(VERSION 3.16)
+project(farm_control CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Device config for this machine: API/src/config/config_<DEVICE_CONFIG>.cpp
+#   cmake -B build -DDEVICE_CONFIG=uppertank
+# No default on purpose: building the wrong config on a RevPi drives the wrong outputs.
+set(DEVICE_CONFIG "" CACHE STRING "Device config to build (config_<name>.cpp in API/src/config)")
+
+set(config_dir ${CMAKE_CURRENT_SOURCE_DIR}/API/src/config)
+file(GLOB config_files RELATIVE ${config_dir} ${config_dir}/config_*.cpp)
+string(REPLACE "config_" "" available_configs "${config_files}")
+string(REPLACE ".cpp" "" available_configs "${available_configs}")
+set_property(CACHE DEVICE_CONFIG PROPERTY STRINGS ${available_configs})
+
+set(config_file ${config_dir}/config_${DEVICE_CONFIG}.cpp)
+if(DEVICE_CONFIG STREQUAL "" OR NOT EXISTS ${config_file})
+    message(FATAL_ERROR "Set -DDEVICE_CONFIG=<name>, one of: ${available_configs}")
+endif()
+message(STATUS "Device config: ${DEVICE_CONFIG}")
+
+# API: everything under API/src except the configs, plus the chosen config
+file(GLOB_RECURSE api_sources CONFIGURE_DEPENDS API/src/*.cpp)
+list(FILTER api_sources EXCLUDE REGEX "/API/src/config/")
+add_library(farm_api STATIC ${api_sources} ${config_file})
+target_include_directories(farm_api
+    PUBLIC API/include    # what controllers include
+    PRIVATE API/src)
+target_compile_options(farm_api PRIVATE -Wall -Wextra)
+find_package(Threads REQUIRED)
+target_link_libraries(farm_api PUBLIC Threads::Threads)
+
+# Controllers: one executable per controllers/src/*.cpp, named after the file
+file(GLOB controller_sources CONFIGURE_DEPENDS controllers/src/*.cpp)
+foreach(source ${controller_sources})
+    get_filename_component(name ${source} NAME_WE)
+    add_executable(${name} ${source})
+    target_compile_options(${name} PRIVATE -Wall -Wextra)
+    target_link_libraries(${name} PRIVATE farm_api)
+endforeach()

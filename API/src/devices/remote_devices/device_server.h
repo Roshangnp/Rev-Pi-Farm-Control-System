@@ -32,6 +32,7 @@ class device_server{
     bool addDevice(const std::string& name, pressure_transducer& device);
     bool addDevice(const std::string& name, tds_sensor& device);
     bool addDevice(const std::string& name, flow_sensor& device);
+    bool addDevice(const std::string& name, level_sensor& device);
 
     // Opens the listening socket. False if the port can't be opened.
     bool start();
@@ -42,7 +43,8 @@ class device_server{
 
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*,
-                                    pressure_transducer*, tds_sensor*, flow_sensor*>;
+                                    pressure_transducer*, tds_sensor*, flow_sensor*,
+                                    level_sensor*>;
 
     struct client {
         int fd;

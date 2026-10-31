@@ -54,3 +54,12 @@ class flow_sensor{
     // false if the sensor can't be read or there is no flow rate yet (e.g. first call)
     virtual bool readFlow(float& gpm) = 0;
 };
+
+class level_sensor{
+    public:
+    virtual ~level_sensor() = default;
+
+    // Level in the units of the sensor's configured range (see config).
+    // false if the sensor can't be read or the wire is broken
+    virtual bool readLevel(float& level) = 0;
+};

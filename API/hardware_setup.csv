@@ -1,0 +1,7 @@
+# Device Name, Device ID, Host IP, elctrical_interface_type, PiCtory Pin, low value for analog, high value for analog
+
+# UPPERTANK REVPI:
+UPPER_TANK_HIGH_FLOAT,1,192.168.1.195,DIGITAL_IN,DigitalInput_4,NA,NA
+UPPER_TANK_WATER_LEVEL,2,192.168.1.195,ANALOG_CURRENT_IN,InputValue_1,0.843,11.5
+
+# RO REVPI:
