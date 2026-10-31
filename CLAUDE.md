@@ -104,6 +104,8 @@ Farm control system running on Revolution Pi Connect 4 units.
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):
   `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp" -not -path "*/config/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice)
+- Both RevPis run their program as a systemd service: `farm-uppertank.service` (192.168.1.195) and `farm-ro.service` (192.168.1.116, After=pimodbus-master). User `pi` (in group `picontrol`), runs `~/Rev-Pi-Farm-Control-System/build/main_<config>`, Restart=always every 2 s, enabled at boot. After rebuilding: `sudo systemctl restart farm-<config>`; logs: `journalctl -u farm-<config> -f`; stop it before running `main_*` by hand (port 47100 is taken)
+- Port 47100 is open on both RevPis to 192.168.1.95 (Ubuntu host PC) and 192.168.1.194
 - firewalld is active on the RevPi: port 47100/tcp must be opened (only for the other RevPi's IP) before RevPis can reach each other, see Remote devices
 - Tests in `~/ro_api_test/tests`: `config_test` + `other` (read-only), `pump_test` and `sensors_hw_test` (switch relay 1), `owner_main` + `controller_main` (remote over loopback, switch relay 1). PC-side logic tests use a fake `electrical_interface` (attach/get/set just succeed) to feed exact signals
 - Controller code needs only `-IAPI/include` (`#include "config.h"` / `"devices.h"`), then links against the API objects (built with `-IAPI/include -IAPI/src`)
