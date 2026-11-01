@@ -18,9 +18,9 @@
 namespace {
 
 // Electrical interfaces: (device id, interface type, PiCtory pin)
-electrical_interface permeate_flow_pulses(3, pulse_in{}, "Counter_1_i03");                         // REVIEW K
-electrical_interface concentrate_flow_pulses(4, pulse_in{}, "Counter_2_i03");                      // REVIEW K
-electrical_interface feed_flow_pulses(5, pulse_in{}, "Counter_3_i03");                             // REVIEW K
+electrical_interface permeate_flow_pulses(3, pulse_in{}, "Counter_1_i03");
+electrical_interface concentrate_flow_pulses(4, pulse_in{}, "Counter_2_i03");
+electrical_interface feed_flow_pulses(5, pulse_in{}, "Counter_3_i03");
 electrical_interface feed_tank_high_float_input(6, digital_in{}, "I_1");
 electrical_interface high_ph_tank_float_input(7, digital_in{}, "I_2");
 electrical_interface cip_tank_mid_float_input(8, digital_in{}, "I_3");
@@ -65,9 +65,9 @@ electrical_interface ro_pump_speed(46, analog_current_out{}, "OutputValue_1");
 
 // Devices wired to this RevPi. Feed and RO pump alarms are the VFD alarm inputs;
 // only the RO pump has speed control (4-20 mA to its VFD).
-local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 1.0f);
-local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 1.0f);
-local_flow_sensor local_feed_flow(&feed_flow_pulses, 1.0f);
+local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 36.32f);
+local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 36.32f);
+local_flow_sensor local_feed_flow(&feed_flow_pulses, 10.19f);
 local_float_switch local_feed_tank_high_float(&feed_tank_high_float_input);
 local_float_switch local_high_ph_tank_float(&high_ph_tank_float_input);
 local_float_switch local_cip_tank_mid_float(&cip_tank_mid_float_input);
