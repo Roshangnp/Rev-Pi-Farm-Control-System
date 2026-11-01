@@ -19,6 +19,10 @@ using clock_type = std::chrono::steady_clock;
 
 constexpr auto CONNECT_TIMEOUT = std::chrono::milliseconds(300);
 constexpr auto REPLY_TIMEOUT = std::chrono::milliseconds(300);
+// A slow reply only fails that call; the link is dropped once the owner has
+// been silent this long while requests are outstanding (owner watchdog is 2 s)
+constexpr auto LINK_DEAD_TIMEOUT = std::chrono::milliseconds(1500);
+constexpr size_t MAX_STALE_REPLIES = 16;
 constexpr auto RECONNECT_BACKOFF = std::chrono::milliseconds(1000);
 constexpr auto HEARTBEAT_INTERVAL = std::chrono::milliseconds(500);
 constexpr auto HEARTBEAT_TICK = std::chrono::milliseconds(50);
@@ -122,6 +126,8 @@ bool remote_link::connectLocked() {
 
     fd_ = connectWithTimeout(host_, port_);
     rx_buffer_.clear();
+    stale_replies_ = 0;
+    last_receive_ = now;
     return fd_ >= 0;
 }
 
@@ -129,6 +135,7 @@ void remote_link::disconnectLocked() {
     if (fd_ >= 0) close(fd_);
     fd_ = -1;
     rx_buffer_.clear();
+    stale_replies_ = 0;
 }
 
 bool remote_link::call(const std::string& request, std::string& reply) {
@@ -150,25 +157,41 @@ bool remote_link::call(const std::string& request, std::string& reply) {
         return false;
     }
 
-    // A late or missing reply would leave the stream out of step, so any
-    // timeout or error drops the connection.
-    size_t newline;
-    while ((newline = rx_buffer_.find('\n')) == std::string::npos) {
+    // Replies come back in order. A reply that misses the deadline is counted
+    // as stale and skipped when it arrives, so a Wi-Fi hiccup fails one call
+    // instead of dropping the link (which would trip the owner's watchdog).
+    while (true) {
+        size_t newline;
+        while ((newline = rx_buffer_.find('\n')) != std::string::npos) {
+            std::string line = rx_buffer_.substr(0, newline);
+            rx_buffer_.erase(0, newline + 1);
+            if (stale_replies_ > 0) {
+                --stale_replies_;
+                continue;
+            }
+            reply = line;
+            last_activity_ = clock_type::now();
+            return true;
+        }
+
         pollfd p{fd_, POLLIN, 0};
+        int ready = ::poll(&p, 1, remainingMs(deadline));
+        if (ready == 0) {
+            ++stale_replies_;
+            if (stale_replies_ > MAX_STALE_REPLIES || clock_type::now() - last_receive_ > LINK_DEAD_TIMEOUT) {
+                disconnectLocked();
+            }
+            return false;
+        }
         char buffer[256];
-        ssize_t n = -1;
-        if (::poll(&p, 1, remainingMs(deadline)) == 1) n = recv(fd_, buffer, sizeof(buffer), 0);
+        ssize_t n = ready > 0 ? recv(fd_, buffer, sizeof(buffer), 0) : -1;
         if (n <= 0 || rx_buffer_.size() > MAX_REPLY_LENGTH) {
             disconnectLocked();
             return false;
         }
         rx_buffer_.append(buffer, static_cast<size_t>(n));
+        last_receive_ = clock_type::now();
     }
-
-    reply = rx_buffer_.substr(0, newline);
-    rx_buffer_.erase(0, newline + 1);
-    last_activity_ = clock_type::now();
-    return true;
 }
 
 void remote_link::heartbeatLoop() {

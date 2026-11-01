@@ -23,7 +23,7 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `local_pump`: non-owning pointers to on/off, speed and alarm interfaces; nullptr = not fitted. Speed 0-1 maps to 0-10 V, 4-20 mA or 0-100 % PWM
     - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor`, `local_level_sensor`, `local_conductivity_sensor`, `local_temperature_sensor`, `local_switched_load` - one interface each; reads return false on failure and fill an out param
   - `API/src/devices/remote_devices/` - devices owned by another RevPi on the LAN. One owner per device
-    - `remote_link` - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s
+    - `remote_link` - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s. A late reply fails only that call (it's skipped when it arrives); the link is dropped only after 1.5 s with no data from the owner, so Wi-Fi spikes (up to ~260 ms seen from the host PC) don't trip the owner's watchdog
     - `remote_*` - one proxy per base class, `(remote_link&, device_name)`; network failure returns false (`readAlarm` returns true)
     - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps and switched loads it last commanded go off and valves it last commanded close
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
@@ -49,6 +49,7 @@ Farm control system running on Revolution Pi Connect 4 units.
   - `Modbus_Action_Status_1` = 0 means OK
   - Board has no comm timeout: relays hold last state if RS485 drops
   - After saving in PiCtory, `sudo systemctl restart pimodbus-master` (it can come up stale after a save)
+    - Stale symptom (seen 2026-11-01): `Output_Bit_N` sets and `Modbus_Action_Status_1/2` stay 0, but `Input_Bit_N` (board readback) never follows and relays don't move. Restart `pimodbus-master` then `farm-ro`
 
 ## electrical_interface
 

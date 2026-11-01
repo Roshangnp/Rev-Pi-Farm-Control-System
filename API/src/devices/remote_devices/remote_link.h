@@ -42,6 +42,8 @@ class remote_link{
     mutable std::mutex mutex_;
     int fd_ = -1;
     std::string rx_buffer_;
+    size_t stale_replies_ = 0;  // replies still to come for requests that timed out
+    std::chrono::steady_clock::time_point last_receive_{};
     std::chrono::steady_clock::time_point last_connect_attempt_{};
     std::chrono::steady_clock::time_point last_activity_{};
     std::atomic<bool> running_{true};

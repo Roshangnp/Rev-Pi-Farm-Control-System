@@ -43,7 +43,9 @@ Behaviour worth knowing:
 `remote_link` is one TCP connection to another RevPi (port 47100), shared by all the `remote_*`
 devices it owns. A background thread connects as soon as the link is created and pings every
 0.5 s, which keeps the owner's watchdog happy. Lost connections are retried with a 1 s backoff;
-connects and replies time out after 300 ms.
+connects and replies time out after 300 ms. A late reply only fails that one call (the reply is
+discarded when it arrives); the connection is dropped only after 1.5 s with nothing from the
+owner, so a short network hiccup doesn't trip the owner's watchdog.
 
 `device_server` runs on the owner. It is single threaded: requests are only handled inside
 `poll()`, called from the owner's main loop, so they never run at the same time as local
