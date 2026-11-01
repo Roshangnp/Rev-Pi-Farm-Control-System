@@ -79,8 +79,9 @@ Every call returns `false` on failure (broken wire, unreachable RevPi, ...), so 
   ```
 - Watchdog: if a machine that switched an output disconnects or goes silent for 2 s, the owner
   turns its pumps and switched loads off and closes its valves.
-- The web UI (port 8080) can switch real loads and has no login. The host PC serves it on
-  localhost only.
+- The web UI (port 8080) can switch real loads. It is open to the LAN and needs the password
+  from `webui_password.txt` in the repo root (git-ignored, hardcoded at build time; see
+  `API/src/webUI/README.md`). It is plain HTTP, so still firewall the port to the LAN.
 - The RS485 relay board has no timeout of its own: if the RevPi stops, relays hold their last state.
 
 ## Adding hardware

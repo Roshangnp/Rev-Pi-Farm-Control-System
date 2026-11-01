@@ -1,6 +1,7 @@
 #pragma once
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <utility>
 #include <variant>
@@ -13,9 +14,14 @@ inline constexpr uint16_t WEB_UI_PORT = 8080;
 // their values, plus a switch for on/off outputs and a text box for setpoints.
 // Single threaded like device_server: requests are only handled inside poll(),
 // so devices are never touched at the same time as the local control code.
-// No authentication: anyone who can reach the port can switch outputs.
 //
-//   GET  /             the page
+// Password: hardcoded at build time from webui_password.txt in the repo root
+// (see CMakeLists.txt). Every /api request must send it, URL-encoded, in an
+// X-Password header; the page has a field for it. A wrong password gets 401 and
+// locks that IP out (429) for 1 s. No password built in: start() fails.
+// Plain HTTP, so anyone sniffing the LAN can read the password.
+//
+//   GET  /             the page (no password needed, it holds no data)
 //   GET  /api/devices  JSON list of devices and their current values
 //   POST /api/command  body "<device> <method> [arg]" -> "ok" | "fail" | "err <reason>"
 class web_ui{
@@ -41,7 +47,8 @@ class web_ui{
     bool addDevice(const std::string& name, temperature_sensor& device);
     bool addDevice(const std::string& name, switched_load& device);
 
-    // Opens the listening socket. False if the port can't be opened.
+    // Opens the listening socket. False if the port can't be opened or no
+    // password was built in (the reason is printed to stderr).
     bool start();
 
     // Handles pending HTTP requests. Waits up to timeout_ms for activity,
@@ -55,6 +62,7 @@ class web_ui{
 
     struct client {
         int fd;
+        uint32_t ip; // peer IPv4 address, network byte order
         std::string rx_buffer;
         std::string tx_buffer;
         std::chrono::steady_clock::time_point last_seen;
@@ -64,7 +72,9 @@ class web_ui{
     void acceptClients();
     bool readClient(client& c);  // false if the client should be dropped
     bool writeClient(client& c); // false once the reply is sent or the client is gone
-    std::string handleRequest(const std::string& method, const std::string& path, const std::string& body);
+    std::string handleRequest(const client& c, const std::string& method, const std::string& path,
+                              const std::string& headers, const std::string& body);
+    bool checkPassword(const client& c, const std::string& headers, std::string& refusal);
     std::string devicesJson();
     std::string runCommand(const std::string& line);
 
@@ -73,4 +83,5 @@ class web_ui{
     int listen_fd_ = -1;
     std::vector<client> clients_;
     std::vector<std::pair<std::string, device_ref>> devices_;
+    std::map<uint32_t, std::chrono::steady_clock::time_point> locked_until_; // IP -> end of lockout
 };

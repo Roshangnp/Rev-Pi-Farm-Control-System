@@ -1,0 +1,2 @@
+# Web UI password, read by CMake at build time (see CMakeLists.txt)
+webui_password.txt

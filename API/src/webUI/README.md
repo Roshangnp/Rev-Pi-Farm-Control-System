@@ -23,7 +23,7 @@ while (true) {
 ```
 
 On the host PC (no device server) just call `serviceWebUI(20)`. Then open
-`http://<machine>:8080` (on the host PC: `http://localhost:8080`).
+`http://<machine>:8080` from any device on the LAN and enter the password.
 
 Like `device_server`, `web_ui` is single threaded: requests are only handled inside `poll()`,
 so they never run at the same time as control code.
@@ -36,12 +36,15 @@ so they never run at the same time as control code.
 | `GET /api/devices` | JSON list of devices and their current values |
 | `POST /api/command` with body `<device> <method> [arg]` | `ok`, `fail` or `err <reason>` |
 
+Every `/api` request needs the password (URL-encoded) in an `X-Password` header, otherwise
+`401`; after a wrong password that IP gets `429` for 1 s. `GET /` needs no password.
+
 Only commands are accepted on `/api/command` (`setOn`, `setOff`, `setSpeed`, `setOpen`,
 `setClosed`); reads go through `/api/devices`. Example:
 
 ```sh
-curl -s localhost:8080/api/devices
-curl -s -X POST --data "ro_pump setSpeed 0.5" localhost:8080/api/command
+curl -s -H "X-Password: $(cat webui_password.txt)" localhost:8080/api/devices
+curl -s -H "X-Password: $(cat webui_password.txt)" -X POST --data "ro_pump setSpeed 0.5" localhost:8080/api/command
 ```
 
 `/api/devices` returns one entry per device, each with a list of fields:
@@ -57,11 +60,18 @@ curl -s -X POST --data "ro_pump setSpeed 0.5" localhost:8080/api/command
 
 ## Security
 
-There is no login, and the page switches real loads.
+The page switches real loads, so it is password protected.
 
-- RevPis listen on all interfaces: limit port 8080 in firewalld to the machines that should see it.
-- The host PC binds to `127.0.0.1` only (`web_ui ui(WEB_UI_PORT, "127.0.0.1")` in
-  `config_host_pc.cpp`); use `"0.0.0.0"` to serve the LAN.
+- The password is the first line of `webui_password.txt` in the repo root (git-ignored, surrounding
+  whitespace ignored). CMake reads it at configure time into `build/generated/web_ui_password.h`,
+  so it is hardcoded in the binary; editing the file re-runs CMake on the next build. Each machine
+  needs its own copy of the file. No file or an empty one: CMake warns and `startWebUI()` fails
+- Builds that skip CMake (the plain `g++` test command) have no password, so their web UI won't start
+- Plain HTTP: the password crosses the LAN unencrypted and is stored in the binary. It keeps out
+  casual access, not someone sniffing the network or holding a copy of the program
+- Every machine listens on all interfaces, the host PC included (`web_ui ui(WEB_UI_PORT, "0.0.0.0")`
+  in `config_host_pc.cpp`; `"127.0.0.1"` = that PC only). Still limit port 8080 in the firewall
+  (firewalld on the RevPis, ufw on the PC) to the LAN
 - Commands sent through a remote device are covered by the owner's watchdog: if the machine
   serving the page stops, what it switched on is turned off within about 2 s.
 

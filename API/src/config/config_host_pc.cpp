@@ -70,9 +70,9 @@ remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
-// Web page on http://localhost:8080 listing the devices above. Only reachable
-// from this PC; use "0.0.0.0" to serve the LAN (it can switch outputs, no login).
-web_ui ui(WEB_UI_PORT, "127.0.0.1");
+// Web page on http://<this PC>:8080 listing the devices above, open to the LAN.
+// Password protected (webui_password.txt, see CMakeLists.txt); "127.0.0.1" = this PC only.
+web_ui ui(WEB_UI_PORT, "0.0.0.0");
 
 }  // namespace
 
