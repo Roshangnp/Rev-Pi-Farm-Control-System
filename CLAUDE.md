@@ -34,7 +34,8 @@ Farm control system running on Revolution Pi Connect 4 units.
     - Binds 0.0.0.0 on every machine, including `config_host_pc` (LAN access)
     - Each page refresh does one read per device signal; for remote devices that blocks the loop ~1 ms per read, up to 300 ms per read if the owner is down. Reading a flow sensor from the UI shortens the averaging window the control code sees
   - Output readback: `pump::readOn/readSpeed`, `valve::readOpen` read the output process image as last written (not run/position feedback)
-- `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`, `main_ro`: attach + device server; `main_host_pc`: web UI over the remote devices)
+- `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`, `main_ro`: attach + device server; `main_host_pc`: web UI over the remote devices + ntfy VFD alarm notifications)
+- `notifications/` - ntfy push notifications (`notifications/src/ntfy.h`: `ntfy_notifier`, `ntfy_send` CLI), independent of `API/`. Built only with `-DDEVICE_CONFIG=host_pc`, never on the RevPis. Topic from `ntfy_topic.txt` (repo root, git-ignored, line 1 topic, optional line 2 server), hardcoded at build time into `build/generated/ntfy_config.h`; missing = notifications off. `send()` queues, a background thread posts with the `curl` program (no libcurl). `main_host_pc` reports the feed/RO pump VFD alarms (10 s on to notify, 10 s off to clear) and the lights relay switching on, see `notifications/README.md`
 - `Math Notes/` - personal notes, do not read unless asked
 
 ## Hardware
@@ -107,7 +108,8 @@ Farm control system running on Revolution Pi Connect 4 units.
   (`API/` mirrored, test programs in `tests/`):
   `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp" -not -path "*/config/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice)
 - Both RevPis run their program as a systemd service: `farm-uppertank.service` (192.168.1.195) and `farm-ro.service` (192.168.1.116, After=pimodbus-master). User `pi` (in group `picontrol`), runs `~/Rev-Pi-Farm-Control-System/build/main_<config>`, Restart=always every 2 s, enabled at boot. After rebuilding: `sudo systemctl restart farm-<config>`; logs: `journalctl -u farm-<config> -f`; stop it before running `main_*` by hand (port 47100 is taken)
-- Port 47100 is open on both RevPis to 192.168.1.95 (Ubuntu host PC) and 192.168.1.194
+- Host PC web UI runs on `emerald-server.local` (192.168.1.194) as `rev-pi-control.service`, user `emerald` (password: ask the user). Source in `~/tools/Rev-Pi-Farm-Control-System` (`host_pc` config, has `webui_password.txt`); the service runs a copy at `~/tools/bin/Rev-Pi-Control/main_host_pc`, so after rebuilding copy the binary there, then `sudo systemctl restart rev-pi-control`
+- Port 47100 is open on both RevPis to 192.168.1.95 (Ubuntu dev PC) and 192.168.1.194 (emerald-server)
 - firewalld is active on the RevPi: port 47100/tcp must be opened (only for the other RevPi's IP) before RevPis can reach each other, see Remote devices
 - Tests in `~/ro_api_test/tests`: `config_test` + `other` (read-only), `pump_test` and `sensors_hw_test` (switch relay 1), `owner_main` + `controller_main` (remote over loopback, switch relay 1). PC-side logic tests use a fake `electrical_interface` (attach/get/set just succeed) to feed exact signals
 - Controller code needs only `-IAPI/include` (`#include "config.h"` / `"devices.h"`), then links against the API objects (built with `-IAPI/include -IAPI/src`)

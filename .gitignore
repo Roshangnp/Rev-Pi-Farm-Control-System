@@ -1,2 +1,5 @@
 # Web UI password, read by CMake at build time (see CMakeLists.txt)
 webui_password.txt
+
+# ntfy topic (and optional server), read by CMake at build time
+ntfy_topic.txt
