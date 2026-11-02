@@ -12,7 +12,7 @@
 #include "devices/remote_devices/device_server.h"
 
 // ---------------------------------------------------------------------------
-// RO RevPi (192.168.1.116). Wiring from API/hardware_setup.csv.
+// RO RevPi (192.168.1.20). Wiring from API/hardware_setup.csv.
 // ---------------------------------------------------------------------------
 
 namespace {

@@ -7,11 +7,11 @@
 // or remote_* device; callers only see the base class. A program that uses a device
 // its config doesn't bind fails to link.
 
-// Upper tank RevPi, 192.168.1.195 (config_uppertank)
+// Upper tank RevPi, 192.168.1.21 (config_uppertank)
 extern float_switch& upper_tank_high_float;
 extern level_sensor& upper_tank_water_level;
 
-// RO RevPi, 192.168.1.116 (config_ro)
+// RO RevPi, 192.168.1.20 (config_ro)
 extern flow_sensor& permeate_flow;
 extern flow_sensor& concentrate_flow;
 extern flow_sensor& feed_flow;
@@ -96,7 +96,7 @@ extern irrigation& overhead_5;
 extern irrigation& overhead_6;
 extern irrigation& city_water_fill_valve;
 
-// Test bench only (config_test, also on 192.168.1.116). It binds feed_pump,
+// Test bench only (config_test, also on 192.168.1.20). It binds feed_pump,
 // inlet_valve and permeate_flow above to its example wiring, plus these:
 extern float_switch& feed_tank_float;
 extern pressure_transducer& feed_pressure;

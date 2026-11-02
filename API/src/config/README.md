@@ -5,10 +5,10 @@ One file per machine. Exactly one is compiled, chosen with `cmake -DDEVICE_CONFI
 
 | File | Machine | Local devices | Remote devices | Device server | Web UI |
 |---|---|---|---|---|---|
-| `config_uppertank.cpp` | Upper tank RevPi, 192.168.1.195 | 2 | - | yes | yes |
-| `config_ro.cpp` | RO RevPi, 192.168.1.116 | 41 | - | yes | no |
+| `config_uppertank.cpp` | Upper tank RevPi, 192.168.1.21 | 2 | - | yes | yes |
+| `config_ro.cpp` | RO RevPi, 192.168.1.20 | 41 | - | yes | no |
 | `config_host_pc.cpp` | Ubuntu PC | - | all 43 | no | yes, localhost only |
-| `config_test.cpp` | Test bench, 192.168.1.116 | 6 examples | - | yes | yes |
+| `config_test.cpp` | Test bench, 192.168.1.20 | 6 examples | - | yes | yes |
 
 ## What a config does
 
@@ -44,7 +44,7 @@ electrical_interface ro_pump_alarm(16, digital_in{}, "I_11");
 local_pump local_ro_pump(&ro_pump_speed, &ro_pump_run, &ro_pump_alarm);
 
 // 3. Remote devices: one remote_link per owner, then one proxy per device
-remote_link upper_tank_revpi("192.168.1.195");
+remote_link upper_tank_revpi("192.168.1.21");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
 
 device_server server;

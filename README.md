@@ -29,10 +29,10 @@ Each `API/src/*` folder, `webUI/` and `notifications/` has its own README with t
 
 | Config | Machine | IP | Role |
 |---|---|---|---|
-| `uppertank` | Upper tank RevPi (MIO + AIO) | 192.168.1.195 | Owns the upper tank float and water level |
-| `ro` | RO RevPi (2x DIO, 4x AIO, RS485 relay board) | 192.168.1.116 | Owns the RO system: flows, floats, pressures, pumps, valves |
+| `uppertank` | Upper tank RevPi (MIO + AIO) | 192.168.1.21 | Owns the upper tank float and water level |
+| `ro` | RO RevPi (2x DIO, 4x AIO, RS485 relay board) | 192.168.1.20 | Owns the RO system: flows, floats, pressures, pumps, valves |
 | `host_pc` | Ubuntu PC | - | No I/O; uses every device remotely and serves the web UI |
-| `test` | Test bench (same RevPi as `ro`) | 192.168.1.116 | Example wiring used by the hardware tests |
+| `test` | Test bench (same RevPi as `ro`) | 192.168.1.20 | Example wiring used by the hardware tests |
 
 ## Building
 

@@ -26,8 +26,8 @@
 
 namespace {
 
-remote_link upper_tank_revpi("192.168.1.195");
-remote_link ro_revpi("192.168.1.116");
+remote_link upper_tank_revpi("192.168.1.21");
+remote_link ro_revpi("192.168.1.20");
 
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");

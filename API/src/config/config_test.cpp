@@ -12,7 +12,7 @@
 #include "devices/remote_devices/remote_pump.h"
 
 // ---------------------------------------------------------------------------
-// Test bench RevPi (192.168.1.116). Example wiring - one device per type.
+// Test bench RevPi (192.168.1.20). Example wiring - one device per type.
 // Pin names are PiCtory variable names.
 // ---------------------------------------------------------------------------
 

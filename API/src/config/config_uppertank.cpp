@@ -6,7 +6,7 @@
 #include "devices/remote_devices/device_server.h"
 
 // ---------------------------------------------------------------------------
-// Upper tank RevPi (192.168.1.195). Wiring from API/hardware_setup.csv.
+// Upper tank RevPi (192.168.1.21). Wiring from API/hardware_setup.csv.
 // ---------------------------------------------------------------------------
 
 namespace {

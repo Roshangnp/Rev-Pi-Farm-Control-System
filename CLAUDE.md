@@ -10,9 +10,9 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `devices.h` - public device interface: abstract base classes `pump`, `float_switch`, `valve`, `pressure_transducer`, `tds_sensor`, `flow_sensor`, `level_sensor`, `conductivity_sensor` (uS/cm), `temperature_sensor` (deg F), `switched_load` (on/off only: lights, heater), `soil_sensor` (per-depth vectors) (pure virtual, no hardware includes). Controller code uses only these, so local and remote devices are interchangeable
     - `config.h` - shared by every machine: every farm device as an `extern` base-class reference (`extern pump& feed_pump;`), `attachAllInterfaces()`. Includes only `devices.h`
   - `API/src/config/config_<name>.cpp` - one per machine, exactly one is built (`cmake -DDEVICE_CONFIG=<name>`, no default). The wiring: `electrical_interface`s and `local_*`/`remote_*` devices (anonymous namespace), bound to the references declared in config.h. A config only binds the devices that machine uses; a program using an unbound device fails to link
-    - `config_test` - test bench RevPi (192.168.1.116), example devices. Same RevPi as `config_ro`; shares the names `feed_pump`, `inlet_valve`, `permeate_flow`
-    - `config_ro` - RO RevPi (192.168.1.116), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm; RO pump speed = AIO pos 32 `OutputValue_1`, 4-20 mA, `Output1Range` = 9), 2 switched loads, 7 valves on the RS485 relays; no web UI
-    - `config_uppertank` - upper tank RevPi (192.168.1.195, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
+    - `config_test` - test bench RevPi (192.168.1.20), example devices. Same RevPi as `config_ro`; shares the names `feed_pump`, `inlet_valve`, `permeate_flow`
+    - `config_ro` - RO RevPi (192.168.1.20), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm; RO pump speed = AIO pos 32 `OutputValue_1`, 4-20 mA, `Output1Range` = 9), 2 switched loads, 7 valves on the RS485 relays; no web UI
+    - `config_uppertank` - upper tank RevPi (192.168.1.21, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
     - `config_host_pc` - Ubuntu dev PC, all devices remote, no device server (`serviceDeviceServer` just sleeps)
   - `API/hardware_setup.csv` - user's device list (name, id, host IP, interface type, pin, analog range); configs are written by hand from it
   - `API/src/HAL/` - hardware abstraction layer
@@ -44,7 +44,8 @@ Farm control system running on Revolution Pi Connect 4 units.
 
 ## Hardware
 
-- RevPi Connect 4 at `192.168.1.116`, user `pi` (password: ask the user), Debian 12 Bookworm, aarch64
+- RevPi Connect 4 at `192.168.1.20`, user `pi` (password: ask the user), Debian 12 Bookworm, aarch64
+- Static IPs (set 2026-11-01 with NetworkManager on eth0, "Wired connection 1": `ipv4.method manual`, gateway and DNS 192.168.1.1): RO RevPi `192.168.1.20` (was DHCP .116), upper tank RevPi `192.168.1.21` (hostname RevPi200606, was DHCP .195 then .72). Change with `nmcli con mod "Wired connection 1" ipv4.addresses <ip>/24`, then `config_host_pc.cpp` and the CSV. The upper tank sits behind a bridge that answers ARP for every address, so check for conflicts from the RO RevPi's side
 - Modules in PiCtory: 2x DIO (pos 30, 31, left of the Connect; 31 is the one next to it), 4x AIO (pos 32-35, right of the Connect)
 - Real loads are wired to the relay board: never switch relays without asking
 - KinCony E16v3 16-relay board on the Connect 4 RS485 port via PiCtory "ModbusRTU Master"
@@ -72,7 +73,7 @@ Farm control system running on Revolution Pi Connect 4 units.
 - `setSpeed()` rejects values outside 0-1 (no clamping); analog reads are not clamped, so unwired 0-10 V inputs can read slightly negative (e.g. -0.2 ppm)
 - Flow: first `readFlow()` returns false (no previous sample); a counter reset makes that one read return false
 - PiCtory, before real use: DIO inputs for flow sensors must be in counter mode (`InputMode_N`); AIO input ranges must match each sensor (all currently ±10 V); AIO output ranges must be set for VFD speed (currently 0 = off)
-- RO RevPi (192.168.1.116, hostname RevPi212936): DIO pos 31 = unsuffixed `I_N` (floats `I_1..9`, VFD alarms `I_10..11`), DIO pos 30 = `_i03` (flow counters `Counter_1..3_i03`, already `InputMode` = 1 counter). On 2026-10-31 floats `I_1..5,8,9` read on, `I_6,7` off; float polarity (on = submerged?) not yet confirmed at the tanks
+- RO RevPi (192.168.1.20, hostname RevPi212936): DIO pos 31 = unsuffixed `I_N` (floats `I_1..9`, VFD alarms `I_10..11`), DIO pos 30 = `_i03` (flow counters `Counter_1..3_i03`, already `InputMode` = 1 counter). On 2026-10-31 floats `I_1..5,8,9` read on, `I_6,7` off; float polarity (on = submerged?) not yet confirmed at the tanks
 
 ## Remote devices (two RevPis)
 
@@ -110,7 +111,7 @@ Farm control system running on Revolution Pi Connect 4 units.
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):
   `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp" -not -path "*/config/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice)
-- Both RevPis run their program as a systemd service: `farm-uppertank.service` (192.168.1.195) and `farm-ro.service` (192.168.1.116, After=pimodbus-master). User `pi` (in group `picontrol`), runs `~/Rev-Pi-Farm-Control-System/build/main_<config>`, Restart=always every 2 s, enabled at boot. After rebuilding: `sudo systemctl restart farm-<config>`; logs: `journalctl -u farm-<config> -f`; stop it before running `main_*` by hand (port 47100 is taken)
+- Both RevPis run their program as a systemd service: `farm-uppertank.service` (192.168.1.21) and `farm-ro.service` (192.168.1.20, After=pimodbus-master). User `pi` (in group `picontrol`), runs `~/Rev-Pi-Farm-Control-System/build/main_<config>`, Restart=always every 2 s, enabled at boot. After rebuilding: `sudo systemctl restart farm-<config>`; logs: `journalctl -u farm-<config> -f`; stop it before running `main_*` by hand (port 47100 is taken)
 - Host PC web UI runs on `emerald-server.local` (192.168.1.194) as `rev-pi-control.service`, user `emerald` (password: ask the user). Source in `~/tools/Rev-Pi-Farm-Control-System` (`host_pc` config, has `webui_password.txt`); the service runs a copy at `~/tools/bin/Rev-Pi-Control/main_host_pc`, so after rebuilding copy the binary there, then `sudo systemctl restart rev-pi-control`
 - Port 47100 is open on both RevPis to 192.168.1.95 (Ubuntu dev PC) and 192.168.1.194 (emerald-server)
 - firewalld is active on the RevPi: port 47100/tcp must be opened (only for the other RevPi's IP) before RevPis can reach each other, see Remote devices
