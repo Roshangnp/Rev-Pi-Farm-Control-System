@@ -3,3 +3,6 @@ webui_password.txt
 
 # ntfy topic (and optional server), read by CMake at build time
 ntfy_topic.txt
+
+# WiseConn API key, farm and sensor ids, read by CMake at build time
+wiseconn_keys.txt

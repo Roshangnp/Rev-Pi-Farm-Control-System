@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 // Hardware-agnostic device interfaces. Controller code uses only these, so a
 // device works the same whether it is wired to this RevPi (local_*) or
@@ -95,4 +96,13 @@ class switched_load{
 
     // Reads back the output as last written (not a feedback signal)
     virtual bool readOn(bool& on) = 0;
+};
+
+class soil_sensor{
+    public:
+    virtual ~soil_sensor() = default;
+
+    virtual bool readMoisture(std::vector<float>& moisture) = 0;
+    virtual bool readETC(std::vector<float>& etc) = 0;
+    virtual bool readTemperature(std::vector<float>& temperature) = 0;
 };

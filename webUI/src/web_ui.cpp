@@ -211,6 +211,21 @@ std::string switchField(const std::string& label, const std::string& value,
            ",\"on\":" + jsonString(on_method) + ",\"off\":" + jsonString(off_method) + "}";
 }
 
+// One read only field per depth: "<quantity> <depth label>". If the read fails,
+// each known depth shows "read failed" (one field if no labels were given).
+std::string soilFields(const std::string& quantity, const std::string& unit, bool success,
+                       const std::vector<float>& values, const std::vector<std::string>& labels) {
+    size_t count = success ? values.size() : std::max<size_t>(labels.size(), 1);
+    std::string fields;
+    for (size_t i = 0; i < count; ++i) {
+        std::string depth = i < labels.size() ? labels[i] : std::to_string(i + 1);
+        if (!fields.empty()) fields += ",";
+        fields += readOnlyField(quantity + " " + depth, "value",
+                                success ? jsonFloat(true, values[i]) : "null", unit);
+    }
+    return fields;
+}
+
 std::string setpointField(const std::string& label, const std::string& value,
                           const std::string& method, const std::string& unit) {
     return "{\"label\":" + jsonString(label) + ",\"kind\":\"setpoint\",\"value\":" + value +
@@ -295,6 +310,12 @@ bool web_ui::addDevice(const std::string& name, level_sensor& device) {return ad
 bool web_ui::addDevice(const std::string& name, conductivity_sensor& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, temperature_sensor& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, switched_load& device) {return addDeviceRef(name, &device);}
+
+bool web_ui::addDevice(const std::string& name, soil_sensor& device, std::vector<std::string> depth_labels) {
+    if (!addDeviceRef(name, &device)) return false;
+    soil_depth_labels_[name] = std::move(depth_labels);
+    return true;
+}
 
 bool web_ui::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos) return false;
@@ -457,7 +478,7 @@ std::string web_ui::devicesJson() {
     for (const auto& [name, ref] : devices_) {
         if (json.size() > 1) json += ",";
 
-        std::string fields = std::visit([](auto* device) -> std::string {
+        std::string fields = std::visit([&](auto* device) -> std::string {
             using T = std::remove_pointer_t<decltype(device)>;
             if constexpr (std::is_same_v<T, pump>) {
                 bool on = false;
@@ -508,6 +529,15 @@ std::string web_ui::devicesJson() {
                 bool on = false;
                 bool success = device->readOn(on);
                 return switchField("on", jsonBool(success, on), "setOn", "setOff");
+            } else if constexpr (std::is_same_v<T, soil_sensor>) {
+                const std::vector<std::string>& labels = soil_depth_labels_[name];
+                std::vector<float> moisture, etc, temperature;
+                bool moisture_ok = device->readMoisture(moisture);
+                bool etc_ok = device->readETC(etc);
+                bool temperature_ok = device->readTemperature(temperature);
+                return soilFields("moisture", "%", moisture_ok, moisture, labels) + "," +
+                       soilFields("ETC", "VIC", etc_ok, etc, labels) + "," +
+                       soilFields("temp", "°F", temperature_ok, temperature, labels);
             }
         }, ref);
 

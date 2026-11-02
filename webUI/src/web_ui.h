@@ -46,6 +46,9 @@ class web_ui{
     bool addDevice(const std::string& name, conductivity_sensor& device);
     bool addDevice(const std::string& name, temperature_sensor& device);
     bool addDevice(const std::string& name, switched_load& device);
+    // Read only: one field per depth for moisture, ETC and temperature, labelled
+    // with depth_labels (e.g. {"4 in", "8 in", "12 in"}), or 1, 2, 3... if empty
+    bool addDevice(const std::string& name, soil_sensor& device, std::vector<std::string> depth_labels = {});
 
     // Opens the listening socket. False if the port can't be opened or no
     // password was built in (the reason is printed to stderr).
@@ -58,7 +61,8 @@ class web_ui{
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*, pressure_transducer*,
                                     tds_sensor*, flow_sensor*, level_sensor*,
-                                    conductivity_sensor*, temperature_sensor*, switched_load*>;
+                                    conductivity_sensor*, temperature_sensor*, switched_load*,
+                                    soil_sensor*>;
 
     struct client {
         int fd;
@@ -83,5 +87,6 @@ class web_ui{
     int listen_fd_ = -1;
     std::vector<client> clients_;
     std::vector<std::pair<std::string, device_ref>> devices_;
+    std::map<std::string, std::vector<std::string>> soil_depth_labels_;  // soil sensor name -> labels
     std::map<uint32_t, std::chrono::steady_clock::time_point> locked_until_; // IP -> end of lockout
 };

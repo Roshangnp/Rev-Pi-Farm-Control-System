@@ -13,6 +13,10 @@
 #include "devices/remote_devices/remote_pump.h"
 #include "devices/remote_devices/remote_switched_load.h"
 #include "devices/remote_devices/remote_valve.h"
+#include "devices/wiseconn_devices/wiseconn_keys.h"
+#include "devices/wiseconn_devices/wiseconn_link.h"
+#include "devices/wiseconn_devices/wiseconn_soil_sensor.h"
+#include "wiseconn_keys_text.h"
 
 // ---------------------------------------------------------------------------
 // Ubuntu host PC: no local I/O, every device is owned by a RevPi.
@@ -69,6 +73,14 @@ remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
+// WiseConn cloud, from wiseconn_keys.txt (built in by CMake). Defined in this
+// order on purpose: the keys are parsed before the link and sensors use them.
+const wiseconn_keys wiseconn_config = loadWiseconnKeys(WISECONN_KEYS_TEXT);
+wiseconn_link wiseconn(wiseconn_config);
+wiseconn_soil_sensor wiseconn_zone_7_soil(wiseconn, wiseconn_config.soil("zone_7_soil"));
+wiseconn_soil_sensor wiseconn_zone_8_soil(wiseconn, wiseconn_config.soil("zone_8_soil"));
+wiseconn_soil_sensor wiseconn_zone_10_3_soil(wiseconn, wiseconn_config.soil("zone_10_3_soil"));
+
 }  // namespace
 
 // Public devices declared in config.h
@@ -116,6 +128,9 @@ valve& concentrate_cip_valve = remote_concentrate_cip_valve;
 valve& media_backwash_1_valve = remote_media_backwash_1_valve;
 valve& permeate_cip_valve = remote_permeate_cip_valve;
 valve& media_backwash_2_valve = remote_media_backwash_2_valve;
+soil_sensor& zone_7_soil = wiseconn_zone_7_soil;
+soil_sensor& zone_8_soil = wiseconn_zone_8_soil;
+soil_sensor& zone_10_3_soil = wiseconn_zone_10_3_soil;
 
 // Nothing wired to this machine
 bool attachAllInterfaces() {

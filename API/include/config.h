@@ -60,6 +60,13 @@ extern valve& permeate_cip_valve;
 extern valve& media_backwash_1_valve;
 extern valve& media_backwash_2_valve;
 
+// WiseConn cloud soil probes (host PC only, read only). Values per depth,
+// 4 in / 8 in / 12 in; refreshed from the cloud every 60 s, measured every 15 min.
+// Ids and the API key come from wiseconn_keys.txt.
+extern soil_sensor& zone_7_soil;
+extern soil_sensor& zone_8_soil;
+extern soil_sensor& zone_10_3_soil;
+
 // Test bench only (config_test, also on 192.168.1.116). It binds feed_pump,
 // inlet_valve and permeate_flow above to its example wiring, plus these:
 extern float_switch& feed_tank_float;

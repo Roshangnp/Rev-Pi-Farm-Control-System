@@ -1,9 +1,10 @@
 # devices
 
-Every device type is an abstract class in `API/include/devices.h`, with two implementations:
+Every device type is an abstract class in `API/include/devices.h`, with these implementations:
 
 - `local_devices/local_*` - wired to this RevPi, built from `electrical_interface`s
 - `remote_devices/remote_*` - owned by another RevPi, reached over the network
+- `wiseconn_devices/wiseconn_*` - read from the WiseConn cloud (host PC only, see below)
 
 User code only sees the base class, so a device can move between local and remote by changing
 the config alone.
@@ -67,6 +68,40 @@ last commanded is turned off and every valve it last commanded is closed.
 
 Typical cost is about 1 ms per call between RevPis. If the owner is down, calls fail after the
 300 ms connect timeout, then immediately until the 1 s backoff ends.
+
+## WiseConn devices
+
+Devices on the farm's WiseConn irrigation system, read from its cloud API
+(`https://apiv2.wiseconn.com`, `api_key` header). Only `soil_sensor` so far, and read only:
+nothing but GET requests is ever sent, since the WiseConn valves are live. Compiled only with
+`-DDEVICE_CONFIG=host_pc` (needs internet), bound in `config_host_pc.cpp` as `zone_7_soil`,
+`zone_8_soil` and `zone_10_3_soil`.
+
+- `wiseconn_link` - one per account. A background thread fetches `GET /zones/<id>/measures`
+  for each registered zone every `poll_seconds` (default 60; one HTTPS request per zone, about
+  1 s each, made with the `curl` program, key passed on stdin) and caches every measure. Reads
+  only look at the cache (microseconds). A value counts while WiseConn's `lastDataDate` is within
+  `max_age_minutes` (default 45; soil data arrives every 15 min). Failed polls keep old values,
+  which then age out; poll failures and recoveries are logged once each.
+- `wiseconn_soil_sensor` - one per probe: `readMoisture` (%), `readETC` (EC/salinity in
+  WiseConn's raw "VIC" units, not uS/cm) and `readTemperature` (deg F), one value per depth,
+  shallowest first (4, 8, 12 in). A read fails, leaving the vector unchanged, unless every depth
+  is current.
+- `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
+  `time_zone`, optional `base_url` / `poll_seconds` / `max_age_minutes`, then one `[name]`
+  section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`.
+  CMake builds the file in as text (`build/generated/wiseconn/`); missing or malformed: the
+  devices are off and reads fail, the program still runs.
+- `wiseconn_json` - minimal JSON parser (no JSON library on these machines).
+
+Gotcha: `lastDataDate` ends in `Z` but is the farm's local time (America/Los_Angeles), so it is
+read as local time. The machine running it must be in the farm's time zone; a mismatch with
+`time_zone` is logged at startup, and readings then look 8 hours old and fail.
+
+Finding ids: `GET /farms` (farm id, time zone), `GET /farms/<id>/zones`, then
+`GET /zones/<zone id>/measures` lists each measure's `id`, `name` and `sensorType`. In the
+measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also has 16, 20 and
+24 in depths, not used.
 
 ## Adding a device type
 

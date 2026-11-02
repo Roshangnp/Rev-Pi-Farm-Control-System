@@ -112,7 +112,10 @@ bool addAllDevices(web_ui& ui) {
         && ui.addDevice("concentrate_cip_valve", concentrate_cip_valve)
         && ui.addDevice("media_backwash_1_valve", media_backwash_1_valve)
         && ui.addDevice("permeate_cip_valve", permeate_cip_valve)
-        && ui.addDevice("media_backwash_2_valve", media_backwash_2_valve);
+        && ui.addDevice("media_backwash_2_valve", media_backwash_2_valve)
+        && ui.addDevice("zone_7_soil", zone_7_soil, {"4 in", "8 in", "12 in"})
+        && ui.addDevice("zone_8_soil", zone_8_soil, {"4 in", "8 in", "12 in"})
+        && ui.addDevice("zone_10_3_soil", zone_10_3_soil, {"4 in", "8 in", "12 in"});
 }
 
 }  // namespace

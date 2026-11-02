@@ -8,6 +8,8 @@ never compile it). `main_host_pc` serves it from emerald-server.
 - pump run, valve open, switched load on: a switch
 - pump speed (if the pump has speed control): a number box and a Send button
 - sensors: read only, with units; "read failed" in red if a read fails
+- soil sensors: read only, one row per depth for moisture, ETC and temperature, labelled with the
+  depth names passed to `addDevice` (`{"4 in", "8 in", "12 in"}` in `main_host_pc`)
 
 The page refreshes every second.
 
