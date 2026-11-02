@@ -85,8 +85,9 @@ The page switches real loads, so it is password protected.
   casual access, not someone sniffing the network or holding a copy of the program
 - `main_host_pc` listens on all interfaces (`web_ui ui(WEB_UI_PORT, "0.0.0.0")`; `"127.0.0.1"` =
   that machine only). Still limit port 8080 in the firewall to the LAN
-- Commands sent through a remote device are covered by the owner's watchdog: if the machine
-  serving the page stops, what it switched on is turned off within about 2 s.
+- Commands sent through a remote device are covered by the owner's watchdog: if the program
+  serving the page stops (or its service restarts), what it switched on is turned off at once; if
+  the network to the owner goes silent, after 20 s.
 
 ## Limitations
 

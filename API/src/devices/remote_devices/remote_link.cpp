@@ -19,10 +19,16 @@ using clock_type = std::chrono::steady_clock;
 
 constexpr auto CONNECT_TIMEOUT = std::chrono::milliseconds(300);
 constexpr auto REPLY_TIMEOUT = std::chrono::milliseconds(300);
-// A slow reply only fails that call; the link is dropped once the owner has
-// been silent this long while requests are outstanding (owner watchdog is 2 s)
-constexpr auto LINK_DEAD_TIMEOUT = std::chrono::milliseconds(1500);
-constexpr size_t MAX_STALE_REPLIES = 16;
+// A slow reply only fails that call. Closing the socket makes the owner reset
+// everything this controller commanded at once, so the link is only dropped
+// after the owner has been silent this long with replies outstanding. Longer
+// than the owner's 20 s watchdog, so the owner alone decides when a stall
+// resets outputs; a rebooted owner usually answers with a reset, which drops
+// the link at once
+constexpr auto LINK_DEAD_TIMEOUT = std::chrono::seconds(25);
+// With this many replies overdue, calls fail at once without sending, so a
+// stall doesn't block every caller for REPLY_TIMEOUT
+constexpr size_t MAX_OVERDUE_REPLIES = 2;
 constexpr auto RECONNECT_BACKOFF = std::chrono::milliseconds(1000);
 constexpr auto HEARTBEAT_INTERVAL = std::chrono::milliseconds(500);
 constexpr auto HEARTBEAT_TICK = std::chrono::milliseconds(50);
@@ -142,6 +148,24 @@ bool remote_link::call(const std::string& request, std::string& reply) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (fd_ < 0 && !connectLocked()) return false;
 
+    // Owner behind on replies (network stall): take whatever has arrived without
+    // waiting, and fail at once if replies are still overdue
+    if (stale_replies_ >= MAX_OVERDUE_REPLIES) {
+        if (!receiveAvailableLocked()) {
+            disconnectLocked();
+            return false;
+        }
+        size_t newline;
+        while (stale_replies_ > 0 && (newline = rx_buffer_.find('\n')) != std::string::npos) {
+            rx_buffer_.erase(0, newline + 1);
+            --stale_replies_;
+        }
+        if (stale_replies_ >= MAX_OVERDUE_REPLIES) {
+            if (clock_type::now() - last_receive_ > LINK_DEAD_TIMEOUT) disconnectLocked();
+            return false;
+        }
+    }
+
     std::string line = request + "\n";
     size_t sent = 0;
     auto deadline = clock_type::now() + REPLY_TIMEOUT;
@@ -178,9 +202,7 @@ bool remote_link::call(const std::string& request, std::string& reply) {
         int ready = ::poll(&p, 1, remainingMs(deadline));
         if (ready == 0) {
             ++stale_replies_;
-            if (stale_replies_ > MAX_STALE_REPLIES || clock_type::now() - last_receive_ > LINK_DEAD_TIMEOUT) {
-                disconnectLocked();
-            }
+            if (clock_type::now() - last_receive_ > LINK_DEAD_TIMEOUT) disconnectLocked();
             return false;
         }
         char buffer[256];
@@ -189,6 +211,19 @@ bool remote_link::call(const std::string& request, std::string& reply) {
             disconnectLocked();
             return false;
         }
+        rx_buffer_.append(buffer, static_cast<size_t>(n));
+        last_receive_ = clock_type::now();
+    }
+}
+
+bool remote_link::receiveAvailableLocked() {
+    while (true) {
+        pollfd p{fd_, POLLIN, 0};
+        int ready = ::poll(&p, 1, 0);
+        if (ready == 0) return true;
+        char buffer[256];
+        ssize_t n = ready > 0 ? recv(fd_, buffer, sizeof(buffer), 0) : -1;
+        if (n <= 0 || rx_buffer_.size() > MAX_REPLY_LENGTH) return false;
         rx_buffer_.append(buffer, static_cast<size_t>(n));
         last_receive_ = clock_type::now();
     }

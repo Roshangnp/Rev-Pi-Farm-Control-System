@@ -45,8 +45,11 @@ Behaviour worth knowing:
 devices it owns. A background thread connects as soon as the link is created and pings every
 0.5 s, which keeps the owner's watchdog happy. Lost connections are retried with a 1 s backoff;
 connects and replies time out after 300 ms. A late reply only fails that one call (the reply is
-discarded when it arrives); the connection is dropped only after 1.5 s with nothing from the
-owner, so a short network hiccup doesn't trip the owner's watchdog.
+discarded when it arrives). With two replies overdue (a network stall) calls fail at once
+without sending, so a stall blocks a caller for at most 2 x 300 ms. The connection is only
+dropped after 25 s with replies outstanding and nothing from the owner: closing it makes the
+owner reset this controller's outputs at once, and 25 s is longer than the owner's 20 s
+watchdog, so the owner alone decides when a stall resets anything.
 
 `device_server` runs on the owner. It is single threaded: requests are only handled inside
 `poll()`, called from the owner's main loop, so they never run at the same time as local
@@ -63,7 +66,7 @@ feed_tank_high_float readSubmerged  ->  ok 1
 Method names are the C++ method names. There is no authentication; the firewall must limit
 port 47100 to the other farm machines.
 
-**Watchdog:** if a client disconnects or sends nothing for 2 s, every pump and switched load it
+**Watchdog:** if a client disconnects (at once) or sends nothing for 20 s (`watchdog_ms`), every pump and switched load it
 last commanded is turned off and every valve it last commanded is closed.
 
 Typical cost is about 1 ms per call between RevPis. If the owner is down, calls fail after the

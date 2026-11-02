@@ -78,8 +78,9 @@ Every call returns `false` on failure (broken wire, unreachable RevPi, ...), so 
   sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="<client IP>" port port="47100" protocol="tcp" accept'
   sudo firewall-cmd --reload
   ```
-- Watchdog: if a machine that switched an output disconnects or goes silent for 2 s, the owner
-  turns its pumps and switched loads off and closes its valves.
+- Watchdog: if a machine that switched an output disconnects or goes silent for 20 s, the owner
+  turns its pumps and switched loads off and closes its valves. Network stalls shorter than that
+  don't reset anything.
 - The web UI (port 8080) can switch real loads. It is open to the LAN and needs the password
   from `webui_password.txt` in the repo root (git-ignored, hardcoded at build time; see
   `webUI/README.md`). It is plain HTTP, so still firewall the port to the LAN.

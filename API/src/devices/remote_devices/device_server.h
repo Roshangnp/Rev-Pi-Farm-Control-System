@@ -14,11 +14,13 @@
 // never touched at the same time as the local control code.
 //
 // Watchdog: if a remote controller disconnects or sends nothing for
-// watchdog_ms, every pump it last commanded is turned off and every valve it
-// last commanded is closed, and every switched load it last commanded is turned off.
+// watchdog_ms (default 20 s), every pump it last commanded is turned off and every
+// valve it last commanded is closed, and every switched load it last commanded is
+// turned off. A clean disconnect (the controller's program stopping) triggers it at
+// once; silence only after watchdog_ms, so network stalls shorter than that are ridden out.
 class device_server{
     public:
-    device_server(uint16_t port = DEVICE_SERVER_PORT, int watchdog_ms = 2000)
+    device_server(uint16_t port = DEVICE_SERVER_PORT, int watchdog_ms = 20000)
     : port_(port), watchdog_(watchdog_ms){};
     ~device_server();
 

@@ -35,6 +35,7 @@ class remote_link{
     bool call(const std::string& request, std::string& reply);
     bool connectLocked();
     void disconnectLocked();
+    bool receiveAvailableLocked();  // reads what has arrived without waiting; false on error
     void heartbeatLoop();
 
     std::string host_;
