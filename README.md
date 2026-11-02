@@ -13,16 +13,17 @@ API/
   hardware_setup.csv    list of every device: name, owner IP, interface type, PiCtory pin, range
   include/              the public API: what user programs include
     devices.h           device interfaces (pump, valve, float_switch, sensors, ...)
-    config.h            every farm device, plus startup / server / web UI functions
+    config.h            every farm device, plus startup / device server functions
   src/
     config/             one config per machine: which devices are local or remote
     devices/            local devices (wired here) and remote devices (owned by another RevPi)
     HAL/                electrical_interface: one PiCtory I/O point
-    webUI/              small web page listing a machine's devices
+webUI/                  web page listing the farm's devices (host PC only, uses API/include)
+notifications/          ntfy push notifications (host PC only)
 user_space/src/         programs; main_<config>.cpp is built only for that config
 ```
 
-Each `API/src/*` folder has its own README with the details.
+Each `API/src/*` folder, `webUI/` and `notifications/` has its own README with the details.
 
 ## Machines
 
@@ -81,7 +82,7 @@ Every call returns `false` on failure (broken wire, unreachable RevPi, ...), so 
   turns its pumps and switched loads off and closes its valves.
 - The web UI (port 8080) can switch real loads. It is open to the LAN and needs the password
   from `webui_password.txt` in the repo root (git-ignored, hardcoded at build time; see
-  `API/src/webUI/README.md`). It is plain HTTP, so still firewall the port to the LAN.
+  `webUI/README.md`). It is plain HTTP, so still firewall the port to the LAN.
 - The RS485 relay board has no timeout of its own: if the RevPi stops, relays hold their last state.
 
 ## Adding hardware

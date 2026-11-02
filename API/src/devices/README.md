@@ -74,5 +74,5 @@ Typical cost is about 1 ms per call between RevPis. If the owner is down, calls 
 2. `local_devices/local_<type>.h/.cpp` and `remote_devices/remote_<type>.h/.cpp`.
 3. `remote_devices/device_server.h/.cpp`: an `addDevice` overload, the type in `device_ref`,
    its methods in `handleRequest`, and its safe state in `applySafeState` if it is an output.
-4. `API/src/webUI/web_ui.h/.cpp`: an `addDevice` overload, the type in `device_ref`, its fields
+4. `webUI/src/web_ui.h/.cpp` (outside the API): an `addDevice` overload, the type in `device_ref`, its fields
    in `devicesJson`, and its commands in `runCommand`.

@@ -1,7 +1,9 @@
 # webUI
 
-A small web page served by a farm machine, listing the devices its config registers (local or
-remote) with their current values, plus controls for outputs:
+A small web page listing farm devices (local or remote) with their current values, plus
+controls for outputs. Not part of the API: it only uses the public device interfaces in
+`API/include/devices.h`, and is built only with `-DDEVICE_CONFIG=host_pc` (the RevPi builds
+never compile it). `main_host_pc` serves it from emerald-server.
 
 - pump run, valve open, switched load on: a switch
 - pump speed (if the pump has speed control): a number box and a Send button
@@ -11,19 +13,24 @@ The page refreshes every second.
 
 ## Using it
 
-The config registers the devices and exposes two functions through `config.h`:
+The program creates the `web_ui` and adds the devices to show, using the references from
+`config.h` (see `addAllDevices()` in `user_space/src/main_host_pc.cpp`):
 
 ```cpp
-startWebUI();                  // once at startup
+#include "config.h"
+#include "web_ui.h"
+
+web_ui ui(WEB_UI_PORT, "0.0.0.0");     // "127.0.0.1" = this machine only
+ui.addDevice("feed_pump", feed_pump);  // listed in the order added
+ui.start();                            // false: no password built in, or port in use
 while (true) {
     // control logic
-    serviceWebUI(0);           // handle page requests
-    serviceDeviceServer(20);   // the last call sleeps for the loop
+    ui.poll(20);                       // handles page requests, doubles as the loop sleep
 }
 ```
 
-On the host PC (no device server) just call `serviceWebUI(20)`. Then open
-`http://<machine>:8080` from any device on the LAN and enter the password.
+Then open `http://<machine>:8080` from any device on the LAN and enter the password.
+In CMake, link the `web_ui` target.
 
 Like `device_server`, `web_ui` is single threaded: requests are only handled inside `poll()`,
 so they never run at the same time as control code.
@@ -63,15 +70,14 @@ curl -s -H "X-Password: $(cat webui_password.txt)" -X POST --data "ro_pump setSp
 The page switches real loads, so it is password protected.
 
 - The password is the first line of `webui_password.txt` in the repo root (git-ignored, surrounding
-  whitespace ignored). CMake reads it at configure time into `build/generated/web_ui_password.h`,
+  whitespace ignored). CMake reads it at configure time into `build/generated/web_ui/web_ui_password.h`,
   so it is hardcoded in the binary; editing the file re-runs CMake on the next build. Each machine
-  needs its own copy of the file. No file or an empty one: CMake warns and `startWebUI()` fails
+  needs its own copy of the file. No file or an empty one: CMake warns and `start()` fails
 - Builds that skip CMake (the plain `g++` test command) have no password, so their web UI won't start
 - Plain HTTP: the password crosses the LAN unencrypted and is stored in the binary. It keeps out
   casual access, not someone sniffing the network or holding a copy of the program
-- Every machine listens on all interfaces, the host PC included (`web_ui ui(WEB_UI_PORT, "0.0.0.0")`
-  in `config_host_pc.cpp`; `"127.0.0.1"` = that PC only). Still limit port 8080 in the firewall
-  (firewalld on the RevPis, ufw on the PC) to the LAN
+- `main_host_pc` listens on all interfaces (`web_ui ui(WEB_UI_PORT, "0.0.0.0")`; `"127.0.0.1"` =
+  that machine only). Still limit port 8080 in the firewall to the LAN
 - Commands sent through a remote device are covered by the owner's watchdog: if the machine
   serving the page stops, what it switched on is turned off within about 2 s.
 

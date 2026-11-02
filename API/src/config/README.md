@@ -25,7 +25,6 @@ functions declared in `config.h`:
 |---|---|
 | `attachAllInterfaces()` | Binds every local `electrical_interface` to its PiCtory variable. Returns false if any pin is missing or the wrong size |
 | `startDeviceServer()` / `serviceDeviceServer(ms)` | Shares the local devices on port 47100 |
-| `startWebUI()` / `serviceWebUI(ms)` | Serves the web page on port 8080 |
 
 A config only defines the devices its machine uses. A program that uses a device its config
 doesn't define fails to link (`undefined reference to 'feed_pump'`), so mistakes show up at
@@ -66,7 +65,8 @@ can't reach around the interfaces.
 3. In the owner's config: add the `electrical_interface`, the `local_*` device, the public
    reference, the interface in `attachAllInterfaces()`, and `server.addDevice("name", ...)`.
 4. In every other config that uses it: add a `remote_*` device on the owner's `remote_link`
-   and the public reference. Add it to `startWebUI()` if the page should show it.
+   and the public reference. Add it to `addAllDevices()` in `user_space/src/main_host_pc.cpp`
+   if the web page should show it.
 5. Rebuild those machines. Machines whose config didn't change don't need rebuilding.
 
 Device names are the snake_case of the CSV name and must be identical on the owner and on

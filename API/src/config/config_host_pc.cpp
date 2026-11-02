@@ -13,7 +13,6 @@
 #include "devices/remote_devices/remote_pump.h"
 #include "devices/remote_devices/remote_switched_load.h"
 #include "devices/remote_devices/remote_valve.h"
-#include "webUI/web_ui.h"
 
 // ---------------------------------------------------------------------------
 // Ubuntu host PC: no local I/O, every device is owned by a RevPi.
@@ -69,10 +68,6 @@ remote_valve remote_concentrate_cip_valve(ro_revpi, "concentrate_cip_valve");
 remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
-
-// Web page on http://<this PC>:8080 listing the devices above, open to the LAN.
-// Password protected (webui_password.txt, see CMakeLists.txt); "127.0.0.1" = this PC only.
-web_ui ui(WEB_UI_PORT, "0.0.0.0");
 
 }  // namespace
 
@@ -135,55 +130,4 @@ bool startDeviceServer() {
 // Still sleeps so the main loop paces the same as on a RevPi
 void serviceDeviceServer(int timeout_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
-}
-
-bool startWebUI() {
-    bool ok = ui.addDevice("upper_tank_high_float", upper_tank_high_float)
-           && ui.addDevice("upper_tank_water_level", upper_tank_water_level)
-           && ui.addDevice("permeate_flow", permeate_flow)
-           && ui.addDevice("concentrate_flow", concentrate_flow)
-           && ui.addDevice("feed_flow", feed_flow)
-           && ui.addDevice("feed_tank_high_float", feed_tank_high_float)
-           && ui.addDevice("high_ph_tank_float", high_ph_tank_float)
-           && ui.addDevice("cip_tank_mid_float", cip_tank_mid_float)
-           && ui.addDevice("cip_tank_low_float", cip_tank_low_float)
-           && ui.addDevice("cip_tank_high_float", cip_tank_high_float)
-           && ui.addDevice("low_ph_tank_float", low_ph_tank_float)
-           && ui.addDevice("asa_tank_low_float", asa_tank_low_float)
-           && ui.addDevice("permeate_tank_high_float", permeate_tank_high_float)
-           && ui.addDevice("feed_tank_low_float", feed_tank_low_float)
-           && ui.addDevice("media_outlet_pressure", media_outlet_pressure)
-           && ui.addDevice("media_inlet_pressure", media_inlet_pressure)
-           && ui.addDevice("concentrate_pressure", concentrate_pressure)
-           && ui.addDevice("cip_inlet_pressure", cip_inlet_pressure)
-           && ui.addDevice("interstage_pressure", interstage_pressure)
-           && ui.addDevice("aqualine_outlet_pressure", aqualine_outlet_pressure)
-           && ui.addDevice("cip_outlet_pressure", cip_outlet_pressure)
-           && ui.addDevice("primary_pressure", primary_pressure)
-           && ui.addDevice("aqualine_inlet_pressure", aqualine_inlet_pressure)
-           && ui.addDevice("permeate_pressure", permeate_pressure)
-           && ui.addDevice("air_pressure", air_pressure)
-           && ui.addDevice("permeate_conductivity", permeate_conductivity)
-           && ui.addDevice("feed_conductivity", feed_conductivity)
-           && ui.addDevice("cip_temp", cip_temp)
-           && ui.addDevice("feed_pump", feed_pump)
-           && ui.addDevice("ro_pump", ro_pump)
-           && ui.addDevice("repressure_pump", repressure_pump)
-           && ui.addDevice("lights", lights)
-           && ui.addDevice("cip_heater", cip_heater)
-           && ui.addDevice("asa_pump", asa_pump)
-           && ui.addDevice("high_ph_pump", high_ph_pump)
-           && ui.addDevice("low_ph_pump", low_ph_pump)
-           && ui.addDevice("flush_valve", flush_valve)
-           && ui.addDevice("cip_inlet_valve", cip_inlet_valve)
-           && ui.addDevice("inlet_valve", inlet_valve)
-           && ui.addDevice("concentrate_cip_valve", concentrate_cip_valve)
-           && ui.addDevice("media_backwash_1_valve", media_backwash_1_valve)
-           && ui.addDevice("permeate_cip_valve", permeate_cip_valve)
-           && ui.addDevice("media_backwash_2_valve", media_backwash_2_valve);
-    return ok && ui.start();
-}
-
-void serviceWebUI(int timeout_ms) {
-    ui.poll(timeout_ms);
 }

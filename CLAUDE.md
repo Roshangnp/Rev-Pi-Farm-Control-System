@@ -28,13 +28,12 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects or is silent 2 s, pumps and switched loads it last commanded go off and valves it last commanded close
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
   - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; each config registers its local devices under their public names (snake_case of the CSV name)
-  - `API/src/webUI/web_ui` - minimal HTTP server (port 8080), same level as `device_server`: single threaded, only handles requests inside `poll()`. Lists the devices its config registers (local or remote) with values; password field; switch for pump run / valve open, number box + Send for pump speed. `GET /`, `GET /api/devices` (JSON), `POST /api/command` (body = device protocol line, commands only). Page is embedded in web_ui.cpp and polls every 1 s
-    - `config.h` exposes `startWebUI()` / `serviceWebUI(timeout_ms)`; each config adds its devices in `startWebUI()`
-    - Password: first line of `webui_password.txt` (repo root, git-ignored), read by CMake into `build/generated/web_ui_password.h` (hardcoded at build time; editing the file re-runs cmake). `/api/*` needs it URL-encoded in `X-Password` (401 if wrong, then that IP gets 429 for 1 s); `GET /` is open. No password built in (missing file, or plain g++ build): `start()` fails. Plain HTTP, so still firewall port 8080 to the LAN
-    - Binds 0.0.0.0 on every machine, including `config_host_pc` (LAN access)
-    - Each page refresh does one read per device signal; for remote devices that blocks the loop ~1 ms per read, up to 300 ms per read if the owner is down. Reading a flow sensor from the UI shortens the averaging window the control code sees
   - Output readback: `pump::readOn/readSpeed`, `valve::readOpen` read the output process image as last written (not run/position feedback)
 - `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`, `main_ro`: attach + device server; `main_host_pc`: web UI over the remote devices + ntfy VFD alarm notifications)
+- `webUI/src/web_ui` - minimal HTTP server (port 8080), outside the API: uses only `devices.h`. Built only with `-DDEVICE_CONFIG=host_pc` (target `web_ui`), never on the RevPis; no RevPi config has web UI code. Single threaded, only handles requests inside `poll()`. Lists the devices the program adds (local or remote) with values; password field; switch for pump run / valve open, number box + Send for pump speed. `GET /`, `GET /api/devices` (JSON), `POST /api/command` (body = device protocol line, commands only). Page is embedded in web_ui.cpp and polls every 1 s
+  - `main_host_pc` creates `web_ui ui(WEB_UI_PORT, "0.0.0.0")` (LAN access), adds every device in `addAllDevices()` from the config.h references, calls `ui.start()` then `ui.poll(20)` in its loop
+  - Password: first line of `webui_password.txt` (repo root, git-ignored), read by CMake into `build/generated/web_ui/web_ui_password.h` (only web_ui.cpp sees it; hardcoded at build time; editing the file re-runs cmake). `/api/*` needs it URL-encoded in `X-Password` (401 if wrong, then that IP gets 429 for 1 s); `GET /` is open. No password built in (missing file, or plain g++ build): `start()` fails. Plain HTTP, so still firewall port 8080 to the LAN
+  - Each page refresh does one read per device signal; for remote devices that blocks the loop ~1 ms per read, up to 300 ms per read if the owner is down. Reading a flow sensor from the UI shortens the averaging window the control code sees
 - `notifications/` - ntfy push notifications (`notifications/src/ntfy.h`: `ntfy_notifier`, `ntfy_send` CLI), independent of `API/`. Built only with `-DDEVICE_CONFIG=host_pc`, never on the RevPis. Topic from `ntfy_topic.txt` (repo root, git-ignored, line 1 topic, optional line 2 server), hardcoded at build time into `build/generated/ntfy_config.h`; missing = notifications off. `send()` queues, a background thread posts with the `curl` program (no libcurl). `main_host_pc` reports the feed/RO pump VFD alarms (10 s on to notify, 10 s off to clear) and the lights relay switching on, see `notifications/README.md`
 - `Math Notes/` - personal notes, do not read unless asked
 
@@ -83,7 +82,6 @@ Farm control system running on Revolution Pi Connect 4 units.
   startDeviceServer();
   while (true) {
       // control logic
-      serviceWebUI(0);           // if the web UI is started
       serviceDeviceServer(20);   // handles remote requests, doubles as the loop sleep
   }
   ```
