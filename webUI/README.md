@@ -8,6 +8,10 @@ never compile it). `main_host_pc` serves it from emerald-server.
 - pump run, valve open, switched load on: a switch
 - pump speed (if the pump has speed control): a number box and a Send button
 - sensors: read only, with units; "read failed" in red if a read fails
+- irrigation zones (WiseConn): on/off, plus start and end time boxes and a Schedule button that
+  calls `scheduleIrrigation(start, end)` for today after a browser confirmation. This starts a
+  REAL irrigation. Command line: `<zone> scheduleIrrigation HH:MM-HH:MM` (anything else is
+  `err bad argument`); `fail (see the log)` if the device or WiseConn refused it
 - soil sensors: read only, one row per depth for moisture, ETC and temperature, labelled with the
   depth names passed to `addDevice` (`{"4 in", "8 in", "12 in"}` in `main_host_pc`)
 
@@ -49,7 +53,7 @@ Every `/api` request needs the password (URL-encoded) in an `X-Password` header,
 `401`; after a wrong password that IP gets `429` for 1 s. `GET /` needs no password.
 
 Only commands are accepted on `/api/command` (`setOn`, `setOff`, `setSpeed`, `setOpen`,
-`setClosed`); reads go through `/api/devices`. Example:
+`setClosed`, `scheduleIrrigation`); reads go through `/api/devices`. Example:
 
 ```sh
 curl -s -H "X-Password: $(cat webui_password.txt)" localhost:8080/api/devices
@@ -65,7 +69,8 @@ curl -s -H "X-Password: $(cat webui_password.txt)" -X POST --data "ro_pump setSp
   {"label":"alarm","kind":"bool","value":false,"unit":""}]}
 ```
 
-`kind` is `switch`, `setpoint`, `bool` or `value`; `value` is `null` when the read failed.
+`kind` is `switch`, `setpoint`, `schedule` (irrigation: on/off value plus `method`), `bool` or `value`;
+`value` is `null` when the read failed.
 
 ## Security
 

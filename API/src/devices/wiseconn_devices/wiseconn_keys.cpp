@@ -34,6 +34,13 @@ bool parseInt(const std::string& text, int& value) {
 
 }  // namespace
 
+std::string wiseconn_keys::irrigation(const std::string& name) const {
+    for (const auto& v : irrigations) {
+        if (v.first == name) return v.second;
+    }
+    return "";
+}
+
 wiseconn_soil_ids wiseconn_keys::soil(const std::string& name) const {
     for (const wiseconn_soil_ids& s : soil_sensors) {
         if (s.name == name) return s;
@@ -48,6 +55,7 @@ bool parseWiseconnKeys(const std::string& text, wiseconn_keys& keys, std::string
     std::stringstream stream(text);
     std::string line;
     int number = 0;
+    bool in_irrigations = false;
     auto bad = [&](const std::string& why) {
         error = "wiseconn_keys.txt line " + std::to_string(number) + ": " + why;
         return false;
@@ -62,6 +70,11 @@ bool parseWiseconnKeys(const std::string& text, wiseconn_keys& keys, std::string
             if (line.back() != ']' || line.size() < 3) return bad("bad section name");
             std::string name = trim(line.substr(1, line.size() - 2));
             if (name.find_first_of(" \t") != std::string::npos) return bad("section name has spaces");
+            if (name == "irrigations") {
+                in_irrigations = true;
+                continue;
+            }
+            in_irrigations = false;
             for (const wiseconn_soil_ids& s : keys.soil_sensors) {
                 if (s.name == name) return bad("duplicate section [" + name + "]");
             }
@@ -74,7 +87,14 @@ bool parseWiseconnKeys(const std::string& text, wiseconn_keys& keys, std::string
         std::string key = trim(line.substr(0, equals));
         std::string value = trim(line.substr(equals + 1));
 
-        if (keys.soil_sensors.empty()) {
+        if (in_irrigations) {
+            if (key.empty() || key.find_first_of(" \t") != std::string::npos) return bad("bad irrigation name");
+            if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos) {
+                return bad("irrigation " + key + ": zone id must be a number");
+            }
+            if (!keys.irrigation(key).empty()) return bad("duplicate irrigation " + key);
+            keys.irrigations.emplace_back(key, value);
+        } else if (keys.soil_sensors.empty()) {
             if (key == "api_key") keys.api_key = value;
             else if (key == "farm_id") keys.farm_id = value;
             else if (key == "time_zone") keys.time_zone = value;

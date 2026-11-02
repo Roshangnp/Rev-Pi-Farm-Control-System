@@ -2,6 +2,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <ctime>
 #include <map>
 #include <mutex>
 #include <string>
@@ -22,13 +23,23 @@
 // this machine's time zone must be the farm's (checked against the keys'
 // time_zone at startup, a mismatch is logged). Soil data arrives every 15 min, so
 // the default 45 min allows two missed reports before reads fail. A failed poll
-// keeps the old values; they just age out. Read only: nothing is ever sent to
-// WiseConn except GET requests.
+// keeps the old values; they just age out.
+//
+// Irrigation zones: once watchHydraulics() is called, each poll also fetches
+// GET /farms/<farm_id>/hydraulics (every valve with its live "On"/"Off" status
+// and the zones it feeds, one request for the whole farm). That list has no
+// timestamps, so it counts as current for 3 poll intervals (at least 3 min)
+// after the last good fetch.
+//
+// Polling only sends GET requests. The two createIrrigation calls are the only
+// ones that change anything on WiseConn: each sends one POST /irrigations
+// (never retried, so a slow reply can't schedule twice) and blocks the caller
+// until WiseConn answers (about 1 s, at most 20 s).
 class wiseconn_link{
     public:
     explicit wiseconn_link(const wiseconn_keys& keys);
     wiseconn_link(std::string api_key, std::string base_url, std::chrono::seconds poll_interval,
-                  std::chrono::minutes max_age);
+                  std::chrono::minutes max_age, std::string farm_id = "");
     ~wiseconn_link();
 
     wiseconn_link(const wiseconn_link&) = delete;
@@ -44,6 +55,25 @@ class wiseconn_link{
     // has no value for it, or the value is older than max_age.
     bool readMeasure(const std::string& measure_id, float& value) const;
 
+    // Starts polling the farm's hydraulics (valves). Needs a farm_id.
+    void watchHydraulics();
+
+    // True if any valve feeding the zone is "On". False (unknown) if the zone has
+    // no valve in the list, a valve's status is neither On nor Off, or the last
+    // good fetch is too old.
+    bool readZoneOn(const std::string& zone_id, bool& on) const;
+
+    // Schedules an irrigation on a zone from start to end (farm local time, which
+    // is this machine's local time):
+    //   POST /irrigations {"zoneId", "initTime", "endTime", "directSchedule": true}
+    // True if WiseConn accepted it (2xx); otherwise error has the reason and reply.
+    bool createIrrigation(const std::string& zone_id, const std::tm& start, const std::tm& end,
+                          std::string& error);
+
+    // Irrigates a zone starting now for duration_minutes:
+    //   POST /irrigations {"zoneId", "duration"}
+    bool createIrrigationNow(const std::string& zone_id, int duration_minutes, std::string& error);
+
     private:
     struct sample{
         float value;
@@ -52,17 +82,30 @@ class wiseconn_link{
 
     void pollLoop();
     void pollZone(const std::string& zone_id);
+    void pollHydraulics();
+    bool postIrrigation(const std::string& json_body, std::string& error);
+    std::chrono::steady_clock::duration hydraulicsMaxAge() const;
 
     std::string api_key_;
     std::string base_url_;
     std::chrono::seconds poll_interval_;
     std::chrono::minutes max_age_;
+    std::string farm_id_;
 
     mutable std::mutex mutex_;
     std::condition_variable wake_;
     std::vector<std::string> zones_;
     std::map<std::string, bool> zone_ok_;      // last poll result per zone, to log only changes
     std::map<std::string, sample> samples_;    // measure id -> latest value
+    bool hydraulics_wanted_ = false;
+    int hydraulics_ok_ = -1;                       // last poll result (-1 = none yet), to log only changes
+    struct hydraulic{
+        std::string type;                  // "Valve", "Pump", ...
+        std::string status;                // "On" / "Off"
+        std::vector<std::string> zone_ids;
+    };
+    std::vector<hydraulic> hydraulics_;
+    std::chrono::steady_clock::time_point hydraulics_fetched_{};
     bool poll_now_ = false;
     bool stopping_ = false;
     bool warned_future_ = false;

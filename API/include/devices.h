@@ -106,3 +106,12 @@ class soil_sensor{
     virtual bool readETC(std::vector<float>& etc) = 0;
     virtual bool readTemperature(std::vector<float>& temperature) = 0;
 };
+
+class irrigation{
+    public:
+    virtual ~irrigation() = default;
+
+    virtual bool readOn(bool& on) = 0;
+    virtual bool scheduleIrrigation(int startHour, int startMinute, int endHour, int endMinute) = 0; // hours in 24hr format and day is infered to be today
+    virtual bool scheduleIrrigation(int durationMinutes) = 0; // schedule irrigation for now for duration
+};

@@ -39,6 +39,9 @@ class web_ui{
     bool addDevice(const std::string& name, pump& device);
     bool addDevice(const std::string& name, float_switch& device);
     bool addDevice(const std::string& name, valve& device);
+    // "on" indicator plus start/end time boxes and a Schedule button
+    // (scheduleIrrigation(start, end) for today; starts a real irrigation)
+    bool addDevice(const std::string& name, irrigation& device);
     bool addDevice(const std::string& name, pressure_transducer& device);
     bool addDevice(const std::string& name, tds_sensor& device);
     bool addDevice(const std::string& name, flow_sensor& device);
@@ -62,7 +65,7 @@ class web_ui{
     using device_ref = std::variant<pump*, float_switch*, valve*, pressure_transducer*,
                                     tds_sensor*, flow_sensor*, level_sensor*,
                                     conductivity_sensor*, temperature_sensor*, switched_load*,
-                                    soil_sensor*>;
+                                    soil_sensor*, irrigation*>;
 
     struct client {
         int fd;

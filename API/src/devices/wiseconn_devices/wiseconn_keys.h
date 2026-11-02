@@ -3,8 +3,9 @@
 #include <vector>
 
 // Contents of wiseconn_keys.txt (repo root, git-ignored), built into the
-// program by CMake. Format: "key = value" lines, "#" starts a comment, and a
-// "[name]" line starts a soil sensor section:
+// program by CMake. Format: "key = value" lines, "#" starts a comment, an
+// "[irrigations]" section maps irrigation device names to WiseConn zone ids,
+// and any other "[name]" line starts a soil sensor section:
 //
 //   api_key = ...
 //   farm_id = 3995
@@ -18,6 +19,9 @@
 //   moisture = <id 4 in>, <id 8 in>, <id 12 in>
 //   etc = ...
 //   temperature = ...
+//
+//   [irrigations]
+//   valve_1_1 = 163746        (zone id, from GET /farms/<id>/zones)
 struct wiseconn_soil_ids{
     std::string name;
     std::string zone_id;
@@ -34,9 +38,12 @@ struct wiseconn_keys{
     int poll_seconds = 60;
     int max_age_minutes = 45;
     std::vector<wiseconn_soil_ids> soil_sensors;
+    std::vector<std::pair<std::string, std::string>> irrigations;   // name -> zone id
 
     // The [name] section, or an empty entry (no ids) if it isn't there
     wiseconn_soil_ids soil(const std::string& name) const;
+    // Zone id of an irrigation in [irrigations], or "" if it isn't there
+    std::string irrigation(const std::string& name) const;
 };
 
 // False (and error set, with the line number) on a malformed file. Every soil

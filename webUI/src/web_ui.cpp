@@ -44,6 +44,7 @@ th{background:#eee}
 td.value{font-variant-numeric:tabular-nums}
 .error{color:#b00020;font-weight:600}
 input[type=number]{width:6em}
+input[type=time]{width:7em}
 #status{color:#666;font-size:0.9em;min-height:1.2em}
 #login{margin:0 0 12px}
 </style></head><body>
@@ -102,7 +103,7 @@ function format(field) {
   const v = field.value;
   if (v === null) return 'read failed';
   if (typeof v === 'boolean') {
-    if (field.kind === 'switch') return v ? 'on' : 'off';
+    if (field.kind === 'switch' || field.kind === 'schedule') return v ? 'on' : 'off';
     return v ? 'yes' : 'no';
   }
   return String(+v.toPrecision(4)) + (field.unit ? ' ' + field.unit : '');
@@ -114,10 +115,13 @@ async function command(line) {
     if (!response) return;
     const reply = await response.text();
     if (reply !== 'ok') showStatus(line + ': ' + reply, true);
+    refresh();
+    return reply;
   } catch (e) {
     showStatus(line + ': ' + e, true);
   }
   refresh();
+  return null;
 }
 
 function makeRow(device, field, first) {
@@ -133,6 +137,22 @@ function makeRow(device, field, first) {
     box.onchange = () => command(device.name + ' ' + (box.checked ? field.on : field.off));
     control.appendChild(box);
     cell.box = box;
+  } else if (field.kind === 'schedule') {
+    // Irrigation window today: start and end time, confirmed before sending
+    const start = document.createElement('input'), end = document.createElement('input');
+    start.type = end.type = 'time';
+    const send = document.createElement('button');
+    send.textContent = 'Schedule';
+    send.onclick = async () => {
+      if (!start.value || !end.value) { showStatus(device.name + ': pick a start and end time', true); return; }
+      if (end.value <= start.value) { showStatus(device.name + ': end must be after start (both today)', true); return; }
+      if (!confirm('Schedule a REAL irrigation on ' + device.name + ' today ' + start.value + ' to ' + end.value + '?')) return;
+      send.disabled = true;
+      const reply = await command(device.name + ' ' + field.method + ' ' + start.value + '-' + end.value);
+      send.disabled = false;
+      if (reply === 'ok') showStatus(device.name + ': irrigation scheduled ' + start.value + ' to ' + end.value, false);
+    };
+    control.append(start, ' to ', end, ' ', send);
   } else if (field.kind === 'setpoint') {
     const input = document.createElement('input');
     input.type = 'number';
@@ -198,7 +218,8 @@ std::string jsonFloat(bool success, float value) {
 }
 
 // Field kinds understood by the page: "bool" / "value" are read only,
-// "switch" has on/off command methods, "setpoint" has one method taking a number.
+// "switch" has on/off command methods, "setpoint" has one method taking a number,
+// "schedule" shows on/off and takes a "HH:MM-HH:MM" window for today.
 std::string readOnlyField(const std::string& label, const std::string& kind, const std::string& value,
                           const std::string& unit = "") {
     return "{\"label\":" + jsonString(label) + ",\"kind\":" + jsonString(kind) +
@@ -303,6 +324,7 @@ web_ui::~web_ui() {
 bool web_ui::addDevice(const std::string& name, pump& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, float_switch& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, valve& device) {return addDeviceRef(name, &device);}
+bool web_ui::addDevice(const std::string& name, irrigation& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, pressure_transducer& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, tds_sensor& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, flow_sensor& device) {return addDeviceRef(name, &device);}
@@ -538,6 +560,11 @@ std::string web_ui::devicesJson() {
                 return soilFields("moisture", "%", moisture_ok, moisture, labels) + "," +
                        soilFields("ETC", "VIC", etc_ok, etc, labels) + "," +
                        soilFields("temp", "°F", temperature_ok, temperature, labels);
+            } else if constexpr (std::is_same_v<T, irrigation>) {
+                bool on = false;
+                bool success = device->readOn(on);
+                return "{\"label\":\"on\",\"kind\":\"schedule\",\"value\":" + jsonBool(success, on) +
+                       ",\"method\":\"scheduleIrrigation\"}";
             }
         }, ref);
 
@@ -573,6 +600,17 @@ std::string web_ui::runCommand(const std::string& line) {
         } else if constexpr (std::is_same_v<T, switched_load>) {
             if (method == "setOn") return device->setOn() ? "ok" : "fail";
             if (method == "setOff") return device->setOff() ? "ok" : "fail";
+        } else if constexpr (std::is_same_v<T, irrigation>) {
+            // "HH:MM-HH:MM" today; the device checks the window and WiseConn's answer
+            if (method == "scheduleIrrigation") {
+                int sh, sm, eh, em;
+                char tail;
+                if (std::sscanf(arg.c_str(), "%2d:%2d-%2d:%2d%c", &sh, &sm, &eh, &em, &tail) != 4 ||
+                    arg.size() != 11) {
+                    return "err bad argument (HH:MM-HH:MM)";
+                }
+                return device->scheduleIrrigation(sh, sm, eh, em) ? "ok" : "fail (see the log)";
+            }
         }
         return "err unknown method";
     }, found->second);

@@ -72,10 +72,12 @@ Typical cost is about 1 ms per call between RevPis. If the owner is down, calls 
 ## WiseConn devices
 
 Devices on the farm's WiseConn irrigation system, read from its cloud API
-(`https://apiv2.wiseconn.com`, `api_key` header). Only `soil_sensor` so far, and read only:
-nothing but GET requests is ever sent, since the WiseConn valves are live. Compiled only with
-`-DDEVICE_CONFIG=host_pc` (needs internet), bound in `config_host_pc.cpp` as `zone_7_soil`,
-`zone_8_soil` and `zone_10_3_soil`.
+(`https://apiv2.wiseconn.com`, `api_key` header). Polling only sends GET requests; the only
+calls that change anything are the two `scheduleIrrigation` overloads, which start real
+irrigations on the live system. Compiled only with `-DDEVICE_CONFIG=host_pc` (needs internet), bound in
+`config_host_pc.cpp`: soil probes `zone_7_soil`, `zone_8_soil`, `zone_10_3_soil`, and 24
+irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
+`city_water_fill_valve`.
 
 - `wiseconn_link` - one per account. A background thread fetches `GET /zones/<id>/measures`
   for each registered zone every `poll_seconds` (default 60; one HTTPS request per zone, about
@@ -87,9 +89,23 @@ nothing but GET requests is ever sent, since the WiseConn valves are live. Compi
   WiseConn's raw "VIC" units, not uS/cm) and `readTemperature` (deg F), one value per depth,
   shallowest first (4, 8, 12 in). A read fails, leaving the vector unchanged, unless every depth
   is current.
+- `wiseconn_irrigation` - one per WiseConn irrigation zone (implements `irrigation`).
+  `readOn` is true while the zone's valve is "On" in `GET /farms/<farm_id>/hydraulics` (one
+  request per poll for every valve; anything but On/Off fails). That list has no timestamps, so
+  it counts for 3 poll intervals (at least 3 min) after the last good fetch.
+  `scheduleIrrigation(startHour, startMinute, endHour, endMinute)` (today, farm local, end after
+  start, start not passed) sends `POST /irrigations {"zoneId", "initTime", "endTime",
+  "directSchedule": true}` (times like `2026-11-01T18:15:00`, no Z). `scheduleIrrigation(minutes)`
+  (from now, 1 to 1440 min) sends `POST /irrigations {"zoneId", "duration"}`. Bad arguments are
+  refused without contacting WiseConn. Each call blocks until WiseConn answers (about 1 s, at
+  most 20 s), is never retried (no double scheduling), returns true only on a 2xx, and logs
+  WiseConn's reply; a timeout means it may or may not have been created. After a success the
+  link polls again at once so `readOn` catches up. Only "Off" has been seen so far (no zone ran while this was written).
+  The web UI shows each zone as a read-only "on" indicator.
 - `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
   `time_zone`, optional `base_url` / `poll_seconds` / `max_age_minutes`, then one `[name]`
-  section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`.
+  section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`,
+  and an `[irrigations]` section of `name = zone id`.
   CMake builds the file in as text (`build/generated/wiseconn/`); missing or malformed: the
   devices are off and reads fail, the program still runs.
 - `wiseconn_json` - minimal JSON parser (no JSON library on these machines).
@@ -98,7 +114,9 @@ Gotcha: `lastDataDate` ends in `Z` but is the farm's local time (America/Los_Ang
 read as local time. The machine running it must be in the farm's time zone; a mismatch with
 `time_zone` is logged at startup, and readings then look 8 hours old and fail.
 
-Finding ids: `GET /farms` (farm id, time zone), `GET /farms/<id>/zones`, then
+Finding ids: `GET /farms` (farm id, time zone), `GET /farms/<id>/hydraulics` (valves, their
+status and the zones they feed; each irrigation zone here has exactly one valve),
+`GET /farms/<id>/zones`, then
 `GET /zones/<zone id>/measures` lists each measure's `id`, `name` and `sensorType`. In the
 measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also has 16, 20 and
 24 in depths, not used.

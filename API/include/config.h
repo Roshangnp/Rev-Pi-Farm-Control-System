@@ -67,6 +67,35 @@ extern soil_sensor& zone_7_soil;
 extern soil_sensor& zone_8_soil;
 extern soil_sensor& zone_10_3_soil;
 
+// WiseConn irrigation zones (host PC only): readOn() is the zone's live valve
+// status (refreshed every 60 s); scheduleIrrigation() creates a WiseConn
+// irrigation, not enabled yet (always returns false). Zone ids come from
+// wiseconn_keys.txt [irrigations].
+extern irrigation& valve_1_1;
+extern irrigation& valve_1_2;
+extern irrigation& valve_2_1;
+extern irrigation& valve_3_1;
+extern irrigation& valve_4_1;
+extern irrigation& valve_5_1;
+extern irrigation& valve_5_2;
+extern irrigation& valve_5_3;
+extern irrigation& valve_5_4;
+extern irrigation& valve_6_1;
+extern irrigation& valve_6_2;
+extern irrigation& valve_7_1;
+extern irrigation& valve_8_1;
+extern irrigation& valve_9_1;
+extern irrigation& valve_10_1;
+extern irrigation& valve_10_2;
+extern irrigation& valve_10_3;
+extern irrigation& overhead_1;
+extern irrigation& overhead_2;
+extern irrigation& overhead_3;
+extern irrigation& overhead_4;
+extern irrigation& overhead_5;
+extern irrigation& overhead_6;
+extern irrigation& city_water_fill_valve;
+
 // Test bench only (config_test, also on 192.168.1.116). It binds feed_pump,
 // inlet_valve and permeate_flow above to its example wiring, plus these:
 extern float_switch& feed_tank_float;

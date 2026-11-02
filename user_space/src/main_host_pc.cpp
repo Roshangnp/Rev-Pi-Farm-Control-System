@@ -115,7 +115,32 @@ bool addAllDevices(web_ui& ui) {
         && ui.addDevice("media_backwash_2_valve", media_backwash_2_valve)
         && ui.addDevice("zone_7_soil", zone_7_soil, {"4 in", "8 in", "12 in"})
         && ui.addDevice("zone_8_soil", zone_8_soil, {"4 in", "8 in", "12 in"})
-        && ui.addDevice("zone_10_3_soil", zone_10_3_soil, {"4 in", "8 in", "12 in"});
+        && ui.addDevice("zone_10_3_soil", zone_10_3_soil, {"4 in", "8 in", "12 in"})
+        // WiseConn irrigation zones: on/off indicator
+        && ui.addDevice("valve_1_1", valve_1_1)
+        && ui.addDevice("valve_1_2", valve_1_2)
+        && ui.addDevice("valve_2_1", valve_2_1)
+        && ui.addDevice("valve_3_1", valve_3_1)
+        && ui.addDevice("valve_4_1", valve_4_1)
+        && ui.addDevice("valve_5_1", valve_5_1)
+        && ui.addDevice("valve_5_2", valve_5_2)
+        && ui.addDevice("valve_5_3", valve_5_3)
+        && ui.addDevice("valve_5_4", valve_5_4)
+        && ui.addDevice("valve_6_1", valve_6_1)
+        && ui.addDevice("valve_6_2", valve_6_2)
+        && ui.addDevice("valve_7_1", valve_7_1)
+        && ui.addDevice("valve_8_1", valve_8_1)
+        && ui.addDevice("valve_9_1", valve_9_1)
+        && ui.addDevice("valve_10_1", valve_10_1)
+        && ui.addDevice("valve_10_2", valve_10_2)
+        && ui.addDevice("valve_10_3", valve_10_3)
+        && ui.addDevice("overhead_1", overhead_1)
+        && ui.addDevice("overhead_2", overhead_2)
+        && ui.addDevice("overhead_3", overhead_3)
+        && ui.addDevice("overhead_4", overhead_4)
+        && ui.addDevice("overhead_5", overhead_5)
+        && ui.addDevice("overhead_6", overhead_6)
+        && ui.addDevice("city_water_fill_valve", city_water_fill_valve);
 }
 
 }  // namespace
