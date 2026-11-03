@@ -6,9 +6,11 @@
 #include "config.h"
 #include "ntfy.h"
 #include "ntfy_config.h"
+#include "ro_config.h"
 #include "web_ui.h"
 
-// Host PC: serves the web UI for the devices it reaches on the RevPis, and sends
+// Host PC: serves the web UI for the devices it reaches on the RevPis and for the
+// RO controller (state dropdown), and sends
 // an ntfy push notification when a pump VFD alarms (topic from ntfy_topic.txt).
 namespace {
 
@@ -68,9 +70,37 @@ void updateAlarm(vfd_alarm& a, clock_type::time_point now, ntfy_notifier& notifi
     }
 }
 
+// The RO controller on the RO RevPi (ro_config.h, through remote_ro), as a
+// dropdown on the page. Setting a state switches real pumps and valves there;
+// the RevPi keeps running it if this program stops.
+class ro_state_selector : public state_selector{
+    public:
+    std::vector<std::string> states() const override {
+        std::vector<std::string> names;
+        for (RO_state s : ALL_RO_STATES) names.push_back(toString(s));
+        return names;
+    }
+    bool readState(std::string& state) override {
+        RO_state s;
+        if (!readROState(s)) return false;
+        state = toString(s);
+        return true;
+    }
+    bool setState(const std::string& state) override {
+        RO_state s;
+        return fromString(state, s) && setROState(s);
+    }
+    bool readSettling(bool& settling) override {
+        return readROSettling(settling);
+    }
+};
+
+ro_state_selector ro_controller;
+
 // Every device on the farm, in the order the page lists them
 bool addAllDevices(web_ui& ui) {
-    return ui.addDevice("upper_tank_high_float", upper_tank_high_float)
+    return ui.addDevice("ro", ro_controller)
+        && ui.addDevice("upper_tank_high_float", upper_tank_high_float)
         && ui.addDevice("upper_tank_water_level", upper_tank_water_level)
         && ui.addDevice("permeate_flow", permeate_flow)
         && ui.addDevice("concentrate_flow", concentrate_flow)

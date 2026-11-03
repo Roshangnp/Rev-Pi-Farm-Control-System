@@ -102,6 +102,7 @@ function showStatus(text, error) {
 function format(field) {
   const v = field.value;
   if (v === null) return 'read failed';
+  if (typeof v === 'string') return v;
   if (typeof v === 'boolean') {
     if (field.kind === 'switch' || field.kind === 'schedule') return v ? 'on' : 'off';
     return v ? 'yes' : 'no';
@@ -153,6 +154,24 @@ function makeRow(device, field, first) {
       if (reply === 'ok') showStatus(device.name + ': irrigation scheduled ' + start.value + ' to ' + end.value, false);
     };
     control.append(start, ' to ', end, ' ', send);
+  } else if (field.kind === 'state') {
+    // Dropdown follows the current state until the user picks another one
+    const select = document.createElement('select');
+    for (const state of field.states) select.add(new Option(state, state));
+    select.onchange = () => { cell.picked = true; };
+    const send = document.createElement('button');
+    send.textContent = 'Set';
+    send.onclick = async () => {
+      const state = select.value;
+      if (!confirm('Set ' + device.name + ' to ' + state + '? This switches REAL pumps and valves.')) return;
+      send.disabled = true;
+      const reply = await command(device.name + ' ' + field.method + ' ' + state);
+      send.disabled = false;
+      cell.picked = false;
+      if (reply === 'ok') showStatus(device.name + ': set to ' + state, false);
+    };
+    control.append(select, ' ', send);
+    cell.select = select;
   } else if (field.kind === 'setpoint') {
     const input = document.createElement('input');
     input.type = 'number';
@@ -182,6 +201,7 @@ async function refresh() {
         cell.value.textContent = format(field);
         cell.value.classList.toggle('error', field.value === null || (field.label === 'alarm' && field.value === true));
         if (cell.box && field.value !== null) cell.box.checked = field.value;
+        if (cell.select && !cell.picked && field.value !== null) cell.select.value = field.value;
       });
     }
     if (!statusLine.classList.contains('error')) showStatus('Updated ' + new Date().toLocaleTimeString(), false);
@@ -219,7 +239,8 @@ std::string jsonFloat(bool success, float value) {
 
 // Field kinds understood by the page: "bool" / "value" are read only,
 // "switch" has on/off command methods, "setpoint" has one method taking a number,
-// "schedule" shows on/off and takes a "HH:MM-HH:MM" window for today.
+// "schedule" shows on/off and takes a "HH:MM-HH:MM" window for today,
+// "state" shows the current state (a string) and a dropdown of "states" to set.
 std::string readOnlyField(const std::string& label, const std::string& kind, const std::string& value,
                           const std::string& unit = "") {
     return "{\"label\":" + jsonString(label) + ",\"kind\":" + jsonString(kind) +
@@ -338,6 +359,8 @@ bool web_ui::addDevice(const std::string& name, soil_sensor& device, std::vector
     soil_depth_labels_[name] = std::move(depth_labels);
     return true;
 }
+
+bool web_ui::addDevice(const std::string& name, state_selector& device) {return addDeviceRef(name, &device);}
 
 bool web_ui::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos) return false;
@@ -565,6 +588,20 @@ std::string web_ui::devicesJson() {
                 bool success = device->readOn(on);
                 return "{\"label\":\"on\",\"kind\":\"schedule\",\"value\":" + jsonBool(success, on) +
                        ",\"method\":\"scheduleIrrigation\"}";
+            } else if constexpr (std::is_same_v<T, state_selector>) {
+                std::string state;
+                bool state_ok = device->readState(state);
+                std::string states;
+                for (const std::string& option : device->states()) {
+                    if (!states.empty()) states += ",";
+                    states += jsonString(option);
+                }
+                bool settling = false;
+                bool settling_ok = device->readSettling(settling);
+                return "{\"label\":\"state\",\"kind\":\"state\",\"value\":" +
+                       (state_ok ? jsonString(state) : std::string("null")) +
+                       ",\"states\":[" + states + "],\"method\":\"setState\"}," +
+                       readOnlyField("settling", "bool", jsonBool(settling_ok, settling));
             }
         }, ref);
 
@@ -610,6 +647,13 @@ std::string web_ui::runCommand(const std::string& line) {
                     return "err bad argument (HH:MM-HH:MM)";
                 }
                 return device->scheduleIrrigation(sh, sm, eh, em) ? "ok" : "fail (see the log)";
+            }
+        } else if constexpr (std::is_same_v<T, state_selector>) {
+            // Only names the device lists, so nothing else reaches setState()
+            if (method == "setState") {
+                std::vector<std::string> states = device->states();
+                if (std::find(states.begin(), states.end(), arg) == states.end()) return "err bad argument";
+                return device->setState(arg) ? "ok" : "fail";
             }
         }
         return "err unknown method";

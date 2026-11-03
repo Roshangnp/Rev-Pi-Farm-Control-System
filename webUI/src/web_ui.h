@@ -10,6 +10,24 @@
 
 inline constexpr uint16_t WEB_UI_PORT = 8080;
 
+// Something that is in one of a fixed list of named states and can be told to
+// change state, e.g. the RO controller (main_host_pc adapts ro_config.h to this).
+// Shown as the current state, a dropdown with a Set button (browser confirm),
+// and a read only "settling" row.
+class state_selector{
+    public:
+    virtual ~state_selector() = default;
+
+    // Every state, in the order the dropdown lists them
+    virtual std::vector<std::string> states() const = 0;
+    // False if the state can't be read
+    virtual bool readState(std::string& state) = 0;
+    // Only called with a name from states(). False if it was refused or failed
+    virtual bool setState(const std::string& state) = 0;
+    // True while a state change is still in progress. False if it can't be read
+    virtual bool readSettling(bool& settling) = 0;
+};
+
 // Minimal HTTP server listing this machine's devices (local or remote) with
 // their values, plus a switch for on/off outputs and a text box for setpoints.
 // Single threaded like device_server: requests are only handled inside poll(),
@@ -52,6 +70,9 @@ class web_ui{
     // Read only: one field per depth for moisture, ETC and temperature, labelled
     // with depth_labels (e.g. {"4 in", "8 in", "12 in"}), or 1, 2, 3... if empty
     bool addDevice(const std::string& name, soil_sensor& device, std::vector<std::string> depth_labels = {});
+    // Current state, a dropdown of states() with a Set button (confirmed in the
+    // browser; command "<name> setState <STATE>"), and "settling"
+    bool addDevice(const std::string& name, state_selector& device);
 
     // Opens the listening socket. False if the port can't be opened or no
     // password was built in (the reason is printed to stderr).
@@ -65,7 +86,7 @@ class web_ui{
     using device_ref = std::variant<pump*, float_switch*, valve*, pressure_transducer*,
                                     tds_sensor*, flow_sensor*, level_sensor*,
                                     conductivity_sensor*, temperature_sensor*, switched_load*,
-                                    soil_sensor*, irrigation*>;
+                                    soil_sensor*, irrigation*, state_selector*>;
 
     struct client {
         int fd;

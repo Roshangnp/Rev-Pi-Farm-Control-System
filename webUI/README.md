@@ -14,6 +14,13 @@ never compile it). `main_host_pc` serves it from emerald-server.
   `err bad argument`); `fail (see the log)` if the device or WiseConn refused it
 - soil sensors: read only, one row per depth for moisture, ETC and temperature, labelled with the
   depth names passed to `addDevice` (`{"4 in", "8 in", "12 in"}` in `main_host_pc`)
+- state selectors (`state_selector`, declared in `web_ui.h`): the current state, a dropdown of
+  `states()` with a Set button (browser confirmation), and a read only "settling" row. The
+  dropdown follows the current state until you pick another one. Command line:
+  `<name> setState <STATE>`, only names from `states()` (anything else is `err bad argument`).
+  `main_host_pc` adds the RO controller as `ro`: an adapter over `RO/include/ro_config.h`
+  (`setROState` etc), so the web UI itself never depends on `RO/`. Setting a state switches
+  real pumps and valves on the RO RevPi, which keeps running it if the web UI stops
 
 The page refreshes every second.
 
@@ -53,7 +60,7 @@ Every `/api` request needs the password (URL-encoded) in an `X-Password` header,
 `401`; after a wrong password that IP gets `429` for 1 s. `GET /` needs no password.
 
 Only commands are accepted on `/api/command` (`setOn`, `setOff`, `setSpeed`, `setOpen`,
-`setClosed`, `scheduleIrrigation`); reads go through `/api/devices`. Example:
+`setClosed`, `scheduleIrrigation`, `setState`); reads go through `/api/devices`. Example:
 
 ```sh
 curl -s -H "X-Password: $(cat webui_password.txt)" localhost:8080/api/devices

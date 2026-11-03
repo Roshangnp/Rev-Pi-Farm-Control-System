@@ -158,3 +158,22 @@ endforeach()
 if(TARGET main_host_pc)
     target_link_libraries(main_host_pc PRIVATE web_ui notifications)
 endif()
+
+# RO controller (RO/): programs include RO/include/ro_config.h; the implementation is
+# RO/src/config/ro_config_<DEVICE_CONFIG>.cpp, like the API configs. On the RO RevPi
+# the ro state machine runs here and is served as "ro" (ro_server); on the host PC the
+# same functions go to it through remote_ro, and the ro class is never built there, so
+# no second controller can run. Other configs have no RO config and don't build it.
+set(ro_config_file ${CMAKE_CURRENT_SOURCE_DIR}/RO/src/config/ro_config_${DEVICE_CONFIG}.cpp)
+if(EXISTS ${ro_config_file})
+    if(DEVICE_CONFIG STREQUAL "ro")
+        set(ro_sources RO/src/ro.cpp RO/src/ro_server.cpp)
+    else()
+        set(ro_sources RO/src/remote_ro.cpp)
+    endif()
+    add_library(ro_control STATIC ${ro_sources} ${ro_config_file})
+    target_include_directories(ro_control PUBLIC RO/include PRIVATE RO/src)
+    target_compile_options(ro_control PRIVATE -Wall -Wextra)
+    target_link_libraries(ro_control PUBLIC farm_api)   # config.h devices, comms
+    target_link_libraries(main_${DEVICE_CONFIG} PRIVATE ro_control)
+endif()

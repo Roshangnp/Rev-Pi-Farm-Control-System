@@ -1,19 +1,27 @@
 #include <cstdio>
 #include "config.h"
 #include "line_server.h"
+#include "ro_config.h"
 
-// RO RevPi: attaches its I/O and shares its devices with the other machines.
-// No control logic or web UI yet.
+// RO RevPi: attaches its I/O, shares its devices with the other machines, and
+// runs the RO controller (state set remotely, e.g. from the web UI via remote_ro).
 int main() {
     if (!attachAllInterfaces()) std::fprintf(stderr, "Some interfaces failed to attach (check PiCtory pin names)\n");
 
     line_server server;   // port 47100, 20 s client watchdog
-    if (!addLocalDevices(server) || !server.start()) {
+    if (!addLocalDevices(server)) {
+        std::fprintf(stderr, "Device server failed to start\n");
+        return 1;
+    }
+    // Not fatal: the device server keeps running so the outputs can still be read and switched
+    if (!addRO(server)) std::fprintf(stderr, "RO controller failed to start cleanly\n");
+    if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");
         return 1;
     }
 
     while (true) {
+        if (!updateRO()) std::fprintf(stderr, "RO controller: starting a pump failed\n");
         server.poll(20);   // handles remote requests, doubles as the loop sleep
     }
 }
