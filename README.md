@@ -13,17 +13,18 @@ API/
   hardware_setup.csv    list of every device: name, owner IP, interface type, PiCtory pin, range
   include/              the public API: what user programs include
     devices.h           device interfaces (pump, valve, float_switch, sensors, ...)
-    config.h            every farm device, plus startup / device server functions
+    config.h            every farm device, plus startup / device sharing functions
   src/
     config/             one config per machine: which devices are local or remote
     devices/            local devices (wired here) and remote devices (owned by another RevPi)
     HAL/                electrical_interface: one PiCtory I/O point
+comms/                  line protocol between machines: line_server (port 47100) and remote_link
 webUI/                  web page listing the farm's devices (host PC only, uses API/include)
 notifications/          ntfy push notifications (host PC only)
 user_space/src/         programs; main_<config>.cpp is built only for that config
 ```
 
-Each `API/src/*` folder, `webUI/` and `notifications/` has its own README with the details.
+Each `API/src/*` folder, `comms/`, `webUI/` and `notifications/` has its own README with the details.
 
 ## Machines
 
@@ -53,16 +54,20 @@ User programs include only `config.h` and talk to devices through their interfac
 
 ```cpp
 #include "config.h"
+#include "line_server.h"
 
 int main() {
     attachAllInterfaces();   // bind this machine's I/O to PiCtory
-    startDeviceServer();     // share this machine's devices with the others
+
+    line_server server;      // port 47100
+    addLocalDevices(server); // share this machine's devices with the others
+    server.start();
 
     while (true) {
         bool full = false;
         if (feed_tank_high_float.readSubmerged(full) && full) feed_pump.setOff();
 
-        serviceDeviceServer(20);   // handle remote requests; doubles as the loop sleep
+        server.poll(20);     // handle remote requests; doubles as the loop sleep
     }
 }
 ```

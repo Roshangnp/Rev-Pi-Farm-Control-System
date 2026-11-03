@@ -41,7 +41,7 @@ Behaviour worth knowing:
 
 ## Remote devices
 
-`remote_link` is one TCP connection to another RevPi (port 47100), shared by all the `remote_*`
+`remote_link` (`comms/src/`) is one TCP connection to another RevPi (port 47100), shared by all the `remote_*`
 devices it owns. A background thread connects as soon as the link is created and pings every
 0.5 s, which keeps the owner's watchdog happy. Lost connections are retried with a 1 s backoff;
 connects and replies time out after 300 ms. A late reply only fails that one call (the reply is
@@ -51,9 +51,10 @@ dropped after 25 s with replies outstanding and nothing from the owner: closing 
 owner reset this controller's outputs at once, and 25 s is longer than the owner's 20 s
 watchdog, so the owner alone decides when a stall resets anything.
 
-`device_server` runs on the owner. It is single threaded: requests are only handled inside
-`poll()`, called from the owner's main loop, so they never run at the same time as local
-control code.
+`device_server` runs on the owner, as a handler on the `line_server` (`comms/src/`) that the
+owner's `main` creates: `addLocalDevices(server)` registers each local device under its name.
+It is single threaded: requests are only handled inside `server.poll()`, called from the
+owner's main loop, so they never run at the same time as local control code.
 
 Protocol, one line each way:
 
@@ -66,8 +67,9 @@ feed_tank_high_float readSubmerged  ->  ok 1
 Method names are the C++ method names. There is no authentication; the firewall must limit
 port 47100 to the other farm machines.
 
-**Watchdog:** if a client disconnects (at once) or sends nothing for 20 s (`watchdog_ms`), every pump and switched load it
-last commanded is turned off and every valve it last commanded is closed.
+**Watchdog:** if a client disconnects (at once) or sends nothing for 20 s (the `line_server`'s
+`watchdog_ms`), the server drops it and `device_server::clientGone` turns off every pump and
+switched load it last commanded and closes every valve it last commanded.
 
 Typical cost is about 1 ms per call between RevPis. If the owner is down, calls fail after the
 300 ms connect timeout, then immediately until the 1 s backoff ends.
@@ -129,6 +131,6 @@ measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also h
 1. `API/include/devices.h`: the abstract class.
 2. `local_devices/local_<type>.h/.cpp` and `remote_devices/remote_<type>.h/.cpp`.
 3. `remote_devices/device_server.h/.cpp`: an `addDevice` overload, the type in `device_ref`,
-   its methods in `handleRequest`, and its safe state in `applySafeState` if it is an output.
+   its methods in `handleRequest`, and its safe state in `clientGone` if it is an output.
 4. `webUI/src/web_ui.h/.cpp` (outside the API): an `addDevice` overload, the type in `device_ref`, its fields
    in `devicesJson`, and its commands in `runCommand`.

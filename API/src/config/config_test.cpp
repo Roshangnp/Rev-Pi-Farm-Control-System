@@ -8,7 +8,7 @@
 #include "devices/local_devices/local_tds_sensor.h"
 #include "devices/local_devices/local_flow_sensor.h"
 #include "devices/remote_devices/device_server.h"
-#include "devices/remote_devices/remote_link.h"
+#include "remote_link.h"
 #include "devices/remote_devices/remote_pump.h"
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 75.0f);            
 // and below:  pump& transfer_pump = remote_transfer_pump;
 
 // Shares the devices wired to this RevPi with the other RevPis
-device_server server;
+device_server devices;
 
 }  // namespace
 
@@ -68,17 +68,13 @@ bool attachAllInterfaces() {
     return ok;
 }
 
-bool startDeviceServer() {
+bool addLocalDevices(line_server& server) {
     // Only devices wired to this RevPi; other RevPis reach them by these names
-    bool ok = server.addDevice("feed_pump", local_feed_pump)
-           && server.addDevice("feed_tank_float", local_feed_tank_float)
-           && server.addDevice("inlet_valve", local_inlet_valve)
-           && server.addDevice("feed_pressure", local_feed_pressure)
-           && server.addDevice("permeate_tds", local_permeate_tds)
-           && server.addDevice("permeate_flow", local_permeate_flow);
-    return ok && server.start();
-}
-
-void serviceDeviceServer(int timeout_ms) {
-    server.poll(timeout_ms);
+    bool ok = devices.addDevice("feed_pump", local_feed_pump)
+           && devices.addDevice("feed_tank_float", local_feed_tank_float)
+           && devices.addDevice("inlet_valve", local_inlet_valve)
+           && devices.addDevice("feed_pressure", local_feed_pressure)
+           && devices.addDevice("permeate_tds", local_permeate_tds)
+           && devices.addDevice("permeate_flow", local_permeate_flow);
+    return ok && devices.registerWith(server);
 }

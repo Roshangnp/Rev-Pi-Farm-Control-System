@@ -6,17 +6,17 @@
 #include <string>
 #include <thread>
 
-inline constexpr uint16_t DEVICE_SERVER_PORT = 47100;
+#include "protocol.h"
 
-// One TCP connection to another RevPi's device_server, shared by every remote
-// device owned by that RevPi. Connects and reconnects on its own, and sends a
+// One TCP connection to another machine's line_server, shared by every remote
+// device owned by that machine. Connects and reconnects on its own, and sends a
 // heartbeat so the owner's watchdog knows this controller is still alive.
 //
-// Protocol: one request line, one reply line.
-//   "<device> <method> [arg]"  ->  "ok [value]" | "fail" | "err <reason>"
+// Protocol (protocol.h): one request line, one reply line.
+//   "<name> <method> [arg]"  ->  "ok [value]" | "fail" | "err <reason>"
 class remote_link{
     public:
-    remote_link(std::string host, uint16_t port = DEVICE_SERVER_PORT);
+    remote_link(std::string host, uint16_t port = LINE_SERVER_PORT);
     ~remote_link();
 
     remote_link(const remote_link&) = delete;

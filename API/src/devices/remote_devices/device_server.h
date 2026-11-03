@@ -1,28 +1,25 @@
 #pragma once
-#include <chrono>
-#include <cstdint>
 #include <map>
 #include <string>
 #include <variant>
-#include <vector>
 #include "devices.h"
-#include "remote_link.h"
+#include "line_server.h"
 
 
-// Serves this RevPi's devices to remote_* devices on other RevPis.
-// Single threaded: requests are only handled inside poll(), so devices are
-// never touched at the same time as the local control code.
+// Serves this RevPi's devices to remote_* devices on other machines, as a
+// handler on a line_server (comms/src): each device is registered under its
+// name, and requests are "<device> <method> [arg]" with method = the C++ method
+// name. The line_server owns the socket and the client watchdog; requests are
+// only handled inside its poll(), so devices are never touched at the same time
+// as the local control code.
 //
-// Watchdog: if a remote controller disconnects or sends nothing for
-// watchdog_ms (default 20 s), every pump it last commanded is turned off and every
-// valve it last commanded is closed, and every switched load it last commanded is
-// turned off. A clean disconnect (the controller's program stopping) triggers it at
-// once; silence only after watchdog_ms, so network stalls shorter than that are ridden out.
-class device_server{
+// Safe state: when the line_server drops a client (it disconnected, or sent
+// nothing for the server's watchdog time, default 20 s), every pump it last
+// commanded is turned off, every valve it last commanded is closed, and every
+// switched load it last commanded is turned off.
+class device_server : public line_handler{
     public:
-    device_server(uint16_t port = DEVICE_SERVER_PORT, int watchdog_ms = 20000)
-    : port_(port), watchdog_(watchdog_ms){};
-    ~device_server();
+    device_server() = default;
 
     device_server(const device_server&) = delete;
     device_server& operator=(const device_server&) = delete;
@@ -39,12 +36,13 @@ class device_server{
     bool addDevice(const std::string& name, temperature_sensor& device);
     bool addDevice(const std::string& name, switched_load& device);
 
-    // Opens the listening socket. False if the port can't be opened.
-    bool start();
+    // Registers every device added so far on server. Call after the addDevice
+    // calls. False if a name is already taken on the server.
+    bool registerWith(line_server& server);
 
-    // Handles pending requests and runs the watchdog. Waits up to timeout_ms
-    // for activity, so it can double as the control loop's sleep.
-    void poll(int timeout_ms);
+    std::string handleRequest(int client_id, const std::string& name,
+                              const std::string& method, const std::string& arg) override;
+    void clientGone(int client_id) override;
 
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*,
@@ -52,25 +50,8 @@ class device_server{
                                     level_sensor*, conductivity_sensor*, temperature_sensor*,
                                     switched_load*>;
 
-    struct client {
-        int fd;
-        int id;
-        std::string rx_buffer;
-        std::chrono::steady_clock::time_point last_seen;
-    };
-
     bool addDeviceRef(const std::string& name, device_ref device);
-    void acceptClients();
-    bool readClient(client& c); // false if the client should be dropped
-    std::string handleRequest(client& c, const std::string& line);
-    void dropClient(size_t index);
-    void applySafeState(int client_id);
 
-    uint16_t port_;
-    std::chrono::milliseconds watchdog_;
-    int listen_fd_ = -1;
-    int next_client_id_ = 1;
-    std::vector<client> clients_;
     std::map<std::string, device_ref> devices_;
     std::map<std::string, int> commanded_by_; // device name -> client id that last commanded it
 };

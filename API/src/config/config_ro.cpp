@@ -108,7 +108,7 @@ local_valve local_permeate_cip_valve(&permeate_cip_valve_solenoid);
 local_valve local_media_backwash_2_valve(&media_backwash_2_valve_solenoid);
 
 // Shares the devices wired to this RevPi with the other machines
-device_server server;
+device_server devices;
 
 }  // namespace
 
@@ -177,51 +177,47 @@ bool attachAllInterfaces() {
     return ok;
 }
 
-bool startDeviceServer() {
-    bool ok = server.addDevice("permeate_flow", local_permeate_flow)
-           && server.addDevice("concentrate_flow", local_concentrate_flow)
-           && server.addDevice("feed_flow", local_feed_flow)
-           && server.addDevice("feed_tank_high_float", local_feed_tank_high_float)
-           && server.addDevice("high_ph_tank_float", local_high_ph_tank_float)
-           && server.addDevice("cip_tank_mid_float", local_cip_tank_mid_float)
-           && server.addDevice("cip_tank_low_float", local_cip_tank_low_float)
-           && server.addDevice("cip_tank_high_float", local_cip_tank_high_float)
-           && server.addDevice("low_ph_tank_float", local_low_ph_tank_float)
-           && server.addDevice("asa_tank_low_float", local_asa_tank_low_float)
-           && server.addDevice("permeate_tank_high_float", local_permeate_tank_high_float)
-           && server.addDevice("feed_tank_low_float", local_feed_tank_low_float)
-           && server.addDevice("media_outlet_pressure", local_media_outlet_pressure)
-           && server.addDevice("media_inlet_pressure", local_media_inlet_pressure)
-           && server.addDevice("concentrate_pressure", local_concentrate_pressure)
-           && server.addDevice("cip_inlet_pressure", local_cip_inlet_pressure)
-           && server.addDevice("interstage_pressure", local_interstage_pressure)
-           && server.addDevice("aqualine_outlet_pressure", local_aqualine_outlet_pressure)
-           && server.addDevice("cip_outlet_pressure", local_cip_outlet_pressure)
-           && server.addDevice("primary_pressure", local_primary_pressure)
-           && server.addDevice("aqualine_inlet_pressure", local_aqualine_inlet_pressure)
-           && server.addDevice("permeate_pressure", local_permeate_pressure)
-           && server.addDevice("air_pressure", local_air_pressure)
-           && server.addDevice("permeate_conductivity", local_permeate_conductivity)
-           && server.addDevice("feed_conductivity", local_feed_conductivity)
-           && server.addDevice("cip_temp", local_cip_temp)
-           && server.addDevice("feed_pump", local_feed_pump)
-           && server.addDevice("ro_pump", local_ro_pump)
-           && server.addDevice("repressure_pump", local_repressure_pump)
-           && server.addDevice("lights", local_lights)
-           && server.addDevice("cip_heater", local_cip_heater)
-           && server.addDevice("asa_pump", local_asa_pump)
-           && server.addDevice("high_ph_pump", local_high_ph_pump)
-           && server.addDevice("low_ph_pump", local_low_ph_pump)
-           && server.addDevice("flush_valve", local_flush_valve)
-           && server.addDevice("cip_inlet_valve", local_cip_inlet_valve)
-           && server.addDevice("inlet_valve", local_inlet_valve)
-           && server.addDevice("concentrate_cip_valve", local_concentrate_cip_valve)
-           && server.addDevice("media_backwash_1_valve", local_media_backwash_1_valve)
-           && server.addDevice("permeate_cip_valve", local_permeate_cip_valve)
-           && server.addDevice("media_backwash_2_valve", local_media_backwash_2_valve);
-    return ok && server.start();
-}
-
-void serviceDeviceServer(int timeout_ms) {
-    server.poll(timeout_ms);
+bool addLocalDevices(line_server& server) {
+    bool ok = devices.addDevice("permeate_flow", local_permeate_flow)
+           && devices.addDevice("concentrate_flow", local_concentrate_flow)
+           && devices.addDevice("feed_flow", local_feed_flow)
+           && devices.addDevice("feed_tank_high_float", local_feed_tank_high_float)
+           && devices.addDevice("high_ph_tank_float", local_high_ph_tank_float)
+           && devices.addDevice("cip_tank_mid_float", local_cip_tank_mid_float)
+           && devices.addDevice("cip_tank_low_float", local_cip_tank_low_float)
+           && devices.addDevice("cip_tank_high_float", local_cip_tank_high_float)
+           && devices.addDevice("low_ph_tank_float", local_low_ph_tank_float)
+           && devices.addDevice("asa_tank_low_float", local_asa_tank_low_float)
+           && devices.addDevice("permeate_tank_high_float", local_permeate_tank_high_float)
+           && devices.addDevice("feed_tank_low_float", local_feed_tank_low_float)
+           && devices.addDevice("media_outlet_pressure", local_media_outlet_pressure)
+           && devices.addDevice("media_inlet_pressure", local_media_inlet_pressure)
+           && devices.addDevice("concentrate_pressure", local_concentrate_pressure)
+           && devices.addDevice("cip_inlet_pressure", local_cip_inlet_pressure)
+           && devices.addDevice("interstage_pressure", local_interstage_pressure)
+           && devices.addDevice("aqualine_outlet_pressure", local_aqualine_outlet_pressure)
+           && devices.addDevice("cip_outlet_pressure", local_cip_outlet_pressure)
+           && devices.addDevice("primary_pressure", local_primary_pressure)
+           && devices.addDevice("aqualine_inlet_pressure", local_aqualine_inlet_pressure)
+           && devices.addDevice("permeate_pressure", local_permeate_pressure)
+           && devices.addDevice("air_pressure", local_air_pressure)
+           && devices.addDevice("permeate_conductivity", local_permeate_conductivity)
+           && devices.addDevice("feed_conductivity", local_feed_conductivity)
+           && devices.addDevice("cip_temp", local_cip_temp)
+           && devices.addDevice("feed_pump", local_feed_pump)
+           && devices.addDevice("ro_pump", local_ro_pump)
+           && devices.addDevice("repressure_pump", local_repressure_pump)
+           && devices.addDevice("lights", local_lights)
+           && devices.addDevice("cip_heater", local_cip_heater)
+           && devices.addDevice("asa_pump", local_asa_pump)
+           && devices.addDevice("high_ph_pump", local_high_ph_pump)
+           && devices.addDevice("low_ph_pump", local_low_ph_pump)
+           && devices.addDevice("flush_valve", local_flush_valve)
+           && devices.addDevice("cip_inlet_valve", local_cip_inlet_valve)
+           && devices.addDevice("inlet_valve", local_inlet_valve)
+           && devices.addDevice("concentrate_cip_valve", local_concentrate_cip_valve)
+           && devices.addDevice("media_backwash_1_valve", local_media_backwash_1_valve)
+           && devices.addDevice("permeate_cip_valve", local_permeate_cip_valve)
+           && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve);
+    return ok && devices.registerWith(server);
 }

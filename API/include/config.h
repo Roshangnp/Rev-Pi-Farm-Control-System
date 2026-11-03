@@ -106,9 +106,11 @@ extern tds_sensor& permeate_tds;
 // from the PiCtory config or doesn't match its interface type.
 bool attachAllInterfaces();
 
-// Shares this RevPi's own devices with the other RevPis. Call startDeviceServer()
-// once at startup, then serviceDeviceServer() every control cycle: remote
-// requests are only handled inside it, and it waits up to timeout_ms for them,
-// so it can replace the loop's sleep.
-bool startDeviceServer();
-void serviceDeviceServer(int timeout_ms);
+// Shares this machine's own devices with the other machines: registers each one
+// under its public name on server (comms/src/line_server.h, owned by main).
+// Call once at startup, before server.start(), then server.poll() every control
+// cycle: remote requests are only handled inside it, and it waits up to
+// timeout_ms for them, so it can replace the loop's sleep. False if a name is
+// already taken on the server.
+class line_server;
+bool addLocalDevices(line_server& server);

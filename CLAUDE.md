@@ -13,7 +13,7 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `config_test` - test bench RevPi (192.168.1.20), example devices. Same RevPi as `config_ro`; shares the names `feed_pump`, `inlet_valve`, `permeate_flow`
     - `config_ro` - RO RevPi (192.168.1.20), written from the CSV: 3 flow, 9 float, 11 pressure, 2 conductivity, 1 temperature, 6 pumps (feed/RO pump = run relay + VFD alarm; RO pump speed = AIO pos 32 `OutputValue_1`, 4-20 mA, `Output1Range` = 9), 2 switched loads, 7 valves on the RS485 relays; no web UI
     - `config_uppertank` - upper tank RevPi (192.168.1.21, MIO + AIO): `upper_tank_high_float` (MIO `DigitalInput_4`), `upper_tank_water_level` (AIO `InputValue_1`, 4-20 mA)
-    - `config_host_pc` - Ubuntu dev PC, all devices remote, no device server (`serviceDeviceServer` just sleeps)
+    - `config_host_pc` - Ubuntu dev PC, all devices remote, nothing shared (`addLocalDevices` registers nothing)
   - `API/hardware_setup.csv` - user's device list (name, id, host IP, interface type, pin, analog range); configs are written by hand from it
   - `API/src/HAL/` - hardware abstraction layer
     - `electronics.h/.cpp` - `electrical_interface`: one I/O point bound to a PiCtory variable
@@ -23,17 +23,18 @@ Farm control system running on Revolution Pi Connect 4 units.
     - `local_pump`: non-owning pointers to on/off, speed and alarm interfaces; nullptr = not fitted. Speed 0-1 maps to 0-10 V, 4-20 mA or 0-100 % PWM
     - `local_float_switch`, `local_valve`, `local_pressure_transducer`, `local_tds_sensor`, `local_flow_sensor`, `local_level_sensor`, `local_conductivity_sensor`, `local_temperature_sensor`, `local_switched_load` - one interface each; reads return false on failure and fill an out param
   - `API/src/devices/remote_devices/` - devices owned by another RevPi on the LAN. One owner per device
-    - `remote_link` - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s. A late reply fails only that call (it's skipped when it arrives); with 2 replies overdue (network stall) calls fail at once without sending, so a stall blocks a caller at most 2 x 300 ms. The link is only dropped after 25 s with replies outstanding and nothing from the owner (longer than the owner's 20 s watchdog, so the owner alone decides when a stall resets outputs; closing the socket would reset them at once)
+    - `remote_link` (lives in `comms/src/`) - one TCP connection per remote RevPi (port 47100), shared by its `remote_*` devices; auto-reconnect (1 s backoff), 300 ms connect/reply timeouts, heartbeat thread pings every 0.5 s. A late reply fails only that call (it's skipped when it arrives); with 2 replies overdue (network stall) calls fail at once without sending, so a stall blocks a caller at most 2 x 300 ms. The link is only dropped after 25 s with replies outstanding and nothing from the owner (longer than the owner's 20 s watchdog, so the owner alone decides when a stall resets outputs; closing the socket would reset them at once)
     - `remote_*` - one proxy per base class, `(remote_link&, device_name)`; network failure returns false (`readAlarm` returns true)
-    - `device_server` - on the owner; single threaded, requests only handled inside `poll()` so it never races local control code. Watchdog: if a client disconnects (at once) or is silent 20 s (default `watchdog_ms` = 20000), pumps and switched loads it last commanded go off and valves it last commanded close. Restarting `main_host_pc` (`rev-pi-control`) is a disconnect, so it resets what the web UI switched on. Was 2 s until 2026-11-01: Wi-Fi stalls of ~1.5 s between emerald-server and the RO RevPi reset relays set from the web UI
+    - `device_server` - on the owner; a `line_handler` registered on main's `line_server` (`comms/`), so requests are only handled inside `server.poll()` and never race local control code. Watchdog (`line_server` drops the client, `device_server::clientGone` applies the safe state): if a client disconnects (at once) or is silent 20 s (default `watchdog_ms` = 20000), pumps and switched loads it last commanded go off and valves it last commanded close. Restarting `main_host_pc` (`rev-pi-control`) is a disconnect, so it resets what the web UI switched on. Was 2 s until 2026-11-01: Wi-Fi stalls of ~1.5 s between emerald-server and the RO RevPi reset relays set from the web UI
     - Protocol: text lines `"<device> <method> [arg]"` -> `"ok [value]"` / `"fail"` / `"err <reason>"`; method names = C++ method names. No authentication: restrict the firewall to the other RevPi
-  - `config.h` also exposes `startDeviceServer()` / `serviceDeviceServer(timeout_ms)`; each config registers its local devices under their public names (snake_case of the CSV name)
+  - `config.h` also exposes `addLocalDevices(line_server&)` (forward-declared `line_server`); each config registers its local devices on its `device_server devices` under their public names (snake_case of the CSV name), then `devices.registerWith(server)`
   - `API/src/devices/wiseconn_devices/` - devices read from the WiseConn cloud API (farm irrigation system), host PC only (CMake excludes the folder from other configs). Read only, GET requests only: the WiseConn valves are live, never send anything that changes them. Bound in `config_host_pc`: soil probes `zone_7_soil`, `zone_8_soil`, `zone_10_3_soil` (3 depths 4/8/12 in; moisture %, ETC = EC in raw VIC units, temperature deg F) and 24 irrigation zones (`irrigation`: `valve_1_1`..`valve_10_3`, `overhead_1`..`overhead_6`, `city_water_fill_valve`; zone ids in `[irrigations]`): `readOn` from `GET /farms/3995/hydraulics` (zone's valve On/Off); `scheduleIrrigation(sh, sm, eh, em)` (today) sends `POST /irrigations {zoneId, initTime, endTime, directSchedule: true}` (farm local times, no Z) and `scheduleIrrigation(minutes)` sends `{zoneId, duration}`; both START REAL IRRIGATIONS, block ~1 s, never retry. Never test them against the real API without the user choosing the zone and time; test against a fake local server via `base_url`. Web UI shows on/off plus start/end time boxes and a Schedule button (browser confirm, then `<zone> scheduleIrrigation HH:MM-HH:MM` to `/api/command`; starts a real irrigation)
     - `wiseconn_link`: background thread polls `GET /zones/<id>/measures` every 60 s with the `curl` program, caches values; reads are instant, fail when `lastDataDate` is older than 45 min
     - Keys: `wiseconn_keys.txt` (repo root, git-ignored: api_key, farm_id 3995, time_zone, zone and measure ids), built in as text by CMake into `build/generated/wiseconn/`; missing = devices off
     - Gotcha: WiseConn `lastDataDate` ends in Z but is farm local time (America/Los_Angeles); parsed as local time, so the host must be in that time zone (emerald-server and the dev PC are)
     - Details and how to find ids: `API/src/devices/README.md`
   - Output readback: `pump::readOn/readSpeed`, `valve::readOpen` read the output process image as last written (not run/position feedback)
+- `comms/src/` - line protocol between machines, independent of the API (`comms` library, `farm_api` links it). `protocol.h` (port 47100), `line_server` (one per machine, owned by `main_*`: routes each request by its first word to the `line_handler` that registered it, names unique across handlers, single threaded `poll()`, client watchdog calls every handler's `clientGone(id)`), `remote_link` (client). Lets other modules (e.g. a future RO controller) share port 47100 with the device server
 - `user_space/src/` - programs that use the public header. `main_<config>.cpp` is only built with that config (`main_uppertank`, `main_ro`: attach + device server; `main_host_pc`: web UI over the remote devices + ntfy VFD alarm notifications)
 - `webUI/src/web_ui` - minimal HTTP server (port 8080), outside the API: uses only `devices.h`. Built only with `-DDEVICE_CONFIG=host_pc` (target `web_ui`), never on the RevPis; no RevPi config has web UI code. Single threaded, only handles requests inside `poll()`. Lists the devices the program adds (local, remote or WiseConn) with values; soil sensors get one read-only row per depth for moisture/ETC/temp (depth labels passed to `addDevice`); password field; switch for pump run / valve open, number box + Send for pump speed. `GET /`, `GET /api/devices` (JSON), `POST /api/command` (body = device protocol line, commands only). Page is embedded in web_ui.cpp and polls every 1 s
   - `main_host_pc` creates `web_ui ui(WEB_UI_PORT, "0.0.0.0")` (LAN access), adds every device in `addAllDevices()` from the config.h references, calls `ui.start()` then `ui.poll(20)` in its loop
@@ -85,10 +86,12 @@ Farm control system running on Revolution Pi Connect 4 units.
 - Main loop on each RevPi:
   ```cpp
   attachAllInterfaces();
-  startDeviceServer();
+  line_server server;              // comms/src/line_server.h, port 47100, 20 s watchdog
+  addLocalDevices(server);
+  server.start();
   while (true) {
       // control logic
-      serviceDeviceServer(20);   // handles remote requests, doubles as the loop sleep
+      server.poll(20);             // handles remote requests, doubles as the loop sleep
   }
   ```
 - Using a device owned by the other RevPi, in that machine's config:
@@ -110,13 +113,13 @@ Farm control system running on Revolution Pi Connect 4 units.
 - Builds natively on the RevPi (g++ 12, C++17) and on the Ubuntu PC (all configs compile there; piControl just fails to open at runtime); no cross compiler
 - Test copy lives in `~/ro_api_test` on the RevPi:
   (`API/` mirrored, test programs in `tests/`):
-  `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src tests/<test>.cpp $(find API/src -name "*.cpp" -not -path "*/config/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice)
+  `g++ -std=c++17 -pthread -Wall -Wextra -IAPI/include -IAPI/src -Icomms/src tests/<test>.cpp $(find API/src comms/src -name "*.cpp" -not -path "*/config/*" -not -path "*/wiseconn_devices/*") API/src/config/config_test.cpp -o <test>` (exactly one config, or symbols are defined twice; `comms/` must be mirrored too since 2026-11-02, and test programs that called `startDeviceServer`/`serviceDeviceServer` need the `line_server` loop above)
 - Both RevPis run their program as a systemd service: `farm-uppertank.service` (192.168.1.21) and `farm-ro.service` (192.168.1.20, After=pimodbus-master). User `pi` (in group `picontrol`), runs `~/Rev-Pi-Farm-Control-System/build/main_<config>`, Restart=always every 2 s, enabled at boot. After rebuilding: `sudo systemctl restart farm-<config>`; logs: `journalctl -u farm-<config> -f`; stop it before running `main_*` by hand (port 47100 is taken)
 - Host PC web UI runs on `emerald-server.local` (192.168.1.194) as `rev-pi-control.service`, user `emerald` (password: ask the user). Source in `~/tools/Rev-Pi-Farm-Control-System` (`host_pc` config, has `webui_password.txt`); the service runs a copy at `~/tools/bin/Rev-Pi-Control/main_host_pc`, so after rebuilding copy the binary there, then `sudo systemctl restart rev-pi-control`
 - Port 47100 is open on both RevPis to 192.168.1.95 (Ubuntu dev PC) and 192.168.1.194 (emerald-server)
 - firewalld is active on the RevPi: port 47100/tcp must be opened (only for the other RevPi's IP) before RevPis can reach each other, see Remote devices
 - Tests in `~/ro_api_test/tests`: `config_test` + `other` (read-only), `pump_test` and `sensors_hw_test` (switch relay 1), `owner_main` + `controller_main` (remote over loopback, switch relay 1). PC-side logic tests use a fake `electrical_interface` (attach/get/set just succeed) to feed exact signals
-- Controller code needs only `-IAPI/include` (`#include "config.h"` / `"devices.h"`), then links against the API objects (built with `-IAPI/include -IAPI/src`)
+- Controller code needs only `-IAPI/include` (`#include "config.h"` / `"devices.h"`), plus `-Icomms/src` if it owns the `line_server`, then links against the API and comms objects (built with `-IAPI/include -IAPI/src -Icomms/src`)
 - Inspect I/O with `piTest -r <var>`, `piTest -w <var>,<value>`, `piTest -v <var>`
 - Don't switch relays or outputs that may have loads wired without asking first
 

@@ -1,9 +1,6 @@
 #include "config.h"
 
-#include <chrono>
-#include <thread>
-
-#include "devices/remote_devices/remote_link.h"
+#include "remote_link.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "devices/remote_devices/remote_level_sensor.h"
 #include "devices/remote_devices/remote_flow_sensor.h"
@@ -187,12 +184,7 @@ bool attachAllInterfaces() {
     return true;
 }
 
-// Nothing to share, so no server is opened
-bool startDeviceServer() {
+// Nothing wired to this machine, so nothing to share
+bool addLocalDevices(line_server&) {
     return true;
-}
-
-// Still sleeps so the main loop paces the same as on a RevPi
-void serviceDeviceServer(int timeout_ms) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
 }

@@ -24,7 +24,7 @@ functions declared in `config.h`:
 | Function | Purpose |
 |---|---|
 | `attachAllInterfaces()` | Binds every local `electrical_interface` to its PiCtory variable. Returns false if any pin is missing or the wrong size |
-| `startDeviceServer()` / `serviceDeviceServer(ms)` | Shares the local devices on port 47100 |
+| `addLocalDevices(line_server&)` | Registers the local devices on the `line_server` that `main` owns, so other machines reach them on port 47100 |
 
 A config only defines the devices its machine uses. A program that uses a device its config
 doesn't define fails to link (`undefined reference to 'feed_pump'`), so mistakes show up at
@@ -47,7 +47,7 @@ local_pump local_ro_pump(&ro_pump_speed, &ro_pump_run, &ro_pump_alarm);
 remote_link upper_tank_revpi("192.168.1.21");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
 
-device_server server;
+device_server devices;   // registered on main's line_server by addLocalDevices()
 }
 
 // 4. Public names from config.h
@@ -63,7 +63,8 @@ can't reach around the interfaces.
 1. Add a row to `API/hardware_setup.csv`.
 2. Declare it in `config.h` under its owner's section.
 3. In the owner's config: add the `electrical_interface`, the `local_*` device, the public
-   reference, the interface in `attachAllInterfaces()`, and `server.addDevice("name", ...)`.
+   reference, the interface in `attachAllInterfaces()`, and `devices.addDevice("name", ...)` in
+   `addLocalDevices()`.
 4. In every other config that uses it: add a `remote_*` device on the owner's `remote_link`
    and the public reference. Add it to `addAllDevices()` in `user_space/src/main_host_pc.cpp`
    if the web page should show it.
@@ -74,7 +75,7 @@ every client, since the client asks the owner for the device by name.
 
 ## Adding a machine
 
-1. Create `config_<name>.cpp` defining its devices and the five functions above (copy the
+1. Create `config_<name>.cpp` defining its devices and the functions above (copy the
    closest existing config).
 2. Add `user_space/src/main_<name>.cpp`; it is only built when `DEVICE_CONFIG=<name>`.
 3. On each RevPi that owns devices the new machine uses, open port 47100 to its IP.

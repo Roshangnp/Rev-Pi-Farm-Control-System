@@ -20,7 +20,7 @@ local_float_switch local_upper_tank_high_float(&upper_tank_high_float_input);
 local_level_sensor local_upper_tank_water_level(&upper_tank_water_level_input, 0.843f, 11.5f);
 
 // Shares the devices wired to this RevPi with the other machines
-device_server server;
+device_server devices;
 
 }  // namespace
 
@@ -36,12 +36,8 @@ bool attachAllInterfaces() {
     return ok;
 }
 
-bool startDeviceServer() {
-    bool ok = server.addDevice("upper_tank_high_float", local_upper_tank_high_float)
-           && server.addDevice("upper_tank_water_level", local_upper_tank_water_level);
-    return ok && server.start();
-}
-
-void serviceDeviceServer(int timeout_ms) {
-    server.poll(timeout_ms);
+bool addLocalDevices(line_server& server) {
+    bool ok = devices.addDevice("upper_tank_high_float", local_upper_tank_high_float)
+           && devices.addDevice("upper_tank_water_level", local_upper_tank_water_level);
+    return ok && devices.registerWith(server);
 }

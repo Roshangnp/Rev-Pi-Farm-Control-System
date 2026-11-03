@@ -22,6 +22,16 @@ if(DEVICE_CONFIG STREQUAL "" OR NOT EXISTS ${config_file})
 endif()
 message(STATUS "Device config: ${DEVICE_CONFIG}")
 
+find_package(Threads REQUIRED)
+
+# Comms (comms/src): line protocol between farm machines, independent of the API.
+# line_server (port 47100, routes requests to handlers by name, client watchdog)
+# and remote_link (client side). Used by the API's device server and remote devices.
+add_library(comms STATIC comms/src/line_server.cpp comms/src/remote_link.cpp)
+target_include_directories(comms PUBLIC comms/src)
+target_compile_options(comms PRIVATE -Wall -Wextra)
+target_link_libraries(comms PUBLIC Threads::Threads)
+
 # API: everything under API/src except the configs, plus the chosen config
 file(GLOB_RECURSE api_sources CONFIGURE_DEPENDS API/src/*.cpp)
 list(FILTER api_sources EXCLUDE REGEX "/API/src/config/")
@@ -58,8 +68,7 @@ if(DEVICE_CONFIG STREQUAL "host_pc")
     target_include_directories(farm_api PRIVATE ${CMAKE_BINARY_DIR}/generated/wiseconn)
 endif()
 
-find_package(Threads REQUIRED)
-target_link_libraries(farm_api PUBLIC Threads::Threads)
+target_link_libraries(farm_api PUBLIC comms)   # device server, remote devices
 
 # Web UI (webUI/src): HTTP page over the public device interfaces, host PC only: the
 # RevPi builds never compile it. Password hardcoded at build time from the first line
