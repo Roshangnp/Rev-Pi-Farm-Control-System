@@ -74,6 +74,8 @@ int main() {
 
 `feed_pump` is a local pump on the RO RevPi and a remote pump everywhere else; the code is the same.
 Every call returns `false` on failure (broken wire, unreachable RevPi, ...), so always check it.
+Float switches: `readSubmerged` gives `true` when the float is submerged (water at the float),
+`false` when it is dry.
 
 ## Networking and safety
 

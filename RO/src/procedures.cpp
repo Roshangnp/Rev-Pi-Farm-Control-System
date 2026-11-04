@@ -92,30 +92,26 @@ bool ro_procedure::low_ph_cip_cycle(ro& r, scheduler& sched) {
         [&r] { return r.readState() == RO_state::CIP_REFILL; }));
 
     task_id start_dose_id;
-    task_id heater_on_id;
     task_id start_flush_id;
     task_id start_low_flow_id;
     task_id start_soak_id;
     task_id start_high_flow_id;
     task_id start_final_flush_id;
-    task_id heater_off_id;
     task_id start_refill_id;
     task_id stop_id;
     sched.addTask({"start_low_ph_dose", [&r] {return r.setState(RO_state::LOW_PH_DOSE);}, {}, task_mode::ONCE}, start_dose_id);
-    sched.addTask({"cip_heater_on", [] {return cip_heater.setOn();}, {}, task_mode::ONCE}, heater_on_id);
     sched.addTask({"start_cip_flush", [&r] {return r.setState(RO_state::CIP_FLUSH);}, {dose_done_id}, task_mode::ONCE}, start_flush_id);
     sched.addTask({"start_cip_low_flow", [&r] {return r.setState(RO_state::CIP_LOW_FLOW_CYCLE);}, {flush_done_id}, task_mode::ONCE}, start_low_flow_id);
     sched.addTask({"start_cip_soak", [&r] {return r.setState(RO_state::CIP_SOAK);}, {low_flow_done_id}, task_mode::ONCE}, start_soak_id);
     sched.addTask({"start_cip_high_flow", [&r] {return r.setState(RO_state::CIP_HIGH_FLOW_CYCLE);}, {soak_done_id}, task_mode::ONCE}, start_high_flow_id);
     sched.addTask({"start_final_cip_flush", [&r] {return r.setState(RO_state::CIP_FLUSH);}, {high_flow_done_id}, task_mode::ONCE}, start_final_flush_id);
-    sched.addTask({"cip_heater_off", [] {return cip_heater.setOff();}, {high_flow_done_id}, task_mode::ONCE}, heater_off_id);
     sched.addTask({"start_cip_refill", [&r] {return r.setState(RO_state::CIP_REFILL);}, {high_flow_done_id, cip_tank_empty_id}, task_mode::ONCE}, start_refill_id);
     sched.addTask({"stop_low_ph_cip_cycle", [&r] {return r.setState(RO_state::OFF);}, {refilling_id, cip_tank_full_id}, task_mode::ONCE}, stop_id);
 
     condition_ids_ = {dose_done_id, flush_done_id, low_flow_done_id, soak_done_id, high_flow_done_id,
                       cip_tank_empty_id, cip_tank_full_id, refilling_id};
-    task_ids_ = {start_dose_id, heater_on_id, start_flush_id, start_low_flow_id, start_soak_id,
-                 start_high_flow_id, start_final_flush_id, heater_off_id, start_refill_id, stop_id};
+    task_ids_ = {start_dose_id, start_flush_id, start_low_flow_id, start_soak_id,
+                 start_high_flow_id, start_final_flush_id, start_refill_id, stop_id};
     return true;
 }
 
@@ -145,30 +141,26 @@ bool ro_procedure::high_ph_cip_cycle(ro& r, scheduler& sched) {
         [&r] { return r.readState() == RO_state::CIP_REFILL; }));
 
     task_id start_dose_id;
-    task_id heater_on_id;
     task_id start_flush_id;
     task_id start_low_flow_id;
     task_id start_soak_id;
     task_id start_high_flow_id;
     task_id start_final_flush_id;
-    task_id heater_off_id;
     task_id start_refill_id;
     task_id stop_id;
     sched.addTask({"start_high_ph_dose", [&r] {return r.setState(RO_state::HIGH_PH_DOSE);}, {}, task_mode::ONCE}, start_dose_id);
-    sched.addTask({"cip_heater_on", [] {return cip_heater.setOn();}, {}, task_mode::ONCE}, heater_on_id);
     sched.addTask({"start_cip_flush", [&r] {return r.setState(RO_state::CIP_FLUSH);}, {dose_done_id}, task_mode::ONCE}, start_flush_id);
     sched.addTask({"start_cip_low_flow", [&r] {return r.setState(RO_state::CIP_LOW_FLOW_CYCLE);}, {flush_done_id}, task_mode::ONCE}, start_low_flow_id);
     sched.addTask({"start_cip_soak", [&r] {return r.setState(RO_state::CIP_SOAK);}, {low_flow_done_id}, task_mode::ONCE}, start_soak_id);
     sched.addTask({"start_cip_high_flow", [&r] {return r.setState(RO_state::CIP_HIGH_FLOW_CYCLE);}, {soak_done_id}, task_mode::ONCE}, start_high_flow_id);
     sched.addTask({"start_final_cip_flush", [&r] {return r.setState(RO_state::CIP_FLUSH);}, {high_flow_done_id}, task_mode::ONCE}, start_final_flush_id);
-    sched.addTask({"cip_heater_off", [] {return cip_heater.setOff();}, {high_flow_done_id}, task_mode::ONCE}, heater_off_id);
     sched.addTask({"start_cip_refill", [&r] {return r.setState(RO_state::CIP_REFILL);}, {high_flow_done_id, cip_tank_empty_id}, task_mode::ONCE}, start_refill_id);
     sched.addTask({"stop_high_ph_cip_cycle", [&r] {return r.setState(RO_state::OFF);}, {refilling_id, cip_tank_full_id}, task_mode::ONCE}, stop_id);
 
     condition_ids_ = {dose_done_id, flush_done_id, low_flow_done_id, soak_done_id, high_flow_done_id,
                       cip_tank_empty_id, cip_tank_full_id, refilling_id};
-    task_ids_ = {start_dose_id, heater_on_id, start_flush_id, start_low_flow_id, start_soak_id,
-                 start_high_flow_id, start_final_flush_id, heater_off_id, start_refill_id, stop_id};
+    task_ids_ = {start_dose_id, start_flush_id, start_low_flow_id, start_soak_id,
+                 start_high_flow_id, start_final_flush_id, start_refill_id, stop_id};
     return true;
 }
 

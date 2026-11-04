@@ -44,7 +44,7 @@ class ro;
 //     -> CIP_HIGH_FLOW_CYCLE (CIP_HIGH_FLOW_TIME_MIN)
 //     -> CIP_FLUSH until cip_tank_low_float is not submerged
 //     -> CIP_REFILL until cip_tank_high_float is submerged -> OFF.
-//     cip_heater is on from LOW_PH_DOSE to the end of CIP_HIGH_FLOW_CYCLE.
+//     No heater tasks: ro::setState() sets heater_active_ from HeaterFor(state).
 //   HIGH_PH_CIP_CYCLE: the same with HIGH_PH_DOSE (HIGH_PH_DOSING_TIME_MIN) first.
 //   MEDIA_BACKWASH_CYCLE: not implemented yet (scheduleProcedure returns false).
 class ro_procedure {
