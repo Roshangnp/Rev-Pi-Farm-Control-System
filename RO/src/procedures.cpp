@@ -43,6 +43,16 @@ bool ro_procedure::scheduleProcedure(ro& r, scheduler& sched) {
     return ok;
 }
 
+bool ro_procedure::setProcedureType(procedure_types procedure_type) {
+    if (!task_ids_.empty() && !getDone()) {
+        std::fprintf(stderr, "ro_procedure: %s is still running, can't change it to %s\n",
+                     toString(procedure_type_), toString(procedure_type));
+        return false;
+    }
+    procedure_type_ = procedure_type;
+    return true;
+}
+
 bool ro_procedure::resetProcedure() {
     bool ok = true;
     if (sched_) {

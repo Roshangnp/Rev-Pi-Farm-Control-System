@@ -16,7 +16,7 @@ remote_ro ro_plant(ro_revpi);
 }  // namespace
 
 // Nothing to share: the controller isn't here
-bool addRO(line_server&) {
+bool addRO(line_server&, scheduler&) {
     return true;
 }
 

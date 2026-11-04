@@ -68,7 +68,7 @@ bool applyPumps(const pump_state& p, bool pass) {
 
 }  // namespace
 
-ro::ro() : current_state_(RO_state::OFF) {}
+ro::ro(scheduler& sched) : scheduler_(sched), current_state_(RO_state::OFF) {}
 
 ro::~ro() {
     setState(RO_state::OFF);   // pumps stop before valves close
@@ -190,16 +190,15 @@ bool ro::setState(RO_state s) {
 }
 
 bool ro::update() {
-    bool ok = scheduler_.update();       // may call setState()
     if (!pumps_pending_) {
-        return ok;
+        return true;
     }
     if (std::chrono::steady_clock::now() - valves_set_at_
             < std::chrono::milliseconds(VALVE_SETTLE_MS)) {
-        return ok;                       // still settling
+        return true;                     // still settling
     }
     pumps_pending_ = false;
-    return applyPumps(pumpsFor(current_state_), true) && ok;
+    return applyPumps(pumpsFor(current_state_), true);
 }
 
 bool ro::runProcedure(procedure_types p) {

@@ -10,18 +10,22 @@
 // Other configs have no implementation: a program using these fails to link.
 
 class line_server;  // comms/src/line_server.h
+class scheduler;    // scheduler/include/scheduler.h
 
-// RO RevPi: creates the controller, drives the RO outputs to OFF (a known state
-// after a restart: the relay board holds its last state), and registers it as
-// "ro" on server so other machines can command it. Call once at startup, after
-// attachAllInterfaces() and before server.start(). False if driving OFF failed
-// (the reason is printed) or "ro" is already taken on the server.
+// RO RevPi: creates the controller on sched (the machine's one scheduler, owned
+// by main: procedures are scheduled on it, main calls sched.update() every loop
+// pass; it must outlive the controller, e.g. a global in main_ro.cpp), drives
+// the RO outputs to OFF (a known state after a restart: the relay board holds
+// its last state), and registers it as "ro" on server so other machines can
+// command it. Call once at startup, after attachAllInterfaces() and before
+// server.start(), and before any other function here. False if driving OFF
+// failed (the reason is printed) or "ro" is already taken on the server.
 // Host PC: nothing to share, returns true.
-bool addRO(line_server& server);
+bool addRO(line_server& server, scheduler& sched);
 
-// RO RevPi: call every loop pass, next to server.poll(): runs the due procedure
-// steps, then starts the pumps of the current state once the valves have
-// settled. False if a procedure step or starting a pump failed. Host PC: returns true.
+// RO RevPi: call every loop pass, next to server.poll(): starts the pumps of the
+// current state once the valves have settled. False only if starting a pump
+// failed. Host PC: returns true.
 bool updateRO();
 
 // Move the RO to state s. Non-blocking: valves move at once, pumps start
@@ -39,6 +43,6 @@ bool readROSettling(bool& settling);
 bool setROSpeed(float speed);
 
 // Starts procedure p (e.g. procedure_types::LOW_PH_CIP_CYCLE) on the RO RevPi.
-// Non-blocking: its steps run in updateRO() there. False if p isn't
+// Non-blocking: its steps run in the RO RevPi's scheduler update(). False if p isn't
 // implemented yet or the RO RevPi can't be reached.
 bool runROProcedure(procedure_types p);

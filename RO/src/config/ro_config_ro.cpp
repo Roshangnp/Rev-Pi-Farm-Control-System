@@ -4,18 +4,28 @@
 // machines as "ro" on main's line_server
 
 #include <cstdio>
+#include <cstdlib>
 
 #include "line_server.h"
 #include "ro.h"
+#include "scheduler.h"
 #include "remote_ro/ro_server.h"
 
 namespace {
 
+// main's scheduler, set by addRO() before the controller is created
+scheduler* main_scheduler = nullptr;
+
 // Function-local statics: created on the first addRO() call, after the device
-// objects in config_ro.cpp, so they are destroyed before them (ro's destructor
-// still switches real devices)
+// objects in config_ro.cpp and main's scheduler, so they are destroyed before
+// them (ro's destructor still switches real devices, and its procedure removes
+// its tasks from the scheduler)
 ro& plant() {
-    static ro instance;
+    if (!main_scheduler) {
+        std::fprintf(stderr, "RO controller: used before addRO()\n");
+        std::abort();
+    }
+    static ro instance(*main_scheduler);
     return instance;
 }
 
@@ -26,7 +36,8 @@ ro_server& handler() {
 
 }  // namespace
 
-bool addRO(line_server& server) {
+bool addRO(line_server& server, scheduler& sched) {
+    main_scheduler = &sched;
     bool ok = plant().setState(RO_state::OFF);
     if (!ok) std::fprintf(stderr, "RO controller: driving the outputs to OFF failed\n");
     if (!handler().registerWith(server)) {

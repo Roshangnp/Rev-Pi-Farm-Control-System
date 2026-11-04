@@ -62,6 +62,9 @@ class ro_procedure {
     // or the procedure isn't implemented (nothing is left scheduled then)
     bool scheduleProcedure(ro& ro, scheduler& sched);
     bool resetProcedure(); // removes all tasks and conditions from schedular and resets private variables
+    // Changes which procedure scheduleProcedure() runs next. False (type unchanged)
+    // while the current one is still running: its tasks belong to the old type
+    bool setProcedureType(procedure_types procedure_type);
 
     // procedure helper functions. responsible for populating task_ids_ and condition_ids_
     bool low_ph_cip_cycle(ro& ro, scheduler& sched);

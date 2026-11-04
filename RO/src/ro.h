@@ -10,8 +10,10 @@
 
 class ro{
     public:
-    // Starts in RO_state::OFF without touching any outputs
-    ro();
+    // Starts in RO_state::OFF without touching any outputs. sched is the
+    // machine's one scheduler (owned by main, which runs its update()); procedures
+    // are scheduled on it, so it must outlive this ro
+    explicit ro(scheduler& sched);
     // Drives the outputs to the OFF state (pumps off, then valves closed)
     ~ro();
 
@@ -44,13 +46,13 @@ class ro{
     // pending start (and restarts the wait). False if any device failed
     bool setState(RO_state s);
 
-    // Call every loop pass. Runs the due procedure steps (scheduler_), then
-    // starts the pending pumps once the valves have had VALVE_SETTLE_MS to move.
-    // False if a procedure step or starting a pump failed
+    // Call every loop pass. Starts the pending pumps once the valves have had
+    // VALVE_SETTLE_MS to move. False only if starting a pump failed. (Procedure
+    // steps run in the scheduler's update(), called by main.)
     bool update();
 
-    // Schedules procedure p (RO/src/procedures.h) on this ro's scheduler; its
-    // first step runs on the next update(). One procedure at a time: false if
+    // Schedules procedure p (RO/src/procedures.h) on the scheduler; its first
+    // step runs on the next scheduler update(). One procedure at a time: false if
     // one is still running, or p isn't implemented yet
     bool runProcedure(procedure_types p);
 
@@ -64,8 +66,8 @@ class ro{
     bool setRoSpeed(float speed);
 
     private:
-    scheduler scheduler_;                                 // procedure steps, run in update()
-    std::unique_ptr<ro_procedure> procedure_;             // last procedure started (after scheduler_: destroyed first, removes its tasks)
+    scheduler& scheduler_;                                // the machine's scheduler (owned by main)
+    std::unique_ptr<ro_procedure> procedure_;             // last procedure started (its destructor removes its tasks from scheduler_)
     RO_state current_state_;
     bool pumps_pending_ = false;                          // pumps of current_state_ still to start
     std::chrono::steady_clock::time_point valves_set_at_; // when setState() moved the valves

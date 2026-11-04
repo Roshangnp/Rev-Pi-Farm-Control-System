@@ -162,7 +162,7 @@ foreach(source ${user_sources})
     endif()
     add_executable(${name} ${source})
     target_compile_options(${name} PRIVATE -Wall -Wextra)
-    target_link_libraries(${name} PRIVATE farm_api)
+    target_link_libraries(${name} PRIVATE farm_api scheduler)   # every machine may own one scheduler
 endforeach()
 if(TARGET main_host_pc)
     target_link_libraries(main_host_pc PRIVATE web_ui notifications)
