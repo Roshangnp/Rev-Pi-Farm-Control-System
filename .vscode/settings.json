@@ -1,0 +1,7 @@
+{
+    // CMake Tools: there is no default DEVICE_CONFIG, so configure fails without this
+    "cmake.configureSettings": {
+        "DEVICE_CONFIG": "host_pc"
+    },
+    "cmake.buildDirectory": "${workspaceFolder}/build"
+}

@@ -15,6 +15,10 @@ bool remote_ro::isSettling(bool& settling) {
     return link_.queryBool(name_, "isSettling", settling);
 }
 
+bool remote_ro::runProcedure(procedure_types p) {
+    return link_.command(name_, "runProcedure", toString(p));
+}
+
 bool remote_ro::setRoSpeed(float speed) {
     char text[32];
     std::snprintf(text, sizeof(text), "%.6g", static_cast<double>(speed));

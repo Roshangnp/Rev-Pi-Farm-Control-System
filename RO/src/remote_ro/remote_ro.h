@@ -21,6 +21,9 @@ class remote_ro{
     bool isSettling(bool& settling);
     // RO pump VFD speed, 0-1
     bool setRoSpeed(float speed);
+    // Starts procedure p on the RO RevPi (scheduled there, its first step runs
+    // on the next loop pass). False if p isn't implemented yet
+    bool runProcedure(procedure_types p);
 
     private:
     remote_link& link_;

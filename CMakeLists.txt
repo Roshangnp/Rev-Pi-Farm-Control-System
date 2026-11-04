@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# compile_commands.json in the build folder, for the editor (.vscode/c_cpp_properties.json)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Device config for this machine: API/src/config/config_<DEVICE_CONFIG>.cpp
 #   cmake -B build -DDEVICE_CONFIG=uppertank
 # No default on purpose: building the wrong config on a RevPi drives the wrong outputs.
@@ -143,6 +146,12 @@ if(DEVICE_CONFIG STREQUAL "host_pc")
     target_link_libraries(ntfy_send PRIVATE notifications)
 endif()
 
+# Scheduler (scheduler/): tasks run when their conditions are met (system clock),
+# independent of the API. Single threaded: update() from the main loop.
+add_library(scheduler STATIC scheduler/src/scheduler.cpp)
+target_include_directories(scheduler PUBLIC scheduler/include)
+target_compile_options(scheduler PRIVATE -Wall -Wextra)
+
 # User space: one executable per user_space/src/*.cpp, named after the file.
 # main_<config>.cpp is only built with that config; other files with every config.
 file(GLOB user_sources CONFIGURE_DEPENDS user_space/src/*.cpp)
@@ -167,13 +176,14 @@ endif()
 set(ro_config_file ${CMAKE_CURRENT_SOURCE_DIR}/RO/src/config/ro_config_${DEVICE_CONFIG}.cpp)
 if(EXISTS ${ro_config_file})
     if(DEVICE_CONFIG STREQUAL "ro")
-        set(ro_sources RO/src/ro.cpp RO/src/ro_server.cpp)
+        # procedures (CIP cycles) drive the local ro on the scheduler
+        set(ro_sources RO/src/ro.cpp RO/src/remote_ro/ro_server.cpp RO/src/procedures.cpp)
     else()
-        set(ro_sources RO/src/remote_ro.cpp)
+        set(ro_sources RO/src/remote_ro/remote_ro.cpp)
     endif()
     add_library(ro_control STATIC ${ro_sources} ${ro_config_file})
     target_include_directories(ro_control PUBLIC RO/include PRIVATE RO/src)
     target_compile_options(ro_control PRIVATE -Wall -Wextra)
-    target_link_libraries(ro_control PUBLIC farm_api)   # config.h devices, comms
+    target_link_libraries(ro_control PUBLIC farm_api scheduler)   # config.h devices, comms; procedures
     target_link_libraries(main_${DEVICE_CONFIG} PRIVATE ro_control)
 endif()

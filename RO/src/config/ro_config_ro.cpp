@@ -7,7 +7,7 @@
 
 #include "line_server.h"
 #include "ro.h"
-#include "ro_server.h"
+#include "remote_ro/ro_server.h"
 
 namespace {
 
@@ -56,4 +56,8 @@ bool readROSettling(bool& settling) {
 
 bool setROSpeed(float speed) {
     return plant().setRoSpeed(speed);
+}
+
+bool runROProcedure(procedure_types p) {
+    return plant().runProcedure(p);
 }

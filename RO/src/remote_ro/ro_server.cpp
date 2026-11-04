@@ -34,5 +34,10 @@ std::string ro_server::handleRequest(int client_id, const std::string& name,
         if (!parseFloat(arg, speed)) return "err bad argument";
         return plant_.setRoSpeed(speed) ? "ok" : "fail";
     }
+    if (method == "runProcedure") {
+        procedure_types p;
+        if (!fromString(arg, p)) return "err bad argument";
+        return plant_.runProcedure(p) ? "ok" : "fail";
+    }
     return "err unknown method";
 }

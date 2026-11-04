@@ -4,7 +4,7 @@
 // every call goes to its ro_server through remote_ro
 
 #include "remote_link.h"
-#include "remote_ro.h"
+#include "remote_ro/remote_ro.h"
 
 namespace {
 
@@ -39,4 +39,8 @@ bool readROSettling(bool& settling) {
 
 bool setROSpeed(float speed) {
     return ro_plant.setRoSpeed(speed);
+}
+
+bool runROProcedure(procedure_types p) {
+    return ro_plant.runProcedure(p);
 }

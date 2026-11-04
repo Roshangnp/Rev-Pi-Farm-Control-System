@@ -11,6 +11,7 @@
 //   ro readState            ->  ok NORMAL_OP
 //   ro isSettling           ->  ok 0 | ok 1
 //   ro setRoSpeed 0.5       ->  ok | fail | err bad argument
+//   ro runProcedure LOW_PH_CIP_CYCLE  ->  ok | fail | err bad argument
 // Requests are only handled inside the line_server's poll(), so they never run
 // at the same time as the RO control loop.
 //

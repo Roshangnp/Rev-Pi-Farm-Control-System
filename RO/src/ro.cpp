@@ -1,7 +1,9 @@
 #include "ro.h"
 
 #include <chrono>
+#include <cstdio>
 #include <limits>
+
 
 namespace {
 
@@ -161,11 +163,17 @@ bool ro::setPumpState() {
     return ok;
 }
 
+bool ro::setHeaterState() {
+    heater_active_ = HeaterFor(current_state_);
+    return true;
+}
+
 bool ro::setState(RO_state s) {
     current_state_ = s;
     pumps_pending_ = false;              // drop any start pending from the previous state
     const pump_state p = pumpsFor(s);
 
+    setHeaterState();                    // heater_active_ follows the state
     bool ok = applyPumps(p, false);      // 1. stop pumps that must be off
     ok = setValveState() && ok;          // 2+3. open valves, then close valves
     if (!ok) {
@@ -182,15 +190,27 @@ bool ro::setState(RO_state s) {
 }
 
 bool ro::update() {
+    bool ok = scheduler_.update();       // may call setState()
     if (!pumps_pending_) {
-        return true;
+        return ok;
     }
     if (std::chrono::steady_clock::now() - valves_set_at_
             < std::chrono::milliseconds(VALVE_SETTLE_MS)) {
-        return true;                     // still settling
+        return ok;                       // still settling
     }
     pumps_pending_ = false;
-    return applyPumps(pumpsFor(current_state_), true);
+    return applyPumps(pumpsFor(current_state_), true) && ok;
+}
+
+bool ro::runProcedure(procedure_types p) {
+    if (procedure_ && !procedure_->getDone()) {
+        std::fprintf(stderr, "RO controller: a procedure is still running\n");
+        return false;
+    }
+    procedure_ = std::make_unique<ro_procedure>(p);   // the old one removes its tasks
+    if (procedure_->scheduleProcedure(*this, scheduler_)) return true;
+    procedure_.reset();
+    return false;
 }
 
 bool ro::isSettling() const {

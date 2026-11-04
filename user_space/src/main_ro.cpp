@@ -21,7 +21,7 @@ int main() {
     }
 
     while (true) {
-        if (!updateRO()) std::fprintf(stderr, "RO controller: starting a pump failed\n");
+        if (!updateRO()) std::fprintf(stderr, "RO controller: a procedure step or starting a pump failed\n");
         server.poll(20);   // handles remote requests, doubles as the loop sleep
     }
 }

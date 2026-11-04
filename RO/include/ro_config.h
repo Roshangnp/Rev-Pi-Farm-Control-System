@@ -19,9 +19,9 @@ class line_server;  // comms/src/line_server.h
 // Host PC: nothing to share, returns true.
 bool addRO(line_server& server);
 
-// RO RevPi: call every loop pass, next to server.poll(): starts the pumps of the
-// current state once the valves have settled. False only if starting a pump
-// failed. Host PC: returns true.
+// RO RevPi: call every loop pass, next to server.poll(): runs the due procedure
+// steps, then starts the pumps of the current state once the valves have
+// settled. False if a procedure step or starting a pump failed. Host PC: returns true.
 bool updateRO();
 
 // Move the RO to state s. Non-blocking: valves move at once, pumps start
@@ -37,3 +37,8 @@ bool readROSettling(bool& settling);
 
 // RO pump VFD speed, 0-1 (4-20 mA). False if out of range or the RO RevPi can't be reached.
 bool setROSpeed(float speed);
+
+// Starts procedure p (e.g. procedure_types::LOW_PH_CIP_CYCLE) on the RO RevPi.
+// Non-blocking: its steps run in updateRO() there. False if p isn't
+// implemented yet or the RO RevPi can't be reached.
+bool runROProcedure(procedure_types p);

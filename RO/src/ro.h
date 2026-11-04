@@ -1,8 +1,11 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 
 #include "config.h"
+#include "procedures.h"
+#include "scheduler.h"
 #include "types.h"
 
 class ro{
@@ -28,6 +31,9 @@ class ro{
     // pumps; starting them is left to update()
     bool setValveState();
     bool setPumpState();
+    // Sets heater_active_ to HeaterFor(current state). Doesn't switch cip_heater:
+    // the heater itself is operated elsewhere. Always true (nothing to fail)
+    bool setHeaterState();
 
     // Moves to state s without blocking: stops the pumps that must be off, opens
     // valves, then closes valves, and returns. The pumps the state needs are
@@ -38,9 +44,15 @@ class ro{
     // pending start (and restarts the wait). False if any device failed
     bool setState(RO_state s);
 
-    // Call every loop pass. Starts the pending pumps once the valves have had
-    // VALVE_SETTLE_MS to move. False only if starting a pump failed
+    // Call every loop pass. Runs the due procedure steps (scheduler_), then
+    // starts the pending pumps once the valves have had VALVE_SETTLE_MS to move.
+    // False if a procedure step or starting a pump failed
     bool update();
+
+    // Schedules procedure p (RO/src/procedures.h) on this ro's scheduler; its
+    // first step runs on the next update(). One procedure at a time: false if
+    // one is still running, or p isn't implemented yet
+    bool runProcedure(procedure_types p);
 
     // True between setState() and update() starting the pumps
     bool isSettling() const;
@@ -52,7 +64,10 @@ class ro{
     bool setRoSpeed(float speed);
 
     private:
+    scheduler scheduler_;                                 // procedure steps, run in update()
+    std::unique_ptr<ro_procedure> procedure_;             // last procedure started (after scheduler_: destroyed first, removes its tasks)
     RO_state current_state_;
     bool pumps_pending_ = false;                          // pumps of current_state_ still to start
     std::chrono::steady_clock::time_point valves_set_at_; // when setState() moved the valves
+    heater_state heater_active_ = false;
 };

@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "includePath": [
+                "${workspaceFolder}/API/include",
+                "${workspaceFolder}/API/src",
+                "${workspaceFolder}/API/src/HAL",
+                "${workspaceFolder}/API/src/devices/local_devices",
+                "${workspaceFolder}/API/src/devices/remote_devices",
+                "${workspaceFolder}/API/src/devices/wiseconn_devices",
+                "${workspaceFolder}/comms/src",
+                "${workspaceFolder}/RO/include",
+                "${workspaceFolder}/RO/src",
+                "${workspaceFolder}/scheduler/include",
+                "${workspaceFolder}/webUI/src",
+                "${workspaceFolder}/notifications/src",
+                "${workspaceFolder}/build/generated",
+                "${workspaceFolder}/build/generated/web_ui",
+                "${workspaceFolder}/build/generated/wiseconn"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
