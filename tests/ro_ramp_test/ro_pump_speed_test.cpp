@@ -1,6 +1,6 @@
 // RO pump speed ramp, on the RO RevPi. Stop farm-ro first:
 //   sudo systemctl stop farm-ro
-//   tests/build/ro_pump_speed_test [out.csv]
+//   tests/ro_ramp_test/build/ro_pump_speed_test [out.csv]
 //   sudo systemctl start farm-ro
 //
 // Sets the RO pump speed to 0, moves the RO to NORMAL_OP, waits for the valves to

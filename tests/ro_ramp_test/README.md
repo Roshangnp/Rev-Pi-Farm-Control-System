@@ -9,7 +9,8 @@ build doesn't compile them.
 On the RevPi, from the repo root:
 
 ```sh
-cmake -S tests -B tests/build && cmake --build tests/build -j4 --target ro_pump_speed_test
+cmake -S tests/ro_ramp_test -B tests/ro_ramp_test/build
+cmake --build tests/ro_ramp_test/build -j4 --target ro_pump_speed_test
 ```
 
 ## ro_pump_speed_test
@@ -19,7 +20,7 @@ Ramps the RO pump in `NORMAL_OP` and logs the RO sensors to a CSV.
 ```sh
 cd ~/Rev-Pi-Farm-Control-System
 sudo systemctl stop farm-ro
-tests/build/ro_pump_speed_test            # or give it a filename.csv
+tests/ro_ramp_test/build/ro_pump_speed_test   # or give it a filename.csv
 sudo systemctl start farm-ro
 ```
 
