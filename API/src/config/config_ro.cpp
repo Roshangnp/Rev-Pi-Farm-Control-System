@@ -65,8 +65,8 @@ electrical_interface ro_pump_speed(46, analog_current_out{}, "OutputValue_1");
 
 // Devices wired to this RevPi. Feed and RO pump alarms are the VFD alarm inputs;
 // only the RO pump has speed control (4-20 mA to its VFD).
-local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 36.32f);
-local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 36.32f);
+local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 133.17f);
+local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 133.17f);
 local_flow_sensor local_feed_flow(&feed_flow_pulses, 10.19f);
 local_float_switch local_feed_tank_high_float(&feed_tank_high_float_input);
 local_float_switch local_high_ph_tank_float(&high_ph_tank_float_input);
@@ -79,12 +79,12 @@ local_float_switch local_permeate_tank_high_float(&permeate_tank_high_float_inpu
 local_float_switch local_feed_tank_low_float(&feed_tank_low_float_input);
 local_pressure_transducer local_media_outlet_pressure(&media_outlet_pressure_input, 0.0f, 100.0f);
 local_pressure_transducer local_media_inlet_pressure(&media_inlet_pressure_input, 0.0f, 100.0f);
-local_pressure_transducer local_concentrate_pressure(&concentrate_pressure_input, 0.0f, 100.0f);
+local_pressure_transducer local_concentrate_pressure(&concentrate_pressure_input, 0.0f, 500.0f);
 local_pressure_transducer local_cip_inlet_pressure(&cip_inlet_pressure_input, 0.0f, 100.0f);
-local_pressure_transducer local_interstage_pressure(&interstage_pressure_input, 0.0f, 100.0f);
+local_pressure_transducer local_interstage_pressure(&interstage_pressure_input, 0.0f, 500.0f);
 local_pressure_transducer local_aqualine_outlet_pressure(&aqualine_outlet_pressure_input, 0.0f, 100.0f);
 local_pressure_transducer local_cip_outlet_pressure(&cip_outlet_pressure_input, 0.0f, 100.0f);
-local_pressure_transducer local_primary_pressure(&primary_pressure_input, 0.0f, 100.0f);
+local_pressure_transducer local_primary_pressure(&primary_pressure_input, 0.0f, 500.0f);
 local_pressure_transducer local_aqualine_inlet_pressure(&aqualine_inlet_pressure_input, 0.0f, 100.0f);
 local_pressure_transducer local_permeate_pressure(&permeate_pressure_input, 0.0f, 100.0f);
 local_pressure_transducer local_air_pressure(&air_pressure_input, 0.0f, 100.0f);
