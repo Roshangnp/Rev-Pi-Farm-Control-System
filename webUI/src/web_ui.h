@@ -13,7 +13,8 @@ inline constexpr uint16_t WEB_UI_PORT = 8080;
 // Something that is in one of a fixed list of named states and can be told to
 // change state, e.g. the RO controller (main_host_pc adapts ro_config.h to this).
 // Shown as the current state, a dropdown with a Set button (browser confirm),
-// and a read only "settling" row.
+// a read only "settling" row, and a dropdown of procedures with Run and Stop
+// buttons (browser confirm).
 class state_selector{
     public:
     virtual ~state_selector() = default;
@@ -26,6 +27,12 @@ class state_selector{
     virtual bool setState(const std::string& state) = 0;
     // True while a state change is still in progress. False if it can't be read
     virtual bool readSettling(bool& settling) = 0;
+    // Every procedure it can start, in the order the dropdown lists them
+    virtual std::vector<std::string> procedures() const = 0;
+    // Only called with a name from procedures(). False if it was refused or failed
+    virtual bool runProcedure(const std::string& procedure) = 0;
+    // Stops the running procedure. False if none is running, or it failed
+    virtual bool stopProcedure() = 0;
 };
 
 // Minimal HTTP server listing this machine's devices (local or remote) with
@@ -71,7 +78,9 @@ class web_ui{
     // with depth_labels (e.g. {"4 in", "8 in", "12 in"}), or 1, 2, 3... if empty
     bool addDevice(const std::string& name, soil_sensor& device, std::vector<std::string> depth_labels = {});
     // Current state, a dropdown of states() with a Set button (confirmed in the
-    // browser; command "<name> setState <STATE>"), and "settling"
+    // browser; command "<name> setState <STATE>"), "settling", and a dropdown of
+    // procedures() with a Run button (confirmed; "<name> runProcedure <PROCEDURE>")
+    // and a Stop button (confirmed; "<name> stopProcedure")
     bool addDevice(const std::string& name, state_selector& device);
 
     // Opens the listening socket. False if the port can't be opened or no

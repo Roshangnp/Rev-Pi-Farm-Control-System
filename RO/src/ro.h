@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <memory>
 
 #include "config.h"
 #include "procedures.h"
@@ -53,8 +52,12 @@ class ro{
 
     // Schedules procedure p (RO/src/procedures.h) on the scheduler; its first
     // step runs on the next scheduler update(). One procedure at a time: false if
-    // one is still running, or p isn't implemented yet
+    // one is still running
     bool runProcedure(procedure_types p);
+
+    // Cancels the running procedure's remaining steps and moves to OFF. False if
+    // none is running (the state is left alone) or moving to OFF failed
+    bool stopProcedure();
 
     // True between setState() and update() starting the pumps
     bool isSettling() const;
@@ -67,7 +70,7 @@ class ro{
 
     private:
     scheduler& scheduler_;                                // the machine's scheduler (owned by main)
-    std::unique_ptr<ro_procedure> procedure_;             // last procedure started (its destructor removes its tasks from scheduler_)
+    ro_procedure procedure_;                              // runs the procedures, one at a time (its destructor removes its tasks from scheduler_)
     RO_state current_state_;
     bool pumps_pending_ = false;                          // pumps of current_state_ still to start
     std::chrono::steady_clock::time_point valves_set_at_; // when setState() moved the valves

@@ -59,7 +59,7 @@ inline bool fromString(const std::string& text, RO_state& s) {
 enum class procedure_types {
     LOW_PH_CIP_CYCLE,
     HIGH_PH_CIP_CYCLE,
-    MEDIA_BACKWASH_CYCLE    // not implemented yet
+    MEDIA_BACKWASH_CYCLE
 };
 
 // Every procedure, in enum order: add new ones here too, or fromString() can't parse them

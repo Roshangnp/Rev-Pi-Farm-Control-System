@@ -39,5 +39,6 @@ std::string ro_server::handleRequest(int client_id, const std::string& name,
         if (!fromString(arg, p)) return "err bad argument";
         return plant_.runProcedure(p) ? "ok" : "fail";
     }
+    if (method == "stopProcedure") return plant_.stopProcedure() ? "ok" : "fail";
     return "err unknown method";
 }

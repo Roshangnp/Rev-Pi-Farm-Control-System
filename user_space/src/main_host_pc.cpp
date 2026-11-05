@@ -10,7 +10,7 @@
 #include "web_ui.h"
 
 // Host PC: serves the web UI for the devices it reaches on the RevPis and for the
-// RO controller (state dropdown), and sends
+// RO controller (state and procedure dropdowns), and sends
 // an ntfy push notification when a pump VFD alarms (topic from ntfy_topic.txt).
 namespace {
 
@@ -71,8 +71,8 @@ void updateAlarm(vfd_alarm& a, clock_type::time_point now, ntfy_notifier& notifi
 }
 
 // The RO controller on the RO RevPi (ro_config.h, through remote_ro), as a
-// dropdown on the page. Setting a state switches real pumps and valves there;
-// the RevPi keeps running it if this program stops.
+// dropdown on the page. Setting a state or running a procedure switches real
+// pumps and valves there; the RevPi keeps running it if this program stops.
 class ro_state_selector : public state_selector{
     public:
     std::vector<std::string> states() const override {
@@ -92,6 +92,18 @@ class ro_state_selector : public state_selector{
     }
     bool readSettling(bool& settling) override {
         return readROSettling(settling);
+    }
+    std::vector<std::string> procedures() const override {
+        std::vector<std::string> names;
+        for (procedure_types p : ALL_PROCEDURE_TYPES) names.push_back(toString(p));
+        return names;
+    }
+    bool runProcedure(const std::string& procedure) override {
+        procedure_types p;
+        return fromString(procedure, p) && runROProcedure(p);
+    }
+    bool stopProcedure() override {
+        return stopROProcedure();
     }
 };
 

@@ -13,30 +13,33 @@ class ro;
 // Step times in minutes (a -D on the compile line overrides them, e.g. for tests).
 // TODO: confirm the CIP times, they are placeholders
 #ifndef LOW_PH_DOSING_TIME_MIN
-#define LOW_PH_DOSING_TIME_MIN 10
+#define LOW_PH_DOSING_TIME_MIN 1
 #endif
 #ifndef HIGH_PH_DOSING_TIME_MIN
-#define HIGH_PH_DOSING_TIME_MIN 10
+#define HIGH_PH_DOSING_TIME_MIN 1
 #endif
 #ifndef CIP_FLUSH_TIME_MIN
-#define CIP_FLUSH_TIME_MIN 10
+#define CIP_FLUSH_TIME_MIN 1
 #endif
 #ifndef CIP_LOW_FLOW_TIME_MIN
-#define CIP_LOW_FLOW_TIME_MIN 10
+#define CIP_LOW_FLOW_TIME_MIN 1
 #endif
 #ifndef CIP_SOAK_TIME_MIN
-#define CIP_SOAK_TIME_MIN 10
+#define CIP_SOAK_TIME_MIN 1
 #endif
 #ifndef CIP_HIGH_FLOW_TIME_MIN
-#define CIP_HIGH_FLOW_TIME_MIN 10
+#define CIP_HIGH_FLOW_TIME_MIN 1
+#endif
+#ifndef MEDIA_BACKWASH_TIME_MIN
+#define MEDIA_BACKWASH_TIME_MIN 2
 #endif
 
-// One multi-step procedure on a scheduler: every step is a task scheduled up
-// front (timed steps on afterDuration conditions with cumulative times, float
+// Runs multi-step procedures on a scheduler, one at a time (ro owns the one
+// instance). Every step is a task scheduled up front (timed steps on afterDuration conditions with cumulative times, float
 // steps on float conditions). Nothing blocks; sched.update() and ro.update()
-// must be called every loop pass, and ro and sched must outlive this object.
-// Changing the RO state mid-cycle doesn't stop the remaining tasks; destroying
-// the object or resetProcedure() removes them.
+// must be called every loop pass.
+// Changing the RO state mid-cycle doesn't stop the remaining tasks; stop() or
+// destroying the object removes them.
 //
 // Cycles:
 //   LOW_PH_CIP_CYCLE: LOW_PH_DOSE (LOW_PH_DOSING_TIME_MIN) -> CIP_FLUSH (CIP_FLUSH_TIME_MIN)
@@ -46,34 +49,37 @@ class ro;
 //     -> CIP_REFILL until cip_tank_high_float is submerged -> OFF.
 //     No heater tasks: ro::setState() sets heater_active_ from HeaterFor(state).
 //   HIGH_PH_CIP_CYCLE: the same with HIGH_PH_DOSE (HIGH_PH_DOSING_TIME_MIN) first.
-//   MEDIA_BACKWASH_CYCLE: not implemented yet (scheduleProcedure returns false).
+//   MEDIA_BACKWASH_CYCLE: MEDIA_BACKWASH_1 (MEDIA_BACKWASH_TIME_MIN)
+//     -> MEDIA_BACKWASH_2 (MEDIA_BACKWASH_TIME_MIN) -> OFF.
 class ro_procedure {
     public:
-    ro_procedure(procedure_types procedure_type); // creates object, assigns procedure_type
-    ~ro_procedure(); // frees memory AND removes all tasks and conditions from the scheduler
+    // Nothing is scheduled until run(). r and sched must outlive this object
+    ro_procedure(ro& r, scheduler& sched);
+    ~ro_procedure(); // removes all tasks and conditions from the scheduler
 
     // Holds ids in one scheduler: a copy would remove the same tasks twice
     ro_procedure(const ro_procedure&) = delete;
     ro_procedure& operator=(const ro_procedure&) = delete;
 
-    bool getDone(); // returns true if all tasks have been completed
-    // uses switch/case on procedure types and runs one of the 3 procedure helper functions;
-    // the first step runs on the next sched.update(). False if it is still running,
-    // or the procedure isn't implemented (nothing is left scheduled then)
-    bool scheduleProcedure(ro& ro, scheduler& sched);
-    bool resetProcedure(); // removes all tasks and conditions from schedular and resets private variables
-    // Changes which procedure scheduleProcedure() runs next. False (type unchanged)
-    // while the current one is still running: its tasks belong to the old type
-    bool setProcedureType(procedure_types procedure_type);
-
-    // procedure helper functions. responsible for populating task_ids_ and condition_ids_
-    bool low_ph_cip_cycle(ro& ro, scheduler& sched);
-    bool high_ph_cip_cycle(ro& ro, scheduler& sched);
-    bool media_backwash_cycle(ro& ro, scheduler& sched);
+    // Schedules procedure_type (switch/case over the procedure helpers); the first
+    // step runs on the next sched.update(). One at a time: false if one is still running
+    bool run(procedure_types procedure_type);
+    // True while any scheduled task hasn't run. False if none was started, it was
+    // stopped, or every task has run
+    bool isRunning() const;
+    // Removes all tasks and conditions from the scheduler, so no further steps run.
+    // Leaves the RO in its current state: setState(OFF) is up to the caller
+    bool stop();
 
     private:
+    // Procedure helpers: each schedules its steps and populates task_ids_ and condition_ids_
+    bool low_ph_cip_cycle();
+    bool high_ph_cip_cycle();
+    bool media_backwash_cycle();
+
+    ro& r_;
+    scheduler& sched_;
     std::vector<task_id> task_ids_;
     std::vector<condition_id> condition_ids_;
-    procedure_types procedure_type_;
-    scheduler* sched_ = nullptr;   // where task_ids_ / condition_ids_ live (nullptr = nothing scheduled)
+    procedure_types procedure_type_ = procedure_types::LOW_PH_CIP_CYCLE;   // the one run() last started, for the log
 };

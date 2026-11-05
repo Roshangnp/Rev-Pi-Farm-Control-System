@@ -72,3 +72,7 @@ bool setROSpeed(float speed) {
 bool runROProcedure(procedure_types p) {
     return plant().runProcedure(p);
 }
+
+bool stopROProcedure() {
+    return plant().stopProcedure();
+}

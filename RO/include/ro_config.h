@@ -43,6 +43,11 @@ bool readROSettling(bool& settling);
 bool setROSpeed(float speed);
 
 // Starts procedure p (e.g. procedure_types::LOW_PH_CIP_CYCLE) on the RO RevPi.
-// Non-blocking: its steps run in the RO RevPi's scheduler update(). False if p isn't
-// implemented yet or the RO RevPi can't be reached.
+// Non-blocking: its steps run in the RO RevPi's scheduler update(). False if a
+// procedure is still running or the RO RevPi can't be reached.
 bool runROProcedure(procedure_types p);
+
+// Cancels the running procedure's remaining steps and moves the RO to OFF. False if
+// none is running (the state is left alone), moving to OFF failed, or the RO RevPi
+// can't be reached.
+bool stopROProcedure();

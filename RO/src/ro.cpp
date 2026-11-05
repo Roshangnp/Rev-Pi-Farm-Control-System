@@ -68,7 +68,7 @@ bool applyPumps(const pump_state& p, bool pass) {
 
 }  // namespace
 
-ro::ro(scheduler& sched) : scheduler_(sched), current_state_(RO_state::OFF) {}
+ro::ro(scheduler& sched) : scheduler_(sched), procedure_(*this, sched), current_state_(RO_state::OFF) {}
 
 ro::~ro() {
     setState(RO_state::OFF);   // pumps stop before valves close
@@ -202,14 +202,16 @@ bool ro::update() {
 }
 
 bool ro::runProcedure(procedure_types p) {
-    if (procedure_ && !procedure_->getDone()) {
-        std::fprintf(stderr, "RO controller: a procedure is still running\n");
+    return procedure_.run(p);
+}
+
+bool ro::stopProcedure() {
+    if (!procedure_.isRunning()) {
+        std::fprintf(stderr, "RO controller: no procedure is running\n");
         return false;
     }
-    procedure_ = std::make_unique<ro_procedure>(p);   // the old one removes its tasks
-    if (procedure_->scheduleProcedure(*this, scheduler_)) return true;
-    procedure_.reset();
-    return false;
+    bool ok = procedure_.stop();
+    return setState(RO_state::OFF) && ok;
 }
 
 bool ro::isSettling() const {

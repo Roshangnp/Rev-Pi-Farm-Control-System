@@ -22,8 +22,11 @@ class remote_ro{
     // RO pump VFD speed, 0-1
     bool setRoSpeed(float speed);
     // Starts procedure p on the RO RevPi (scheduled there, its first step runs
-    // on the next loop pass). False if p isn't implemented yet
+    // on the next loop pass). False if one is still running
     bool runProcedure(procedure_types p);
+    // Cancels the running procedure on the RO RevPi and moves the RO to OFF.
+    // False if none is running (the state is left alone) or moving to OFF failed
+    bool stopProcedure();
 
     private:
     remote_link& link_;

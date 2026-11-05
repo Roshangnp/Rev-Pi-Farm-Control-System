@@ -154,24 +154,42 @@ function makeRow(device, field, first) {
       if (reply === 'ok') showStatus(device.name + ': irrigation scheduled ' + start.value + ' to ' + end.value, false);
     };
     control.append(start, ' to ', end, ' ', send);
-  } else if (field.kind === 'state') {
-    // Dropdown follows the current state until the user picks another one
+  } else if (field.kind === 'state' || field.kind === 'procedure') {
+    // State: the dropdown follows the current state until the user picks another
+    // one. Procedure: nothing to follow, it stays on the user's pick
+    const procedure = field.kind === 'procedure';
     const select = document.createElement('select');
     for (const state of field.states) select.add(new Option(state, state));
     select.onchange = () => { cell.picked = true; };
     const send = document.createElement('button');
-    send.textContent = 'Set';
+    send.textContent = procedure ? 'Run' : 'Set';
     send.onclick = async () => {
-      const state = select.value;
-      if (!confirm('Set ' + device.name + ' to ' + state + '? This switches REAL pumps and valves.')) return;
+      const choice = select.value;
+      const question = procedure
+        ? 'Run ' + choice + ' on ' + device.name + '? This switches REAL pumps and valves, and changing the state does not stop it.'
+        : 'Set ' + device.name + ' to ' + choice + '? This switches REAL pumps and valves.';
+      if (!confirm(question)) return;
       send.disabled = true;
-      const reply = await command(device.name + ' ' + field.method + ' ' + state);
+      const reply = await command(device.name + ' ' + field.method + ' ' + choice);
       send.disabled = false;
       cell.picked = false;
-      if (reply === 'ok') showStatus(device.name + ': set to ' + state, false);
+      if (reply === 'ok') showStatus(device.name + (procedure ? ': started ' : ': set to ') + choice, false);
     };
     control.append(select, ' ', send);
-    cell.select = select;
+    if (procedure) {
+      const stop = document.createElement('button');
+      stop.textContent = 'Stop';
+      stop.onclick = async () => {
+        if (!confirm('Stop the running procedure on ' + device.name + ' and set it to OFF? This switches REAL pumps and valves.')) return;
+        stop.disabled = true;
+        const reply = await command(device.name + ' ' + field.stop);
+        stop.disabled = false;
+        if (reply === 'ok') showStatus(device.name + ': procedure stopped', false);
+      };
+      control.append(' ', stop);
+    } else {
+      cell.select = select;
+    }
   } else if (field.kind === 'setpoint') {
     const input = document.createElement('input');
     input.type = 'number';
@@ -240,7 +258,8 @@ std::string jsonFloat(bool success, float value) {
 // Field kinds understood by the page: "bool" / "value" are read only,
 // "switch" has on/off command methods, "setpoint" has one method taking a number,
 // "schedule" shows on/off and takes a "HH:MM-HH:MM" window for today,
-// "state" shows the current state (a string) and a dropdown of "states" to set.
+// "state" shows the current state (a string) and a dropdown of "states" to set,
+// "procedure" has no value, a dropdown of "states" to run and a "stop" method.
 std::string readOnlyField(const std::string& label, const std::string& kind, const std::string& value,
                           const std::string& unit = "") {
     return "{\"label\":" + jsonString(label) + ",\"kind\":" + jsonString(kind) +
@@ -272,6 +291,21 @@ std::string setpointField(const std::string& label, const std::string& value,
                           const std::string& method, const std::string& unit) {
     return "{\"label\":" + jsonString(label) + ",\"kind\":\"setpoint\",\"value\":" + value +
            ",\"method\":" + jsonString(method) + ",\"unit\":" + jsonString(unit) + "}";
+}
+
+// Dropdown field; value is JSON (a string or null), options become "states",
+// stop_method (if any) becomes "stop"
+std::string choiceField(const std::string& label, const std::string& kind, const std::string& value,
+                        const std::vector<std::string>& options, const std::string& method,
+                        const std::string& stop_method = "") {
+    std::string states;
+    for (const std::string& option : options) {
+        if (!states.empty()) states += ",";
+        states += jsonString(option);
+    }
+    return "{\"label\":" + jsonString(label) + ",\"kind\":" + jsonString(kind) + ",\"value\":" + value +
+           ",\"states\":[" + states + "],\"method\":" + jsonString(method) +
+           (stop_method.empty() ? "" : ",\"stop\":" + jsonString(stop_method)) + "}";
 }
 
 std::string httpResponse(const std::string& status, const std::string& content_type, const std::string& body) {
@@ -591,17 +625,12 @@ std::string web_ui::devicesJson() {
             } else if constexpr (std::is_same_v<T, state_selector>) {
                 std::string state;
                 bool state_ok = device->readState(state);
-                std::string states;
-                for (const std::string& option : device->states()) {
-                    if (!states.empty()) states += ",";
-                    states += jsonString(option);
-                }
                 bool settling = false;
                 bool settling_ok = device->readSettling(settling);
-                return "{\"label\":\"state\",\"kind\":\"state\",\"value\":" +
-                       (state_ok ? jsonString(state) : std::string("null")) +
-                       ",\"states\":[" + states + "],\"method\":\"setState\"}," +
-                       readOnlyField("settling", "bool", jsonBool(settling_ok, settling));
+                return choiceField("state", "state", state_ok ? jsonString(state) : "null",
+                                   device->states(), "setState") + "," +
+                       readOnlyField("settling", "bool", jsonBool(settling_ok, settling)) + "," +
+                       choiceField("procedure", "procedure", "\"\"", device->procedures(), "runProcedure", "stopProcedure");
             }
         }, ref);
 
@@ -649,11 +678,19 @@ std::string web_ui::runCommand(const std::string& line) {
                 return device->scheduleIrrigation(sh, sm, eh, em) ? "ok" : "fail (see the log)";
             }
         } else if constexpr (std::is_same_v<T, state_selector>) {
-            // Only names the device lists, so nothing else reaches setState()
+            // Only names the device lists, so nothing else reaches setState() or runProcedure()
             if (method == "setState") {
                 std::vector<std::string> states = device->states();
                 if (std::find(states.begin(), states.end(), arg) == states.end()) return "err bad argument";
                 return device->setState(arg) ? "ok" : "fail";
+            }
+            if (method == "runProcedure") {
+                std::vector<std::string> procedures = device->procedures();
+                if (std::find(procedures.begin(), procedures.end(), arg) == procedures.end()) return "err bad argument";
+                return device->runProcedure(arg) ? "ok" : "fail (one still running, or RO unreachable)";
+            }
+            if (method == "stopProcedure") {
+                return device->stopProcedure() ? "ok" : "fail (none running, a device failed, or RO unreachable)";
             }
         }
         return "err unknown method";
