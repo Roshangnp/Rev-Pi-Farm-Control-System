@@ -39,6 +39,45 @@ bool readRunOutput(electrical_interface* output, bool& on) {
     }
 }
 
+// Analog/PWM outputs (speed, pressure setpoint): fraction 0-1 maps to
+// 0-10 V, 4-20 mA or 0-100 % duty.
+bool writeFraction(electrical_interface* output, float fraction) {
+    if (output == nullptr) return false;
+
+    switch (output->getType()) {
+        case electrical_interface_type::ANALOG_VOLTAGE_OUT:
+            output->get<analog_voltage_out>().value = SPEED_VOLTAGE_MIN + fraction * (SPEED_VOLTAGE_MAX - SPEED_VOLTAGE_MIN);
+            break;
+        case electrical_interface_type::ANALOG_CURRENT_OUT:
+            output->get<analog_current_out>().value = SPEED_CURRENT_MIN + fraction * (SPEED_CURRENT_MAX - SPEED_CURRENT_MIN);
+            break;
+        case electrical_interface_type::PWM_DUTY_OUT:
+            output->get<pwm_duty_out>().value = fraction * SPEED_DUTY_MAX;
+            break;
+        default:
+            return false;
+    }
+    return output->setHardwareState();
+}
+
+bool readFraction(electrical_interface* output, float& fraction) {
+    if (output == nullptr || !output->getHardwareState()) return false;
+
+    switch (output->getType()) {
+        case electrical_interface_type::ANALOG_VOLTAGE_OUT:
+            fraction = (output->get<analog_voltage_out>().value - SPEED_VOLTAGE_MIN) / (SPEED_VOLTAGE_MAX - SPEED_VOLTAGE_MIN);
+            return true;
+        case electrical_interface_type::ANALOG_CURRENT_OUT:
+            fraction = (output->get<analog_current_out>().value - SPEED_CURRENT_MIN) / (SPEED_CURRENT_MAX - SPEED_CURRENT_MIN);
+            return true;
+        case electrical_interface_type::PWM_DUTY_OUT:
+            fraction = output->get<pwm_duty_out>().value / SPEED_DUTY_MAX;
+            return true;
+        default:
+            return false;
+    }
+}
+
 }  // namespace
 
 bool local_pump::readAlarm() {
@@ -57,24 +96,8 @@ bool local_pump::setOff() {
 }
 
 bool local_pump::setSpeed(float speed) {
-    if (electrical_interface_speed_control_ == nullptr) return false;
     if (!(speed >= 0.0f && speed <= 1.0f)) return false;
-
-    electrical_interface& output = *electrical_interface_speed_control_;
-    switch (output.getType()) {
-        case electrical_interface_type::ANALOG_VOLTAGE_OUT:
-            output.get<analog_voltage_out>().value = SPEED_VOLTAGE_MIN + speed * (SPEED_VOLTAGE_MAX - SPEED_VOLTAGE_MIN);
-            break;
-        case electrical_interface_type::ANALOG_CURRENT_OUT:
-            output.get<analog_current_out>().value = SPEED_CURRENT_MIN + speed * (SPEED_CURRENT_MAX - SPEED_CURRENT_MIN);
-            break;
-        case electrical_interface_type::PWM_DUTY_OUT:
-            output.get<pwm_duty_out>().value = speed * SPEED_DUTY_MAX;
-            break;
-        default:
-            return false;
-    }
-    return output.setHardwareState();
+    return writeFraction(electrical_interface_speed_control_, speed);
 }
 
 bool local_pump::readOn(bool& on) {
@@ -82,21 +105,18 @@ bool local_pump::readOn(bool& on) {
 }
 
 bool local_pump::readSpeed(float& speed) {
-    if (electrical_interface_speed_control_ == nullptr) return false;
+    return readFraction(electrical_interface_speed_control_, speed);
+}
 
-    electrical_interface& output = *electrical_interface_speed_control_;
-    if (!output.getHardwareState()) return false;
-    switch (output.getType()) {
-        case electrical_interface_type::ANALOG_VOLTAGE_OUT:
-            speed = (output.get<analog_voltage_out>().value - SPEED_VOLTAGE_MIN) / (SPEED_VOLTAGE_MAX - SPEED_VOLTAGE_MIN);
-            return true;
-        case electrical_interface_type::ANALOG_CURRENT_OUT:
-            speed = (output.get<analog_current_out>().value - SPEED_CURRENT_MIN) / (SPEED_CURRENT_MAX - SPEED_CURRENT_MIN);
-            return true;
-        case electrical_interface_type::PWM_DUTY_OUT:
-            speed = output.get<pwm_duty_out>().value / SPEED_DUTY_MAX;
-            return true;
-        default:
-            return false;
-    }
+bool local_pump::setPressure(float pressure) {
+    if (!(pressure_max_ > pressure_min_)) return false;
+    if (!(pressure >= pressure_min_ && pressure <= pressure_max_)) return false;
+    return writeFraction(pressure_control_, (pressure - pressure_min_) / (pressure_max_ - pressure_min_));
+}
+
+bool local_pump::readPressure(float& pressure) {
+    float fraction = 0.0f;
+    if (!readFraction(pressure_control_, fraction)) return false;
+    pressure = pressure_min_ + fraction * (pressure_max_ - pressure_min_);
+    return true;
 }

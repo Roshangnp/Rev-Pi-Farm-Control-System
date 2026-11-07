@@ -66,6 +66,7 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
         if constexpr (std::is_same_v<T, pump>) {
             if (method == "hasSpeedControl") reply = okBool(device->hasSpeedControl());
             else if (method == "hasAlarm") reply = okBool(device->hasAlarm());
+            else if (method == "hasPressureControl") reply = okBool(device->hasPressureControl());
             else if (method == "readAlarm") reply = okBool(device->readAlarm());
             else if (method == "readOn") {
                 bool on = false;
@@ -77,6 +78,11 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 bool success = device->readSpeed(speed);
                 reply = okFloat(success, speed);
             }
+            else if (method == "readPressure") {
+                float pressure = 0.0f;
+                bool success = device->readPressure(pressure);
+                reply = okFloat(success, pressure);
+            }
             else if (method == "setOn") {is_command = true; reply = okIf(device->setOn());}
             else if (method == "setOff") {is_command = true; reply = okIf(device->setOff());}
             else if (method == "setSpeed") {
@@ -84,6 +90,12 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 if (!parseFloat(arg, speed)) return "err bad argument";
                 is_command = true;
                 reply = okIf(device->setSpeed(speed));
+            }
+            else if (method == "setPressure") {
+                float pressure;
+                if (!parseFloat(arg, pressure)) return "err bad argument";
+                is_command = true;
+                reply = okIf(device->setPressure(pressure));
             }
         } else if constexpr (std::is_same_v<T, valve>) {
             if (method == "setOpen") {is_command = true; reply = okIf(device->setOpen());}

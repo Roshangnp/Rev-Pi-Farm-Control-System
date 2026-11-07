@@ -29,9 +29,9 @@ electrical_interface permeate_tds_input(7, analog_voltage_in{}, "InputValue_2");
 electrical_interface permeate_flow_pulses(8, pulse_in{}, "Counter_3");              // DIO input 3, counter mode
 
 // Devices wired to this RevPi
-local_pump local_feed_pump(&feed_pump_speed, &feed_pump_run, &feed_pump_alarm);
+local_pump local_feed_pump(&feed_pump_speed, &feed_pump_run, &feed_pump_alarm, nullptr);
 // A pump without speed control or alarm, e.g. a peristaltic dosing pump:
-//   local_pump local_antiscalant_pump(nullptr, &antiscalant_pump_run, nullptr);
+//   local_pump local_antiscalant_pump(nullptr, &antiscalant_pump_run, nullptr, nullptr);
 local_float_switch local_feed_tank_float(&feed_tank_float_input);
 local_valve local_inlet_valve(&inlet_valve_solenoid);
 local_pressure_transducer local_feed_pressure(&feed_pressure_input, 0.0f, 300.0f);  // 0-300 psi

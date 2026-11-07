@@ -114,6 +114,7 @@ bool addAllDevices(web_ui& ui) {
     return ui.addDevice("ro", ro_controller)
         && ui.addDevice("upper_tank_high_float", upper_tank_high_float)
         && ui.addDevice("upper_tank_water_level", upper_tank_water_level)
+        && ui.addDevice("irrigation_pump", irrigation_pump)
         && ui.addDevice("permeate_flow", permeate_flow)
         && ui.addDevice("concentrate_flow", concentrate_flow)
         && ui.addDevice("feed_flow", feed_flow)

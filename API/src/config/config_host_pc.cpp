@@ -28,6 +28,7 @@ remote_link ro_revpi("192.168.1.20");
 
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
+remote_pump remote_irrigation_pump(upper_tank_revpi, "irrigation_pump");
 
 remote_flow_sensor remote_permeate_flow(ro_revpi, "permeate_flow");
 remote_flow_sensor remote_concentrate_flow(ro_revpi, "concentrate_flow");
@@ -109,6 +110,7 @@ wiseconn_irrigation wiseconn_city_water_fill_valve(wiseconn, "city_water_fill_va
 // Public devices declared in config.h
 float_switch& upper_tank_high_float = remote_upper_tank_high_float;
 level_sensor& upper_tank_water_level = remote_upper_tank_water_level;
+pump& irrigation_pump = remote_irrigation_pump;
 
 flow_sensor& permeate_flow = remote_permeate_flow;
 flow_sensor& concentrate_flow = remote_concentrate_flow;

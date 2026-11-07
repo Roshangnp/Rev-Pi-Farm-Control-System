@@ -13,6 +13,7 @@ class remote_pump : public pump{
 
     bool hasSpeedControl() const override; // false if the owner can't be reached
     bool hasAlarm() const override;        // false if the owner can't be reached
+    bool hasPressureControl() const override; // false if the owner can't be reached
 
     bool readAlarm() override; // true if the owner can't be reached
     bool setOn() override;
@@ -20,6 +21,8 @@ class remote_pump : public pump{
     bool setSpeed(float speed) override; // 0-1
     bool readOn(bool& on) override;
     bool readSpeed(float& speed) override;
+    bool setPressure(float pressure) override; // in the owner's pressure range
+    bool readPressure(float& pressure) override;
 
     private:
     remote_link* link_;

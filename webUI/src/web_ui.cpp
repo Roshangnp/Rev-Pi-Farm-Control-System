@@ -568,6 +568,11 @@ std::string web_ui::devicesJson() {
                     bool speed_ok = device->readSpeed(speed);
                     fields += "," + setpointField("speed", jsonFloat(speed_ok, speed), "setSpeed", "(0-1)");
                 }
+                if (device->hasPressureControl()) {
+                    float pressure = 0.0f;
+                    bool pressure_ok = device->readPressure(pressure);
+                    fields += "," + setpointField("pressure", jsonFloat(pressure_ok, pressure), "setPressure", "psi");
+                }
                 if (device->hasAlarm()) {
                     fields += "," + readOnlyField("alarm", "bool", jsonBool(true, device->readAlarm()));
                 }
@@ -659,6 +664,11 @@ std::string web_ui::runCommand(const std::string& line) {
                 float speed;
                 if (!parseFloat(arg, speed)) return "err bad argument";
                 return device->setSpeed(speed) ? "ok" : "fail";
+            }
+            if (method == "setPressure") {
+                float pressure;
+                if (!parseFloat(arg, pressure)) return "err bad argument";
+                return device->setPressure(pressure) ? "ok" : "fail";
             }
         } else if constexpr (std::is_same_v<T, valve>) {
             if (method == "setOpen") return device->setOpen() ? "ok" : "fail";

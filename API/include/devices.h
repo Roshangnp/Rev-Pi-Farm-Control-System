@@ -21,6 +21,11 @@ class pump{
     // Read back the outputs as last written (not a running feedback signal)
     virtual bool readOn(bool& on) = 0;
     virtual bool readSpeed(float& speed) = 0; // 0-1, false if no speed control
+
+    // Pressure setpoint output (e.g. a VFD running its own pressure loop)
+    virtual bool hasPressureControl() const = 0;
+    virtual bool setPressure(float pressure) = 0;     // in the pump's pressure range
+    virtual bool readPressure(float& pressure) = 0;   // setpoint as last written, false if no pressure control
 };
 
 class float_switch{

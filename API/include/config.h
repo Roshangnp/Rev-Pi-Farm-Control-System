@@ -10,6 +10,7 @@
 // Upper tank RevPi, 192.168.1.21 (config_uppertank)
 extern float_switch& upper_tank_high_float;
 extern level_sensor& upper_tank_water_level;
+extern pump& irrigation_pump;          // pressure setpoint only (0-100, AIO OutputValue_1, 0-10 V)
 
 // RO RevPi, 192.168.1.20 (config_ro)
 extern flow_sensor& permeate_flow;
