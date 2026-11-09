@@ -27,6 +27,9 @@ extern float_switch& cip_tank_high_float;
 extern float_switch& asa_tank_low_float;
 extern float_switch& permeate_tank_high_float;
 
+extern toggle_switch& repressure_toggle_switch;
+extern toggle_switch& ro_toggle_switch;
+
 extern pressure_transducer& media_outlet_pressure;
 extern pressure_transducer& media_inlet_pressure;
 extern pressure_transducer& concentrate_pressure;

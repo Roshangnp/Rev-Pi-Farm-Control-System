@@ -9,7 +9,10 @@
 #include "devices/local_devices/local_conductivity_sensor.h"
 #include "devices/local_devices/local_temperature_sensor.h"
 #include "devices/local_devices/local_switched_load.h"
+#include "devices/local_devices/local_switch.h"
 #include "devices/remote_devices/device_server.h"
+#include "devices/remote_devices/remote_float_switch.h"
+#include "remote_link.h"
 
 // ---------------------------------------------------------------------------
 // RO RevPi (192.168.1.20). Wiring from API/hardware_setup.csv.
@@ -62,6 +65,8 @@ electrical_interface media_backwash_1_valve_solenoid(43, relay{}, "Output_Bit_14
 electrical_interface permeate_cip_valve_solenoid(44, relay{}, "Output_Bit_15");
 electrical_interface media_backwash_2_valve_solenoid(45, relay{}, "Output_Bit_16");
 electrical_interface ro_pump_speed(46, analog_current_out{}, "OutputValue_1");
+electrical_interface repressure_toggle_switch_input(47, digital_in{}, "I_4_i03");
+electrical_interface ro_toggle_switch_input(48, digital_in{}, "I_5_i03");
 
 // Devices wired to this RevPi. Feed and RO pump alarms are the VFD alarm inputs;
 // only the RO pump has speed control (4-20 mA to its VFD).
@@ -106,6 +111,12 @@ local_valve local_concentrate_cip_valve(&concentrate_cip_valve_solenoid);
 local_valve local_media_backwash_1_valve(&media_backwash_1_valve_solenoid);
 local_valve local_permeate_cip_valve(&permeate_cip_valve_solenoid);
 local_valve local_media_backwash_2_valve(&media_backwash_2_valve_solenoid);
+local_switch local_repressure_toggle_switch(&repressure_toggle_switch_input);
+local_switch local_ro_toggle_switch(&ro_toggle_switch_input);
+
+// Devices owned by the upper tank RevPi
+remote_link upper_tank_revpi("192.168.1.21");
+remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 
 // Shares the devices wired to this RevPi with the other machines
 device_server devices;
@@ -125,6 +136,7 @@ float_switch& low_ph_tank_float = local_low_ph_tank_float;
 float_switch& asa_tank_low_float = local_asa_tank_low_float;
 float_switch& permeate_tank_high_float = local_permeate_tank_high_float;
 float_switch& feed_tank_low_float = local_feed_tank_low_float;
+float_switch& upper_tank_high_float = remote_upper_tank_high_float;
 pressure_transducer& media_outlet_pressure = local_media_outlet_pressure;
 pressure_transducer& media_inlet_pressure = local_media_inlet_pressure;
 pressure_transducer& concentrate_pressure = local_concentrate_pressure;
@@ -154,6 +166,8 @@ valve& concentrate_cip_valve = local_concentrate_cip_valve;
 valve& media_backwash_1_valve = local_media_backwash_1_valve;
 valve& permeate_cip_valve = local_permeate_cip_valve;
 valve& media_backwash_2_valve = local_media_backwash_2_valve;
+toggle_switch& repressure_toggle_switch = local_repressure_toggle_switch;
+toggle_switch& ro_toggle_switch = local_ro_toggle_switch;
 
 bool attachAllInterfaces() {
     bool ok = true;
@@ -171,7 +185,8 @@ bool attachAllInterfaces() {
                                     &asa_pump_run, &high_ph_pump_run, &low_ph_pump_run,
                                     &flush_valve_solenoid, &cip_inlet_valve_solenoid, &inlet_valve_solenoid,
                                     &concentrate_cip_valve_solenoid, &media_backwash_1_valve_solenoid, &permeate_cip_valve_solenoid,
-                                    &media_backwash_2_valve_solenoid, &ro_pump_speed}) {
+                                    &media_backwash_2_valve_solenoid, &ro_pump_speed, &repressure_toggle_switch_input,
+                                    &ro_toggle_switch_input}) {
         ok = e->attach() && ok;
     }
     return ok;
@@ -218,6 +233,8 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("concentrate_cip_valve", local_concentrate_cip_valve)
            && devices.addDevice("media_backwash_1_valve", local_media_backwash_1_valve)
            && devices.addDevice("permeate_cip_valve", local_permeate_cip_valve)
-           && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve);
+           && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve)
+           && devices.addDevice("repressure_toggle_switch", local_repressure_toggle_switch)
+           && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch);
     return ok && devices.registerWith(server);
 }

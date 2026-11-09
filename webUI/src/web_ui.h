@@ -74,6 +74,8 @@ class web_ui{
     bool addDevice(const std::string& name, conductivity_sensor& device);
     bool addDevice(const std::string& name, temperature_sensor& device);
     bool addDevice(const std::string& name, switched_load& device);
+    // Read only: "on" indicator
+    bool addDevice(const std::string& name, toggle_switch& device);
     // Read only: one field per depth for moisture, ETC and temperature, labelled
     // with depth_labels (e.g. {"4 in", "8 in", "12 in"}), or 1, 2, 3... if empty
     bool addDevice(const std::string& name, soil_sensor& device, std::vector<std::string> depth_labels = {});
@@ -95,7 +97,8 @@ class web_ui{
     using device_ref = std::variant<pump*, float_switch*, valve*, pressure_transducer*,
                                     tds_sensor*, flow_sensor*, level_sensor*,
                                     conductivity_sensor*, temperature_sensor*, switched_load*,
-                                    soil_sensor*, irrigation*, state_selector*>;
+                                    soil_sensor*, irrigation*, state_selector*,
+                                    toggle_switch*>;
 
     struct client {
         int fd;

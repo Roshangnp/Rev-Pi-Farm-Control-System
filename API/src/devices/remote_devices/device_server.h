@@ -35,6 +35,9 @@ class device_server : public line_handler{
     bool addDevice(const std::string& name, conductivity_sensor& device);
     bool addDevice(const std::string& name, temperature_sensor& device);
     bool addDevice(const std::string& name, switched_load& device);
+    bool addDevice(const std::string& name, toggle_switch& device);
+    bool addDevice(const std::string& name, toggle_switch_double_pole& device);
+    bool addDevice(const std::string& name, push_button& device);
 
     // Registers every device added so far on server. Call after the addDevice
     // calls. False if a name is already taken on the server.
@@ -48,7 +51,8 @@ class device_server : public line_handler{
     using device_ref = std::variant<pump*, float_switch*, valve*,
                                     pressure_transducer*, tds_sensor*, flow_sensor*,
                                     level_sensor*, conductivity_sensor*, temperature_sensor*,
-                                    switched_load*>;
+                                    switched_load*, toggle_switch*,
+                                    toggle_switch_double_pole*, push_button*>;
 
     bool addDeviceRef(const std::string& name, device_ref device);
 

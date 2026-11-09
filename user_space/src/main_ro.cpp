@@ -9,6 +9,13 @@
 // later, in addRO, so destroyed first: its procedure removes tasks from here).
 scheduler sched;
 
+void schedule_RO_operation(){
+    condition_id feed_tank_low_submerged = sched.addCondition(condition::when("feed tank low float submerged", [] { bool s; return feed_tank_low_float.readSubmerged(s) && s; }));
+    condition_id feed_tank_high_submerged = sched.addCondition(condition::when("feed tank high float submerged", [] { bool s; return feed_tank_high_float.readSubmerged(s) && s; }));
+    condition_id product_tank_high_dry = sched.addCondition(condition::when("product tank high float not submerged", [] { bool s; return permeate_tank_high_float.readSubmerged(s) && !s; }));
+    condition_id upper_tank_high_dry = sched.addCondition(condition::when("upper tank high float not submerged", [] { bool s; return upper_tank_high_float.readSubmerged(s) && !s; }));
+}
+
 // RO RevPi: attaches its I/O, shares its devices with the other machines, and
 // runs the RO controller (state set remotely, e.g. from the web UI via remote_ro).
 int main() {

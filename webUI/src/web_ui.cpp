@@ -378,6 +378,7 @@ web_ui::~web_ui() {
 
 bool web_ui::addDevice(const std::string& name, pump& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, float_switch& device) {return addDeviceRef(name, &device);}
+bool web_ui::addDevice(const std::string& name, toggle_switch& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, valve& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, irrigation& device) {return addDeviceRef(name, &device);}
 bool web_ui::addDevice(const std::string& name, pressure_transducer& device) {return addDeviceRef(name, &device);}
@@ -585,6 +586,10 @@ std::string web_ui::devicesJson() {
                 bool submerged = false;
                 bool success = device->readSubmerged(submerged);
                 return readOnlyField("submerged", "bool", jsonBool(success, submerged));
+            } else if constexpr (std::is_same_v<T, toggle_switch>) {
+                bool on = false;
+                bool success = device->readValue(on);
+                return readOnlyField("on", "bool", jsonBool(success, on));
             } else if constexpr (std::is_same_v<T, pressure_transducer>) {
                 float psi = 0.0f;
                 bool success = device->readPressure(psi);

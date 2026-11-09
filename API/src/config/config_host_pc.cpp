@@ -10,6 +10,7 @@
 #include "devices/remote_devices/remote_pump.h"
 #include "devices/remote_devices/remote_switched_load.h"
 #include "devices/remote_devices/remote_valve.h"
+#include "devices/remote_devices/remote_toggle_switch.h"
 #include "devices/wiseconn_devices/wiseconn_keys.h"
 #include "devices/wiseconn_devices/wiseconn_link.h"
 #include "devices/wiseconn_devices/wiseconn_soil_sensor.h"
@@ -42,6 +43,8 @@ remote_float_switch remote_low_ph_tank_float(ro_revpi, "low_ph_tank_float");
 remote_float_switch remote_asa_tank_low_float(ro_revpi, "asa_tank_low_float");
 remote_float_switch remote_permeate_tank_high_float(ro_revpi, "permeate_tank_high_float");
 remote_float_switch remote_feed_tank_low_float(ro_revpi, "feed_tank_low_float");
+remote_toggle_switch remote_repressure_toggle_switch(ro_revpi, "repressure_toggle_switch");
+remote_toggle_switch remote_ro_toggle_switch(ro_revpi, "ro_toggle_switch");
 remote_pressure_transducer remote_media_outlet_pressure(ro_revpi, "media_outlet_pressure");
 remote_pressure_transducer remote_media_inlet_pressure(ro_revpi, "media_inlet_pressure");
 remote_pressure_transducer remote_concentrate_pressure(ro_revpi, "concentrate_pressure");
@@ -124,6 +127,8 @@ float_switch& low_ph_tank_float = remote_low_ph_tank_float;
 float_switch& asa_tank_low_float = remote_asa_tank_low_float;
 float_switch& permeate_tank_high_float = remote_permeate_tank_high_float;
 float_switch& feed_tank_low_float = remote_feed_tank_low_float;
+toggle_switch& repressure_toggle_switch = remote_repressure_toggle_switch;
+toggle_switch& ro_toggle_switch = remote_ro_toggle_switch;
 pressure_transducer& media_outlet_pressure = remote_media_outlet_pressure;
 pressure_transducer& media_inlet_pressure = remote_media_inlet_pressure;
 pressure_transducer& concentrate_pressure = remote_concentrate_pressure;

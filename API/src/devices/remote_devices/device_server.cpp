@@ -17,6 +17,11 @@ std::string okFloat(bool success, float value) {
     return text;
 }
 
+std::string okUint(bool success, uint32_t value) {
+    if (!success) return "fail";
+    return "ok " + std::to_string(value);
+}
+
 std::string okIf(bool success) {
     return success ? "ok" : "fail";
 }
@@ -40,6 +45,9 @@ bool device_server::addDevice(const std::string& name, level_sensor& device) {re
 bool device_server::addDevice(const std::string& name, conductivity_sensor& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, temperature_sensor& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, switched_load& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, toggle_switch& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, toggle_switch_double_pole& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, push_button& device) {return addDeviceRef(name, &device);}
 
 bool device_server::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos || name == "ping") return false;
@@ -154,6 +162,28 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 bool on = false;
                 bool success = device->readOn(on);
                 reply = success ? okBool(on) : "fail";
+            }
+        } else if constexpr (std::is_same_v<T, toggle_switch>) {
+            if (method == "readValue") {
+                bool value = false;
+                bool success = device->readValue(value);
+                reply = success ? okBool(value) : "fail";
+            }
+        } else if constexpr (std::is_same_v<T, toggle_switch_double_pole>) {
+            if (method == "readPole1") {
+                bool on = false;
+                bool success = device->readPole1(on);
+                reply = success ? okBool(on) : "fail";
+            } else if (method == "readPole2") {
+                bool on = false;
+                bool success = device->readPole2(on);
+                reply = success ? okBool(on) : "fail";
+            }
+        } else if constexpr (std::is_same_v<T, push_button>) {
+            if (method == "readPushButtonCount") {
+                uint32_t presses = 0;
+                bool success = device->readPushButtonCount(presses);
+                reply = okUint(success, presses);
             }
         }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <vector>
 
 // Hardware-agnostic device interfaces. Controller code uses only these, so a
@@ -33,6 +34,29 @@ class float_switch{
     virtual ~float_switch() = default;
 
     virtual bool readSubmerged(bool& submerged) = 0;
+};
+
+class toggle_switch{
+    public:
+    virtual ~toggle_switch() = default;
+
+    virtual bool readValue(bool& value) = 0;
+};
+
+class toggle_switch_double_pole{
+    public:
+    virtual ~toggle_switch_double_pole() = default;
+
+    virtual bool readPole1(bool& on) = 0; // on = pole 1 input high
+    virtual bool readPole2(bool& on) = 0; // on = pole 2 input high
+};
+
+class push_button{
+    public:
+    virtual ~push_button() = default;
+
+    // presses since the previous call
+    virtual bool readPushButtonCount(uint32_t& presses) = 0;
 };
 
 class valve{

@@ -127,6 +127,8 @@ bool addAllDevices(web_ui& ui) {
         && ui.addDevice("asa_tank_low_float", asa_tank_low_float)
         && ui.addDevice("permeate_tank_high_float", permeate_tank_high_float)
         && ui.addDevice("feed_tank_low_float", feed_tank_low_float)
+        && ui.addDevice("repressure_toggle_switch", repressure_toggle_switch)
+        && ui.addDevice("ro_toggle_switch", ro_toggle_switch)
         && ui.addDevice("media_outlet_pressure", media_outlet_pressure)
         && ui.addDevice("media_inlet_pressure", media_inlet_pressure)
         && ui.addDevice("concentrate_pressure", concentrate_pressure)
