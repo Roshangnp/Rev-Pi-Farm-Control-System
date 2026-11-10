@@ -19,7 +19,7 @@ electrical_interface irrigation_pump_pressure_output(47, analog_voltage_out{}, "
 
 // Devices wired to this RevPi
 local_float_switch local_upper_tank_high_float(&upper_tank_high_float_input);
-local_level_sensor local_upper_tank_water_level(&upper_tank_water_level_input, 0.843f, 11.5f);
+local_level_sensor local_upper_tank_water_level(&upper_tank_water_level_input, 0.6797f, 12.1797f);
 // Pressure setpoint only (no run relay, speed or alarm wired): 0-100 -> 0-10 V
 local_pump local_irrigation_pump(nullptr, nullptr, nullptr, &irrigation_pump_pressure_output, 0.0f, 100.0f);
 
