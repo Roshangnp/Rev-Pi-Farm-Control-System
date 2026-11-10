@@ -16,12 +16,15 @@ namespace {
 electrical_interface upper_tank_high_float_input(1, digital_in{}, "DigitalInput_4");             // MIO digital input 4
 electrical_interface upper_tank_water_level_input(2, analog_current_in{}, "InputValue_1");  // 4-20 mA
 electrical_interface irrigation_pump_pressure_output(47, analog_voltage_out{}, "OutputValue_1"); // 0-10 V pressure setpoint
+electrical_interface well_4_pump_run(49, relay{}, "RelayOutput_4");                             // RevPi RO relay module, relay 4
 
 // Devices wired to this RevPi
 local_float_switch local_upper_tank_high_float(&upper_tank_high_float_input);
 local_level_sensor local_upper_tank_water_level(&upper_tank_water_level_input, 0.6797f, 12.1797f);
 // Pressure setpoint only (no run relay, speed or alarm wired): 0-100 -> 0-10 V
 local_pump local_irrigation_pump(nullptr, nullptr, nullptr, &irrigation_pump_pressure_output, 0.0f, 100.0f);
+// On/off only (run relay, no speed, alarm or pressure wired)
+local_pump local_well_4_pump(nullptr, &well_4_pump_run, nullptr, nullptr);
 
 // Shares the devices wired to this RevPi with the other machines
 device_server devices;
@@ -32,10 +35,12 @@ device_server devices;
 float_switch& upper_tank_high_float = local_upper_tank_high_float;
 level_sensor& upper_tank_water_level = local_upper_tank_water_level;
 pump& irrigation_pump = local_irrigation_pump;
+pump& well_4_pump = local_well_4_pump;
 
 bool attachAllInterfaces() {
     bool ok = true;
-    for (electrical_interface* e : {&upper_tank_high_float_input, &upper_tank_water_level_input, &irrigation_pump_pressure_output}) {
+    for (electrical_interface* e : {&upper_tank_high_float_input, &upper_tank_water_level_input, &irrigation_pump_pressure_output,
+                                     &well_4_pump_run}) {
         ok = e->attach() && ok;
     }
     return ok;
@@ -44,6 +49,7 @@ bool attachAllInterfaces() {
 bool addLocalDevices(line_server& server) {
     bool ok = devices.addDevice("upper_tank_high_float", local_upper_tank_high_float)
            && devices.addDevice("upper_tank_water_level", local_upper_tank_water_level)
-           && devices.addDevice("irrigation_pump", local_irrigation_pump);
+           && devices.addDevice("irrigation_pump", local_irrigation_pump)
+           && devices.addDevice("well_4_pump", local_well_4_pump);
     return ok && devices.registerWith(server);
 }
