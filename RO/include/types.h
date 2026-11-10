@@ -59,13 +59,14 @@ inline bool fromString(const std::string& text, RO_state& s) {
 enum class procedure_types {
     LOW_PH_CIP_CYCLE,
     HIGH_PH_CIP_CYCLE,
-    MEDIA_BACKWASH_CYCLE
+    MEDIA_BACKWASH_CYCLE,
+    EMPTY_FEED_TANK
 };
 
 // Every procedure, in enum order: add new ones here too, or fromString() can't parse them
 inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
     procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
-    procedure_types::MEDIA_BACKWASH_CYCLE,
+    procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK,
 };
 
 // The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
@@ -74,6 +75,7 @@ inline const char* toString(procedure_types p) {
     case procedure_types::LOW_PH_CIP_CYCLE: return "LOW_PH_CIP_CYCLE";
     case procedure_types::HIGH_PH_CIP_CYCLE: return "HIGH_PH_CIP_CYCLE";
     case procedure_types::MEDIA_BACKWASH_CYCLE: return "MEDIA_BACKWASH_CYCLE";
+    case procedure_types::EMPTY_FEED_TANK: return "EMPTY_FEED_TANK";
     }
     return "UNKNOWN";
 }

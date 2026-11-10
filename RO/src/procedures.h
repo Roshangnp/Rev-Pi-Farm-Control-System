@@ -51,6 +51,10 @@ class ro;
 //   HIGH_PH_CIP_CYCLE: the same with HIGH_PH_DOSE (HIGH_PH_DOSING_TIME_MIN) first.
 //   MEDIA_BACKWASH_CYCLE: MEDIA_BACKWASH_1 (MEDIA_BACKWASH_TIME_MIN)
 //     -> MEDIA_BACKWASH_2 (MEDIA_BACKWASH_TIME_MIN) -> OFF.
+//   EMPTY_FEED_TANK: NORMAL_OP while feed_tank_low_float is submerged and
+//     permeate_tank_high_float is dry, OFF while the permeate tank is full or a
+//     float can't be read (repeats, ON_RISING); done (OFF, removes its tasks)
+//     once feed_tank_low_float is dry.
 class ro_procedure {
     public:
     // Nothing is scheduled until run(). r and sched must outlive this object
@@ -76,6 +80,7 @@ class ro_procedure {
     bool low_ph_cip_cycle();
     bool high_ph_cip_cycle();
     bool media_backwash_cycle();
+    bool empty_feed_tank();
 
     ro& r_;
     scheduler& sched_;

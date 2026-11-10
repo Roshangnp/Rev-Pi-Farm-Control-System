@@ -38,6 +38,7 @@ bool ro_procedure::run(procedure_types procedure_type) {
     case procedure_types::LOW_PH_CIP_CYCLE: ok = low_ph_cip_cycle(); break;
     case procedure_types::HIGH_PH_CIP_CYCLE: ok = high_ph_cip_cycle(); break;
     case procedure_types::MEDIA_BACKWASH_CYCLE: ok = media_backwash_cycle(); break;
+    case procedure_types::EMPTY_FEED_TANK: ok = empty_feed_tank(); break;
     }
     if (!ok) stop();   // don't leave half a procedure scheduled
     return ok;
@@ -169,5 +170,61 @@ bool ro_procedure::media_backwash_cycle() {
 
     condition_ids_ = {first_backwash_done_id, second_backwash_done_id};
     task_ids_ = {start_first_backwash_id, start_second_backwash_id, stop_id};
+    return true;
+}
+
+bool ro_procedure::empty_feed_tank() {
+
+    // A float that can't be read counts as not met, so the step waits
+    condition_id feed_tank_low_submerged_id = sched_.addCondition(condition::when("feed_tank_low_submerged",
+        [] { bool submerged; return feed_tank_low_float.readSubmerged(submerged) && submerged; }));
+    condition_id feed_tank_low_dry_id = sched_.addCondition(condition::when("feed_tank_low_dry",
+        [] { bool submerged; return feed_tank_low_float.readSubmerged(submerged) && !submerged; }));
+    condition_id permeate_tank_high_submerged_id = sched_.addCondition(condition::when("permeate_tank_high_submerged",
+        [] { bool submerged; return permeate_tank_high_float.readSubmerged(submerged) && submerged; }));
+    condition_id permeate_tank_high_dry_id = sched_.addCondition(condition::when("permeate_tank_high_dry",
+        [] { bool submerged; return permeate_tank_high_float.readSubmerged(submerged) && !submerged; }));
+    condition_id feed_tank_low_read_failed_id = sched_.addCondition(condition::when("feed_tank_low_read_failed",
+        [] { bool submerged; return !feed_tank_low_float.readSubmerged(submerged); }));
+    condition_id permeate_tank_high_read_failed_id = sched_.addCondition(condition::when("permeate_tank_high_read_failed",
+        [] { bool submerged; return !permeate_tank_high_float.readSubmerged(submerged); }));
+    condition_id ro_off_id = sched_.addCondition(condition::when("ro_off",
+        [this] { return r_.readState() == RO_state::OFF; }));
+    condition_id ro_normal_op_id = sched_.addCondition(condition::when("ro_normal_op",
+        [this] { return r_.readState() == RO_state::NORMAL_OP; }));
+
+    condition_ids_ = {feed_tank_low_submerged_id, feed_tank_low_dry_id,
+                      permeate_tank_high_submerged_id, permeate_tank_high_dry_id,
+                      feed_tank_low_read_failed_id, permeate_tank_high_read_failed_id, ro_off_id,
+                      ro_normal_op_id};
+
+    // The RO moves water from the feed tank to the permeate tank, so it runs only
+    // while the permeate tank has room and pauses (OFF) while it's full; other
+    // things also draw from the feed tank. Run and pause repeat (ON_RISING) until
+    // the feed tank low float is dry, which ends the procedure.
+    task_id run_id;
+    task_id pause_permeate_full_id;
+    task_id pause_permeate_read_failed_id;
+    task_id pause_feed_read_failed_id;
+    task_id done_id;
+    sched_.addTask({"empty_feed_tank_run", [this] {return r_.setState(RO_state::NORMAL_OP);},
+                    {feed_tank_low_submerged_id, permeate_tank_high_dry_id}, task_mode::ON_RISING}, run_id);
+    sched_.addTask({"empty_feed_tank_pause_permeate_full", [this] {return r_.setState(RO_state::OFF);},
+                    {permeate_tank_high_submerged_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_permeate_full_id);
+    // A float that can't be read pauses the RO; it resumes once both read again
+    sched_.addTask({"empty_feed_tank_pause_permeate_read_failed", [this] {return r_.setState(RO_state::OFF);},
+                    {permeate_tank_high_read_failed_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_permeate_read_failed_id);
+    sched_.addTask({"empty_feed_tank_pause_feed_read_failed", [this] {return r_.setState(RO_state::OFF);},
+                    {feed_tank_low_read_failed_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_feed_read_failed_id);
+    // Done: OFF, then remove every task and condition (the ON_RISING tasks never
+    // finish by themselves), so isRunning() goes false. The scheduler allows a
+    // task to remove itself.
+    sched_.addTask({"empty_feed_tank_done", [this] {
+                        bool ok = r_.setState(RO_state::OFF);
+                        return stop() && ok;
+                    }, {feed_tank_low_dry_id}, task_mode::ONCE}, done_id);
+
+    task_ids_ = {run_id, pause_permeate_full_id, pause_permeate_read_failed_id,
+                 pause_feed_read_failed_id, done_id};
     return true;
 }
