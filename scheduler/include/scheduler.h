@@ -25,7 +25,7 @@ struct condition {
     std::function<bool(schedule_time now)> met; // true when the condition holds; empty = never met
     schedule_time created_time = schedule_clock::now(); // when this condition was made
 
-    // Any check, e.g. [] { bool on; return feed_tank_high_float.readSubmerged(on) && on; }
+    // Any check, e.g. [] { bool on; return feed_tank_low_float.readSubmerged(on) && on; }
     // (a read that fails should return false, so a task never runs on a failed read)
     static condition when(std::string name, std::function<bool()> check);
 

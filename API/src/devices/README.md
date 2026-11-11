@@ -61,7 +61,7 @@ Protocol, one line each way:
 ```
 <device> <method> [arg]    ->    ok [value] | fail | err <reason>
 feed_pump setSpeed 0.5     ->    ok
-feed_tank_high_float readSubmerged  ->  ok 1
+feed_tank_low_float readSubmerged  ->  ok 1
 ```
 
 Method names are the C++ method names. There is no authentication; the firewall must limit

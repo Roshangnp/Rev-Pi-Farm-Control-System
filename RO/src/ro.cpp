@@ -80,7 +80,7 @@ bool ro::checkAllDevices() {
     // If this builds, they are all there.
     const void* devices[] = {
         &permeate_flow, &concentrate_flow, &feed_flow,
-        &feed_tank_high_float, &feed_tank_low_float, &high_ph_tank_float,
+        &feed_tank_water_level, &feed_tank_low_float, &high_ph_tank_float,
         &low_ph_tank_float, &cip_tank_low_float, &cip_tank_mid_float,
         &cip_tank_high_float, &asa_tank_low_float, &permeate_tank_high_float,
         &media_outlet_pressure, &media_inlet_pressure, &concentrate_pressure,

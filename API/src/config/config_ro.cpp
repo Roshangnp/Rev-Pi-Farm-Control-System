@@ -3,6 +3,7 @@
 #include "HAL/electronics.h"
 #include "devices/local_devices/local_pump.h"
 #include "devices/local_devices/local_float_switch.h"
+#include "devices/local_devices/local_level_sensor.h"
 #include "devices/local_devices/local_valve.h"
 #include "devices/local_devices/local_pressure_transducer.h"
 #include "devices/local_devices/local_flow_sensor.h"
@@ -24,7 +25,6 @@ namespace {
 electrical_interface permeate_flow_pulses(3, pulse_in{}, "Counter_1_i03");
 electrical_interface concentrate_flow_pulses(4, pulse_in{}, "Counter_2_i03");
 electrical_interface feed_flow_pulses(5, pulse_in{}, "Counter_3_i03");
-electrical_interface feed_tank_high_float_input(6, digital_in{}, "I_1");
 electrical_interface high_ph_tank_float_input(7, digital_in{}, "I_2");
 electrical_interface cip_tank_mid_float_input(8, digital_in{}, "I_3");
 electrical_interface cip_tank_low_float_input(9, digital_in{}, "I_4");
@@ -49,6 +49,7 @@ electrical_interface air_pressure_input(27, analog_current_in{}, "InputValue_3_i
 electrical_interface permeate_conductivity_input(28, analog_current_in{}, "InputValue_4_i08");     // REVIEW RANGE
 electrical_interface feed_conductivity_input(29, analog_current_in{}, "InputValue_1_i09");         // REVIEW RANGE
 electrical_interface cip_temp_input(30, analog_current_in{}, "InputValue_2_i09");                  // REVIEW RANGE
+electrical_interface feed_tank_water_level_input(50, analog_current_in{}, "InputValue_3_i09");   // 4-20 mA
 electrical_interface feed_pump_run(31, relay{}, "Output_Bit_1");
 electrical_interface ro_pump_run(32, relay{}, "Output_Bit_2");
 electrical_interface repressure_pump_run(33, relay{}, "Output_Bit_3");
@@ -73,7 +74,6 @@ electrical_interface ro_toggle_switch_input(48, digital_in{}, "I_5_i03");
 local_flow_sensor local_permeate_flow(&permeate_flow_pulses, 133.17f);
 local_flow_sensor local_concentrate_flow(&concentrate_flow_pulses, 133.17f);
 local_flow_sensor local_feed_flow(&feed_flow_pulses, 10.19f);
-local_float_switch local_feed_tank_high_float(&feed_tank_high_float_input);
 local_float_switch local_high_ph_tank_float(&high_ph_tank_float_input);
 local_float_switch local_cip_tank_mid_float(&cip_tank_mid_float_input);
 local_float_switch local_cip_tank_low_float(&cip_tank_low_float_input);
@@ -96,6 +96,7 @@ local_pressure_transducer local_air_pressure(&air_pressure_input, 0.0f, 100.0f);
 local_conductivity_sensor local_permeate_conductivity(&permeate_conductivity_input, 0.0f, 50.0f);
 local_conductivity_sensor local_feed_conductivity(&feed_conductivity_input, 0.0f, 5000.0f);
 local_temperature_sensor local_cip_temp(&cip_temp_input, 32.0f, 212.0f);
+local_level_sensor local_feed_tank_water_level(&feed_tank_water_level_input, 0.0f, 11.5f);
 local_pump local_feed_pump(nullptr, &feed_pump_run, &feed_pump_alarm, nullptr);
 local_pump local_ro_pump(&ro_pump_speed, &ro_pump_run, &ro_pump_alarm, nullptr);
 local_pump local_repressure_pump(nullptr, &repressure_pump_run, nullptr, nullptr);
@@ -127,7 +128,7 @@ device_server devices;
 flow_sensor& permeate_flow = local_permeate_flow;
 flow_sensor& concentrate_flow = local_concentrate_flow;
 flow_sensor& feed_flow = local_feed_flow;
-float_switch& feed_tank_high_float = local_feed_tank_high_float;
+level_sensor& feed_tank_water_level = local_feed_tank_water_level;
 float_switch& high_ph_tank_float = local_high_ph_tank_float;
 float_switch& cip_tank_mid_float = local_cip_tank_mid_float;
 float_switch& cip_tank_low_float = local_cip_tank_low_float;
@@ -172,7 +173,7 @@ toggle_switch& ro_toggle_switch = local_ro_toggle_switch;
 bool attachAllInterfaces() {
     bool ok = true;
     for (electrical_interface* e : {&permeate_flow_pulses, &concentrate_flow_pulses, &feed_flow_pulses,
-                                    &feed_tank_high_float_input, &high_ph_tank_float_input, &cip_tank_mid_float_input,
+                                    &high_ph_tank_float_input, &cip_tank_mid_float_input,
                                     &cip_tank_low_float_input, &cip_tank_high_float_input, &low_ph_tank_float_input,
                                     &asa_tank_low_float_input, &permeate_tank_high_float_input, &feed_tank_low_float_input,
                                     &feed_pump_alarm, &ro_pump_alarm, &media_outlet_pressure_input,
@@ -186,7 +187,7 @@ bool attachAllInterfaces() {
                                     &flush_valve_solenoid, &cip_inlet_valve_solenoid, &inlet_valve_solenoid,
                                     &concentrate_cip_valve_solenoid, &media_backwash_1_valve_solenoid, &permeate_cip_valve_solenoid,
                                     &media_backwash_2_valve_solenoid, &ro_pump_speed, &repressure_toggle_switch_input,
-                                    &ro_toggle_switch_input}) {
+                                    &ro_toggle_switch_input, &feed_tank_water_level_input}) {
         ok = e->attach() && ok;
     }
     return ok;
@@ -196,7 +197,7 @@ bool addLocalDevices(line_server& server) {
     bool ok = devices.addDevice("permeate_flow", local_permeate_flow)
            && devices.addDevice("concentrate_flow", local_concentrate_flow)
            && devices.addDevice("feed_flow", local_feed_flow)
-           && devices.addDevice("feed_tank_high_float", local_feed_tank_high_float)
+           && devices.addDevice("feed_tank_water_level", local_feed_tank_water_level)
            && devices.addDevice("high_ph_tank_float", local_high_ph_tank_float)
            && devices.addDevice("cip_tank_mid_float", local_cip_tank_mid_float)
            && devices.addDevice("cip_tank_low_float", local_cip_tank_low_float)

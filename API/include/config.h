@@ -18,7 +18,8 @@ extern flow_sensor& permeate_flow;
 extern flow_sensor& concentrate_flow;
 extern flow_sensor& feed_flow;
 
-extern float_switch& feed_tank_high_float;
+extern level_sensor& feed_tank_water_level;   // 4-20 mA, 0-11.5 (AIO InputValue_3_i09)
+
 extern float_switch& feed_tank_low_float;
 extern float_switch& high_ph_tank_float;
 extern float_switch& low_ph_tank_float;

@@ -119,7 +119,7 @@ bool addAllDevices(web_ui& ui) {
         && ui.addDevice("permeate_flow", permeate_flow)
         && ui.addDevice("concentrate_flow", concentrate_flow)
         && ui.addDevice("feed_flow", feed_flow)
-        && ui.addDevice("feed_tank_high_float", feed_tank_high_float)
+        && ui.addDevice("feed_tank_water_level", feed_tank_water_level)
         && ui.addDevice("high_ph_tank_float", high_ph_tank_float)
         && ui.addDevice("cip_tank_mid_float", cip_tank_mid_float)
         && ui.addDevice("cip_tank_low_float", cip_tank_low_float)

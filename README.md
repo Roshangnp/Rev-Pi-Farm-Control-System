@@ -65,7 +65,7 @@ int main() {
 
     while (true) {
         bool full = false;
-        if (feed_tank_high_float.readSubmerged(full) && full) feed_pump.setOff();
+        if (permeate_tank_high_float.readSubmerged(full) && full) feed_pump.setOff();
 
         server.poll(20);     // handle remote requests; doubles as the loop sleep
     }
