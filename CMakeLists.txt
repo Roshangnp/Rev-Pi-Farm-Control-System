@@ -35,9 +35,20 @@ target_include_directories(comms PUBLIC comms/src)
 target_compile_options(comms PRIVATE -Wall -Wextra)
 target_link_libraries(comms PUBLIC Threads::Threads)
 
-# API: everything under API/src except the configs, plus the chosen config
+# Remote devices (API/src/devices/remote_devices/remote_*.cpp): client proxies for
+# devices owned by another machine, over remote_link. Own library, without a machine
+# config, so pure clients (the console) can use them; farm_api links it.
+# device_server (the owner side) stays in farm_api.
+file(GLOB remote_device_sources CONFIGURE_DEPENDS API/src/devices/remote_devices/remote_*.cpp)
+add_library(remote_devices STATIC ${remote_device_sources})
+target_include_directories(remote_devices PUBLIC API/include API/src)
+target_compile_options(remote_devices PRIVATE -Wall -Wextra)
+target_link_libraries(remote_devices PUBLIC comms)
+
+# API: everything under API/src except the configs and the remote devices, plus the chosen config
 file(GLOB_RECURSE api_sources CONFIGURE_DEPENDS API/src/*.cpp)
 list(FILTER api_sources EXCLUDE REGEX "/API/src/config/")
+list(FILTER api_sources EXCLUDE REGEX "/remote_devices/remote_[^/]*\\.cpp$")
 # WiseConn cloud devices: host PC only (needs internet and the API key)
 if(NOT DEVICE_CONFIG STREQUAL "host_pc")
     list(FILTER api_sources EXCLUDE REGEX "/API/src/devices/wiseconn_devices/")
@@ -71,7 +82,7 @@ if(DEVICE_CONFIG STREQUAL "host_pc")
     target_include_directories(farm_api PRIVATE ${CMAKE_BINARY_DIR}/generated/wiseconn)
 endif()
 
-target_link_libraries(farm_api PUBLIC comms)   # device server, remote devices
+target_link_libraries(farm_api PUBLIC comms remote_devices)   # device server, remote devices
 
 # Web UI (webUI/src): HTTP page over the public device interfaces, host PC only: the
 # RevPi builds never compile it. Password hardcoded at build time from the first line
@@ -187,3 +198,26 @@ if(EXISTS ${ro_config_file})
     target_link_libraries(ro_control PUBLIC farm_api scheduler)   # config.h devices, comms; procedures
     target_link_libraries(main_${DEVICE_CONFIG} PRIVATE ro_control)
 endif()
+
+# Console (console/src): ro_console, a keyboard-only terminal UI (tabs for sensors,
+# floats, pumps, valves, RO control). A pure client of the RevPis' line servers: it
+# links no machine config, so it's the same program on every machine (RO RevPi
+# console with --ro 127.0.0.1, or over SSH anywhere). FTXUI fetched at a pinned release.
+include(FetchContent)
+set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FTXUI_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(FTXUI_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(ftxui
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
+    GIT_TAG v6.1.9
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(ftxui)
+add_executable(ro_console
+    console/src/main.cpp
+    console/src/console_devices.cpp
+    console/src/console_ui.cpp
+    RO/src/remote_ro/remote_ro.cpp)
+target_include_directories(ro_console PRIVATE console/src RO/include RO/src)
+target_compile_options(ro_console PRIVATE -Wall -Wextra)
+target_link_libraries(ro_console PRIVATE remote_devices ftxui::screen ftxui::dom ftxui::component)
