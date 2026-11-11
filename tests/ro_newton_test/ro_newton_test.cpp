@@ -10,9 +10,9 @@
 // from the feedforward move, then sets the speed to 0 and the RO to OFF.
 //
 // Logs at 1 Hz with the same columns as the other RO tests, plus speed_target and
-// window_pulses_per_min on the end. readFlow() averages since the last read by
-// anyone: this works because the test is the only reader (the device server isn't
-// running, so the web UI can't read the flows). ro::update() can't rely on that.
+// window_pulses_per_min on the end. The loop calls each flow sensor's update()
+// every pass, and readFlow() returns its rolling 1 s average, so the once-a-second
+// reads each cover the last second.
 //
 // Stops early, the same way, on Ctrl-C, SIGTERM, the SSH session closing, a VFD
 // alarm, a failed speed command, the RO leaving NORMAL_OP, primary pressure above
@@ -180,6 +180,11 @@ int main(int argc, char** argv) {
     int exit_code = 0;
 
     while (!stop_requested && !finished) {
+        // Rolling 1 s flow averages: readFlow() only returns what these compute
+        permeate_flow.update();
+        concentrate_flow.update();
+        feed_flow.update();
+
         if (!sched.update()) std::fprintf(stderr, "Scheduler: a task failed\n");
         if (!updateRO()) {
             std::fprintf(stderr, "Starting a pump failed, stopping\n");

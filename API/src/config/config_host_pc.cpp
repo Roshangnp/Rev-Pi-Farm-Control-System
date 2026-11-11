@@ -22,10 +22,13 @@
 // Each RevPi must open port 47100 to this PC's IP (see CLAUDE.md).
 // ---------------------------------------------------------------------------
 
+// The one connection to the RO RevPi, also used by ro_config_host_pc.cpp
+// (remote_ro), so its devices and the RO controller share one snapshot poll
+remote_link ro_revpi("192.168.1.20");
+
 namespace {
 
 remote_link upper_tank_revpi("192.168.1.21");
-remote_link ro_revpi("192.168.1.20");
 
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");

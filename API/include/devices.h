@@ -55,8 +55,29 @@ class push_button{
     public:
     virtual ~push_button() = default;
 
-    // presses since the previous call
-    virtual bool readPushButtonCount(uint32_t& presses) = 0;
+    // The button's press counter (counts up, reads don't change it). To count
+    // presses in your own code, keep the last total you saw and subtract
+    virtual bool readPressTotal(uint32_t& total) = 0;
+
+    // Presses since this object's previous call. Each push_button object keeps
+    // its own count: a remote button on another machine doesn't take presses
+    // from this one, but callers sharing this object share the count.
+    // false on the first call, if the counter can't be read or was reset
+    bool readPushButtonCount(uint32_t& presses) {
+        uint32_t total = 0;
+        if (!readPressTotal(total)) return false;
+        bool had_last = has_last_total_;
+        uint32_t last = last_total_;
+        has_last_total_ = true;
+        last_total_ = total;
+        if (!had_last || total < last) return false;
+        presses = total - last;
+        return true;
+    }
+
+    private:
+    bool has_last_total_ = false;
+    uint32_t last_total_ = 0;
 };
 
 class valve{
@@ -88,8 +109,15 @@ class flow_sensor{
     public:
     virtual ~flow_sensor() = default;
 
-    // false if the sensor can't be read or there is no flow rate yet (e.g. first call)
+    // Latest flow, a rolling average kept up to date by update() on the machine
+    // that owns the sensor. Reads change nothing, so any number of readers see
+    // the same value. false if the sensor can't be read, there is no full
+    // averaging window yet, or update() hasn't run recently
     virtual bool readFlow(float& gpm) = 0;
+
+    // Samples the sensor and recomputes the average. Call every main loop pass
+    // on the RevPi that owns the sensor. Does nothing for a remote sensor
+    virtual void update() {}
 };
 
 class level_sensor{

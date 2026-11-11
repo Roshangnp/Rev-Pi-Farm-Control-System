@@ -86,6 +86,5 @@ The test serves `ro` on port 47100 but not the device server, so the web UI's `r
 working and setting it to `OFF` stops the test. Its speed box still sends `setRoSpeed`, which this
 test overwrites on its next move, so leave it alone. The device rows show "read failed".
 
-The device rows failing is also what makes `readFlow()` safe here: it averages since the last read
-by anyone, and this test is the only reader. Controller code in `ro::update()`, running beside the
-web UI, can't use it this way.
+Flow comes from each sensor's 1 s rolling average, which the test's loop updates every pass
+(`update()`), so the once-a-second reads each cover the last second whoever else reads the sensors.

@@ -1,19 +1,35 @@
 #pragma once
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include "protocol.h"
 
 // One TCP connection to another machine's line_server, shared by every remote
-// device owned by that machine. Connects and reconnects on its own, and sends a
-// heartbeat so the owner's watchdog knows this controller is still alive.
+// device (and remote_ro) owned by that machine.
 //
-// Protocol (protocol.h): one request line, one reply line.
-//   "<name> <method> [arg]"  ->  "ok [value]" | "fail" | "err <reason>"
+// A background thread connects (and reconnects), and asks for a "snapshot" of
+// every readable value every link_timing::SNAPSHOT_PERIOD (protocol.h). Reads
+// (query*) answer from that cache at once and never touch the network: a value
+// older than STALE_TIMEOUT, or one the owner couldn't read, is a failed read.
+// The snapshot requests also feed the owner's client watchdog. When the link
+// drops (the owner closed it, e.g. a restart) the cache is cleared, so reads fail
+// at once; a stall with the link still up fails reads after STALE_TIMEOUT.
+//
+// Commands (command()) are sent on the same connection and wait up to
+// COMMAND_TIMEOUT for their own reply; a late reply is discarded when it
+// arrives. A successful command asks for a fresh snapshot right away, so its
+// readback shows up within a round trip. While disconnected, commands fail at
+// once.
+//
+// Thread safe: any thread may call any method.
 class remote_link{
     public:
     remote_link(std::string host, uint16_t port = LINE_SERVER_PORT);
@@ -22,9 +38,9 @@ class remote_link{
     remote_link(const remote_link&) = delete;
     remote_link& operator=(const remote_link&) = delete;
 
-    // True if the remote device replied "ok".
+    // True if the remote replied "ok".
     bool command(const std::string& device, const std::string& method, const std::string& arg = "");
-    // True if the remote device replied "ok <value>"; value gets the text after "ok ".
+    // True if the latest snapshot has a fresh, successful value for device.method.
     bool query(const std::string& device, const std::string& method, std::string& value);
     bool queryBool(const std::string& device, const std::string& method, bool& value);
     bool queryFloat(const std::string& device, const std::string& method, float& value);
@@ -32,21 +48,49 @@ class remote_link{
     bool isConnected() const;
 
     private:
-    bool call(const std::string& request, std::string& reply);
-    bool connectLocked();
-    void disconnectLocked();
-    bool receiveAvailableLocked();  // reads what has arrived without waiting; false on error
-    void heartbeatLoop();
+    using clock_type = std::chrono::steady_clock;
+
+    struct pending {
+        bool snapshot = false;
+        bool done = false;
+        bool replied = false;  // false: the link dropped before the reply
+        std::string reply;
+    };
+    struct cached {
+        bool ok;
+        std::string value;
+        clock_type::time_point time;
+    };
+
+    void ioLoop();
+    bool connectNow();                          // io thread, mutex not held
+    void disconnectLocked();                    // io thread, mutex held
+    bool sendLocked();                          // io thread, mutex held
+    bool receive();                             // io thread, mutex not held
+    void handleReplyLocked(const std::string& line);
+    void storeSnapshotLocked(const std::string& reply, clock_type::time_point now);
+    void wake();
 
     std::string host_;
     uint16_t port_;
+    clock_type::time_point created_;
+
     mutable std::mutex mutex_;
-    int fd_ = -1;
+    std::condition_variable replies_;           // a reply or snapshot arrived, or the link dropped
+    int fd_ = -1;                               // only the io thread opens and closes it
+    bool connected_ = false;
+    std::string tx_buffer_;
     std::string rx_buffer_;
-    size_t stale_replies_ = 0;  // replies still to come for requests that timed out
-    std::chrono::steady_clock::time_point last_receive_{};
-    std::chrono::steady_clock::time_point last_connect_attempt_{};
-    std::chrono::steady_clock::time_point last_activity_{};
+    std::deque<std::shared_ptr<pending>> pending_;  // in request order
+    bool snapshot_outstanding_ = false;
+    bool snapshot_soon_ = false;
+    bool have_snapshot_ = false;
+    clock_type::time_point next_snapshot_{};
+    clock_type::time_point last_receive_{};
+    clock_type::time_point last_connect_attempt_{};
+    std::unordered_map<std::string, cached> cache_;  // "<device>.<method>"
+
+    int wake_fd_ = -1;
     std::atomic<bool> running_{true};
-    std::thread heartbeat_;
+    std::thread io_;                            // last: starts after everything above exists
 };

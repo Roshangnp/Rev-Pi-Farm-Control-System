@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <type_traits>
+#include <vector>
 
 namespace {
 
@@ -180,16 +181,43 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 reply = success ? okBool(on) : "fail";
             }
         } else if constexpr (std::is_same_v<T, push_button>) {
-            if (method == "readPushButtonCount") {
-                uint32_t presses = 0;
-                bool success = device->readPushButtonCount(presses);
-                reply = okUint(success, presses);
+            if (method == "readPressTotal") {
+                uint32_t total = 0;
+                bool success = device->readPressTotal(total);
+                reply = okUint(success, total);
             }
         }
 
         if (is_command) commanded_by_[name] = client_id;
         return reply;
     }, found->second);
+}
+
+void device_server::snapshot(std::string& out) {
+    for (const auto& entry : devices_) {
+        const std::string& name = entry.first;
+        // The read methods handleRequest() answers for each device type
+        std::vector<const char*> methods = std::visit([](auto* device) -> std::vector<const char*> {
+            using T = std::remove_pointer_t<decltype(device)>;
+            if constexpr (std::is_same_v<T, pump>)
+                return {"hasSpeedControl", "hasAlarm", "hasPressureControl", "readAlarm", "readOn", "readSpeed", "readPressure"};
+            else if constexpr (std::is_same_v<T, valve>) return {"readOpen"};
+            else if constexpr (std::is_same_v<T, float_switch>) return {"readSubmerged"};
+            else if constexpr (std::is_same_v<T, pressure_transducer>) return {"readPressure"};
+            else if constexpr (std::is_same_v<T, tds_sensor>) return {"readTds"};
+            else if constexpr (std::is_same_v<T, flow_sensor>) return {"readFlow"};
+            else if constexpr (std::is_same_v<T, level_sensor>) return {"readLevel"};
+            else if constexpr (std::is_same_v<T, conductivity_sensor>) return {"readConductivity"};
+            else if constexpr (std::is_same_v<T, temperature_sensor>) return {"readTemperature"};
+            else if constexpr (std::is_same_v<T, switched_load>) return {"readOn"};
+            else if constexpr (std::is_same_v<T, toggle_switch>) return {"readValue"};
+            else if constexpr (std::is_same_v<T, toggle_switch_double_pole>) return {"readPole1", "readPole2"};
+            else if constexpr (std::is_same_v<T, push_button>) return {"readPressTotal"};
+            else return {};
+        }, entry.second);
+        // Reads never record a client, so the id doesn't matter
+        for (const char* method : methods) appendSnapshotEntry(out, name + "." + method, handleRequest(0, name, method, ""));
+    }
 }
 
 void device_server::clientGone(int client_id) {

@@ -45,6 +45,8 @@ class device_server : public line_handler{
 
     std::string handleRequest(int client_id, const std::string& name,
                               const std::string& method, const std::string& arg) override;
+    // Every read method of every device ("<device>.<method>=<value>"), for remote_link's cache
+    void snapshot(std::string& out) override;
     void clientGone(int client_id) override;
 
     private:

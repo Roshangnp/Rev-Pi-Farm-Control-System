@@ -44,6 +44,11 @@ int main() {
     }
 
     while (true) {
+        // Rolling flow averages: readFlow() only returns what these compute
+        permeate_flow.update();
+        concentrate_flow.update();
+        feed_flow.update();
+
         if (!sched.update()) std::fprintf(stderr, "Scheduler: a task failed\n");   // procedure steps
         if (!updateRO()) std::fprintf(stderr, "RO controller: starting a pump failed\n");
         server.poll(20);   // handles remote requests, doubles as the loop sleep

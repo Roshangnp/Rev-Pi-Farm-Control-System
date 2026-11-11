@@ -148,6 +148,11 @@ int main(int argc, char** argv) {
     int exit_code = 0;
 
     while (!stop_requested && !finished) {
+        // Rolling 1 s flow averages: readFlow() only returns what these compute
+        permeate_flow.update();
+        concentrate_flow.update();
+        feed_flow.update();
+
         if (!sched.update()) std::fprintf(stderr, "Scheduler: a task failed\n");
         if (!updateRO()) {
             std::fprintf(stderr, "Starting a pump failed, stopping\n");

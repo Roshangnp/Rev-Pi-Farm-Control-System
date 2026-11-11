@@ -17,6 +17,12 @@ bool ro_server::registerWith(line_server& server) {
     return server.addName(name_, *this);
 }
 
+void ro_server::snapshot(std::string& out) {
+    for (const char* method : {"readState", "isSettling"}) {
+        appendSnapshotEntry(out, name_ + "." + method, handleRequest(0, name_, method, ""));
+    }
+}
+
 std::string ro_server::handleRequest(int client_id, const std::string& name,
                                      const std::string& method, const std::string& arg) {
     (void)client_id;

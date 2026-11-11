@@ -5,8 +5,8 @@
 
 
 // A flow sensor owned by another RevPi. link must outlive the sensor.
-// The owner averages flow between readFlow() calls, so if both RevPis read
-// the same sensor each one sees the flow since whichever read came last.
+// The owner keeps a 1 s rolling average (local_flow_sensor::update() in its main
+// loop); reads here return it and change nothing. update() does nothing here.
 class remote_flow_sensor : public flow_sensor{
     public:
     remote_flow_sensor(remote_link& link, std::string device_name)

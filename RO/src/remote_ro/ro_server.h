@@ -31,6 +31,8 @@ class ro_server : public line_handler{
 
     std::string handleRequest(int client_id, const std::string& name,
                               const std::string& method, const std::string& arg) override;
+    // "<name>.readState" and "<name>.isSettling", for remote_link's cache
+    void snapshot(std::string& out) override;
 
     private:
     ro& plant_;

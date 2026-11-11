@@ -34,22 +34,33 @@ Behaviour worth knowing:
 - `pump::setSpeed` rejects values outside 0-1. Speed 0 is 4 mA / 0 V, which most VFDs treat as
   minimum speed, not stop: the run output stops the pump.
 - `pump::readAlarm` fails safe: it returns true if the alarm input can't be read.
-- `flow_sensor::readFlow` returns the average since the previous call, so the first call fails.
-  Every reader shares that window: a second reader (another RevPi, the web UI) shortens it.
+- `flow_sensor::update()` must be called every main loop pass on the RevPi that owns the sensor
+  (does nothing on a remote sensor). It keeps a 1 s rolling average; `readFlow` only returns it, so
+  readers never affect each other. `readFlow` fails for the first second, after a counter reset,
+  if the last update couldn't read the input, or if `update()` hasn't run for 3 s.
+- `push_button::readPressTotal` is the raw press counter (reads don't change it).
+  `readPushButtonCount` returns presses since that object's previous call, so each machine (each
+  `remote_push_button`) counts on its own; code sharing one object shares its count.
 - Polarity is fixed (on = submerged / open / alarm). A normally-closed float or alarm contact
   needs an "inverted" option that doesn't exist yet.
 
 ## Remote devices
 
 `remote_link` (`comms/src/`) is one TCP connection to another RevPi (port 47100), shared by all the `remote_*`
-devices it owns. A background thread connects as soon as the link is created and pings every
-0.5 s, which keeps the owner's watchdog happy. Lost connections are retried with a 1 s backoff;
-connects and replies time out after 300 ms. A late reply only fails that one call (the reply is
-discarded when it arrives). With two replies overdue (a network stall) calls fail at once
-without sending, so a stall blocks a caller for at most 2 x 300 ms. The connection is only
-dropped after 25 s with replies outstanding and nothing from the owner: closing it makes the
-owner reset this controller's outputs at once, and 25 s is longer than the owner's 20 s
-watchdog, so the owner alone decides when a stall resets anything.
+devices it owns (and `remote_ro`). A background thread connects (retrying every 1 s) and asks
+the owner for a `snapshot` of every readable value every 0.5 s; reads answer from that cache at
+once and never wait on the network. A value older than 3 s (a stall), or one the owner couldn't
+read, is a failed read; when the link drops (the owner restarted) the cache is cleared and reads
+fail at once. In the first 2 s after the link is created, reads wait for the first snapshot.
+The snapshots also keep the owner's watchdog happy.
+
+Commands (`setOn`, `setSpeed`, `setState`, ...) go over the same connection and wait up to
+1.5 s for their own reply; a late reply is discarded when it arrives, and while disconnected
+commands fail at once. A successful command triggers a fresh snapshot, so its readback shows up
+within a round trip. The connection is only dropped after 25 s with requests outstanding and
+nothing from the owner: closing it makes the owner reset this controller's outputs at once, and
+25 s is longer than the owner's 20 s watchdog, so the owner alone decides when a stall resets
+anything. The timings are in `comms/src/protocol.h` (`link_timing`).
 
 `device_server` runs on the owner, as a handler on the `line_server` (`comms/src/`) that the
 owner's `main` creates: `addLocalDevices(server)` registers each local device under its name.
@@ -62,7 +73,12 @@ Protocol, one line each way:
 <device> <method> [arg]    ->    ok [value] | fail | err <reason>
 feed_pump setSpeed 0.5     ->    ok
 feed_tank_low_float readSubmerged  ->  ok 1
+snapshot                   ->    ok feed_pump.readOn=1;feed_flow.readFlow=4.2;cip_temp.readTemperature;...
 ```
+
+A snapshot entry without `=` is a read that failed on the owner. Each `line_handler` adds its
+own entries (`device_server`: every read method of every device; `ro_server`: `ro.readState`,
+`ro.isSettling`).
 
 Method names are the C++ method names. There is no authentication; the firewall must limit
 port 47100 to the other farm machines.
@@ -71,8 +87,8 @@ port 47100 to the other farm machines.
 `watchdog_ms`), the server drops it and `device_server::clientGone` turns off every pump and
 switched load it last commanded and closes every valve it last commanded.
 
-Typical cost is about 1 ms per call between RevPis. If the owner is down, calls fail after the
-300 ms connect timeout, then immediately until the 1 s backoff ends.
+Reads cost microseconds (cache lookups). A command costs one round trip (~1 ms on the LAN, more
+over HaLow). The RO RevPi's snapshot is about 3 KB, so each client polling it uses ~6 KB/s.
 
 ## WiseConn devices
 

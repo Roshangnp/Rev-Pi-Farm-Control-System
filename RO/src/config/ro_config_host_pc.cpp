@@ -6,11 +6,13 @@
 #include "remote_link.h"
 #include "remote_ro/remote_ro.h"
 
+// The RO RevPi connection defined in config_host_pc.cpp, shared with its
+// devices (one snapshot poll for both). Only a reference is bound here, so the
+// order the two files' globals are built in doesn't matter
+extern remote_link ro_revpi;
+
 namespace {
 
-// Own connection to the RO RevPi (config_host_pc has another one for its
-// devices). Connects in the background as soon as the program starts
-remote_link ro_revpi("192.168.1.20");
 remote_ro ro_plant(ro_revpi);
 
 }  // namespace
