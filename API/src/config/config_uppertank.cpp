@@ -5,10 +5,17 @@
 #include "devices/local_devices/local_level_sensor.h"
 #include "devices/local_devices/local_pump.h"
 #include "devices/remote_devices/device_server.h"
+#include "remote_link.h"
 
 // ---------------------------------------------------------------------------
 // Upper tank RevPi (192.168.1.21). Wiring from API/hardware_setup.csv.
 // ---------------------------------------------------------------------------
+
+// The one connection to the RO RevPi, used by ro_config_uppertank.cpp (remote_ro),
+// and by any RO RevPi devices bound here later, so they share one snapshot poll.
+// Needs port 47100 on the RO RevPi open to this RevPi (192.168.1.21); until then
+// it retries quietly every second and the RO calls fail.
+remote_link ro_revpi("192.168.1.20");
 
 namespace {
 

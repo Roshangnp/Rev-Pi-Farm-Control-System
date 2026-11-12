@@ -182,9 +182,10 @@ endif()
 
 # RO controller (RO/): programs include RO/include/ro_config.h; the implementation is
 # RO/src/config/ro_config_<DEVICE_CONFIG>.cpp, like the API configs. On the RO RevPi
-# the ro state machine runs here and is served as "ro" (ro_server); on the host PC the
-# same functions go to it through remote_ro, and the ro class is never built there, so
-# no second controller can run. Other configs have no RO config and don't build it.
+# the ro state machine runs here and is served as "ro" (ro_server); on the host PC and
+# the upper tank RevPi the same functions go to it through remote_ro, and the ro class
+# is never built there, so no second controller can run. Configs without an RO config
+# (test) don't build it.
 set(ro_config_file ${CMAKE_CURRENT_SOURCE_DIR}/RO/src/config/ro_config_${DEVICE_CONFIG}.cpp)
 if(EXISTS ${ro_config_file})
     if(DEVICE_CONFIG STREQUAL "ro")
