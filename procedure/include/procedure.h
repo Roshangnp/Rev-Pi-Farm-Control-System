@@ -90,9 +90,9 @@ inline bool fromString(const std::string& text, procedure_types& p) {
 //   MEDIA_BACKWASH_CYCLE: MEDIA_BACKWASH_1 (MEDIA_BACKWASH_TIME_MIN)
 //     -> MEDIA_BACKWASH_2 (MEDIA_BACKWASH_TIME_MIN) -> OFF.
 //   EMPTY_FEED_TANK: NORMAL_OP while feed_tank_low_float is submerged and
-//     permeate_tank_high_float is dry, OFF while the permeate tank is full or a
-//     float can't be read (repeats, ON_RISING); done (OFF, removes its tasks)
-//     once feed_tank_low_float is dry.
+//     permeate_tank_high_float is dry; done (OFF, removes its tasks) when the
+//     permeate tank is full or feed_tank_low_float is dry (at once if so at the start). A
+//     float that can't be read pauses it (OFF) until both read again (ON_RISING).
 class procedure {
     public:
     // Nothing is scheduled until run(). sched must outlive this object

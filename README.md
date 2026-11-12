@@ -19,7 +19,8 @@ API/
     devices/            local devices (wired here) and remote devices (owned by another RevPi)
     HAL/                electrical_interface: one PiCtory I/O point
 comms/                  line protocol between machines: line_server (port 47100) and remote_link
-webUI/                  web page listing the farm's devices (host PC only, uses API/include)
+webUI/                  DEPRECATED web page (not built by default; replaced by console/)
+console/                ro_console: keyboard-only terminal UI (RO RevPi HDMI screen, or over SSH)
 notifications/          ntfy push notifications (host PC only)
 user_space/src/         programs; main_<config>.cpp is built only for that config
 ```
@@ -32,7 +33,7 @@ Each `API/src/*` folder, `comms/`, `webUI/` and `notifications/` has its own REA
 |---|---|---|---|
 | `uppertank` | Upper tank RevPi (MIO + AIO) | 192.168.1.21 | Owns the upper tank float and water level |
 | `ro` | RO RevPi (2x DIO, 4x AIO, RS485 relay board) | 192.168.1.20 | Owns the RO system: flows, floats, pressures, pumps, valves |
-| `host_pc` | Ubuntu PC | - | No I/O; uses every device remotely and serves the web UI |
+| `host_pc` | Ubuntu PC | - | No I/O; uses every device remotely, sends ntfy alarm notifications |
 | `test` | Test bench (same RevPi as `ro`) | 192.168.1.20 | Example wiring used by the hardware tests |
 
 ## Building
@@ -88,9 +89,8 @@ Float switches: `readSubmerged` gives `true` when the float is submerged (water 
 - Watchdog: if a machine that switched an output disconnects or goes silent for 20 s, the owner
   turns its pumps and switched loads off and closes its valves. Network stalls shorter than that
   don't reset anything.
-- The web UI (port 8080) can switch real loads. It is open to the LAN and needs the password
-  from `webui_password.txt` in the repo root (git-ignored, hardcoded at build time; see
-  `webUI/README.md`). It is plain HTTP, so still firewall the port to the LAN.
+- The web UI is deprecated (2026-11-11): `main_host_pc` no longer serves it. Use `ro_console`
+  (`console/README.md`).
 - The RS485 relay board has no timeout of its own: if the RevPi stops, relays hold their last state.
 
 ## Adding hardware

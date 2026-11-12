@@ -198,33 +198,38 @@ bool procedure::empty_feed_tank() {
                       feed_tank_low_read_failed_id, permeate_tank_high_read_failed_id, ro_off_id,
                       ro_normal_op_id};
 
-    // The RO moves water from the feed tank to the permeate tank, so it runs only
-    // while the permeate tank has room and pauses (OFF) while it's full; other
-    // things also draw from the feed tank. Run and pause repeat (ON_RISING) until
-    // the feed tank low float is dry, which ends the procedure.
+    // The RO moves water from the feed tank to the permeate tank, so it runs
+    // while the feed tank has water and the permeate tank has room. The procedure
+    // ends (OFF, removes its tasks) when the permeate tank is full or the feed
+    // tank low float is dry, whichever comes first. A float that can't be read
+    // only pauses it (OFF); it resumes (ON_RISING) once both read again.
     task_id run_id;
-    task_id pause_permeate_full_id;
+    task_id stop_permeate_full_id;
     task_id pause_permeate_read_failed_id;
     task_id pause_feed_read_failed_id;
     task_id done_id;
     sched_.addTask({"empty_feed_tank_run", [] {return setROState(RO_state::NORMAL_OP);},
                     {feed_tank_low_submerged_id, permeate_tank_high_dry_id}, task_mode::ON_RISING}, run_id);
-    sched_.addTask({"empty_feed_tank_pause_permeate_full", [] {return setROState(RO_state::OFF);},
-                    {permeate_tank_high_submerged_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_permeate_full_id);
+    // Done (permeate tank full): OFF, then remove every task and condition. In any
+    // RO state, so a tank that is already full at the start ends it on the first pass
+    sched_.addTask({"empty_feed_tank_stop_permeate_full", [this] {
+                        bool ok = setROState(RO_state::OFF);
+                        return stop() && ok;
+                    }, {permeate_tank_high_submerged_id}, task_mode::ONCE}, stop_permeate_full_id);
     // A float that can't be read pauses the RO; it resumes once both read again
     sched_.addTask({"empty_feed_tank_pause_permeate_read_failed", [] {return setROState(RO_state::OFF);},
                     {permeate_tank_high_read_failed_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_permeate_read_failed_id);
     sched_.addTask({"empty_feed_tank_pause_feed_read_failed", [] {return setROState(RO_state::OFF);},
                     {feed_tank_low_read_failed_id, ro_normal_op_id}, task_mode::ON_RISING}, pause_feed_read_failed_id);
-    // Done: OFF, then remove every task and condition (the ON_RISING tasks never
-    // finish by themselves), so isRunning() goes false. The scheduler allows a
-    // task to remove itself.
+    // Done (feed tank empty): OFF, then remove every task and condition (the
+    // ON_RISING tasks never finish by themselves), so isRunning() goes false.
+    // The scheduler allows a task to remove itself.
     sched_.addTask({"empty_feed_tank_done", [this] {
                         bool ok = setROState(RO_state::OFF);
                         return stop() && ok;
                     }, {feed_tank_low_dry_id}, task_mode::ONCE}, done_id);
 
-    task_ids_ = {run_id, pause_permeate_full_id, pause_permeate_read_failed_id,
+    task_ids_ = {run_id, stop_permeate_full_id, pause_permeate_read_failed_id,
                  pause_feed_read_failed_id, done_id};
     return true;
 }

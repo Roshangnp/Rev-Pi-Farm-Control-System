@@ -1,3 +1,7 @@
+> **Deprecated (2026-11-11).** Replaced by the keyboard-only console (`console/`, `ro_console`).
+> `main_host_pc` no longer serves this page and nothing links `web_ui`; the CMake target is
+> `EXCLUDE_FROM_ALL` (`cmake --build build --target web_ui` to build it anyway). Kept for reference.
+
 # webUI
 
 A small web page listing farm devices (local or remote) with their current values, plus

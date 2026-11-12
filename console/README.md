@@ -1,7 +1,7 @@
 # Farm console (`ro_console`)
 
 Keyboard-only terminal UI for the RO RevPi and the upper tank, in the style of `raspi-config`.
-It is a client of the RevPis' line servers (port 47100), like the web UI: it never touches
+It is a client of the RevPis' line servers (port 47100): it never touches
 hardware itself, so the same program runs on the RO RevPi's HDMI screen, or over SSH on
 emerald-server or the dev PC.
 
@@ -45,7 +45,7 @@ sensor, the value is more than 3 s old (network stall), or the link is down (hea
   switched stay as they are (the device server has no watchdog since 2026-11-11). Manual pump
   and valve control is a precaution; the RO controller only reapplies its pumps and valves on
   its next state change, and nothing stops a manual change from fighting a running procedure.
-- Several consoles, the web UI and the RO controller can be used at the same time; the RevPi
+- Several consoles and the RO controller can be used at the same time; the RevPi
   handles each request in turn.
 - The machine running it must be allowed through the RevPis' firewall on port 47100 (see
   CLAUDE.md); loopback on the RO RevPi always is.

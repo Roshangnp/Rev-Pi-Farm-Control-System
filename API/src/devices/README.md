@@ -121,7 +121,7 @@ irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
   most 20 s), is never retried (no double scheduling), returns true only on a 2xx, and logs
   WiseConn's reply; a timeout means it may or may not have been created. After a success the
   link polls again at once so `readOn` catches up. Only "Off" has been seen so far (no zone ran while this was written).
-  The web UI shows each zone as a read-only "on" indicator.
+  (The deprecated web UI showed each zone as a read-only "on" indicator; nothing shows them now.)
 - `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
   `time_zone`, optional `base_url` / `poll_seconds` / `max_age_minutes`, then one `[name]`
   section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`,
@@ -147,5 +147,5 @@ measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also h
 2. `local_devices/local_<type>.h/.cpp` and `remote_devices/remote_<type>.h/.cpp`.
 3. `remote_devices/device_server.h/.cpp`: an `addDevice` overload, the type in `device_ref`,
    its methods in `handleRequest`, and its read methods in `snapshot`.
-4. `webUI/src/web_ui.h/.cpp` (outside the API): an `addDevice` overload, the type in `device_ref`, its fields
+4. (Deprecated, optional) `webUI/src/web_ui.h/.cpp` (outside the API): an `addDevice` overload, the type in `device_ref`, its fields
    in `devicesJson`, and its commands in `runCommand`.

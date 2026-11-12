@@ -59,7 +59,13 @@ inline bool fromString(const std::string& text, RO_state& s) {
 #define PRESSURE_TOL 5
 #define NON_ZERO_FLOW 20
 #define FLOW_TOL 5
+// State change timing (a -D on the compile line overrides them, e.g. for tests)
+#ifndef VALVE_SETTLE_MS
 #define VALVE_SETTLE_MS 10000   // setState waits this long after moving valves before starting pumps
+#endif
+#ifndef PUMP_STOP_MS
+#define PUMP_STOP_MS 15000       // setState waits this long after stopping a running pump before moving valves (spin-down; placeholder)
+#endif
 #define CIP_TEMP_TARGET 80
 
 struct range {
