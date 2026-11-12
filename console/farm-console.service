@@ -9,14 +9,16 @@ Conflicts=getty@tty1.service
 
 [Service]
 User=pi
-# Loopback to main_ro, so the RO tabs work without the network
-ExecStart=/home/pi/Rev-Pi-Farm-Control-System/build/ro_console --ro 127.0.0.1
+# Connects to main_ro on 127.0.0.1 (it always does), so the RO RevPi's own
+# values and the RO keep working without the network
+ExecStart=/home/pi/Rev-Pi-Farm-Control-System/build/ro_console
 StandardInput=tty
 StandardOutput=tty
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
-Environment=TERM=linux LANG=C.UTF-8
+# TZ: the header clock in farm time (the RevPi runs on UTC)
+Environment=TERM=linux LANG=C.UTF-8 TZ=America/Los_Angeles
 Restart=always
 RestartSec=2
 # Control (farm-ro) comes first

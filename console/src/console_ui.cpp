@@ -418,7 +418,7 @@ std::string clockText() {
 
 class console_ui{
     public:
-    console_ui(console_devices& farm, std::string ro_host, std::string upper_host);
+    explicit console_ui(console_devices& farm);
 
     int run();
 
@@ -448,8 +448,6 @@ class console_ui{
     Component dashboardOf(Components tiles);
 
     console_devices& farm_;
-    std::string ro_host_;
-    std::string upper_host_;
 
     bool confirm_shown_ = false;
     std::string confirm_question_;
@@ -470,8 +468,8 @@ class console_ui{
     std::shared_ptr<nav_map> nav_;
 };
 
-console_ui::console_ui(console_devices& farm, std::string ro_host, std::string upper_host)
-    : farm_(farm), ro_host_(std::move(ro_host)), upper_host_(std::move(upper_host)) {
+console_ui::console_ui(console_devices& farm)
+    : farm_(farm) {
     for (RO_state s : ALL_RO_STATES) states_.push_back(toString(s));
     for (procedure_types p : ALL_PROCEDURE_TYPES) procedures_.push_back(toString(p));
 }
@@ -747,14 +745,15 @@ Components console_ui::valveRows(int width) {
 }
 
 Element console_ui::header() {
-    auto link_status = [](const std::string& name, const std::string& host, const remote_link& link) {
-        bool up = link.isConnected();
-        return hbox({text(name + "@" + host + " "),
+    // Up = one of its values reads through this machine's service, so DOWN
+    // means that machine, the link to it, or the local service is down
+    auto machine_status = [](const std::string& name, bool up) {
+        return hbox({text(name + " "),
                      text(up ? "OK" : "DOWN") | color(up ? Color::Green : Color::Red) | bold});
     };
     return hbox({text(" Farm console") | bold, text("   "),
-                 link_status("RO", ro_host_, farm_.ro_link), text("   "),
-                 link_status("Upper tank", upper_host_, farm_.upper_link),
+                 machine_status("RO", farm_.roUp()), text("   "),
+                 machine_status("Upper tank", farm_.upperTankUp()),
                  filler(), text(clockText() + " ")});
 }
 
@@ -819,7 +818,7 @@ int console_ui::run() {
 
 }  // namespace
 
-int runConsole(console_devices& farm, const std::string& ro_host, const std::string& upper_host) {
-    console_ui ui(farm, ro_host, upper_host);
+int runConsole(console_devices& farm) {
+    console_ui ui(farm);
     return ui.run();
 }

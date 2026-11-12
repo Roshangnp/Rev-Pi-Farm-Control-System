@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "devices/wiseconn_devices/wiseconn_keys.h"
-#include "devices/wiseconn_devices/wiseconn_link.h"
 #include "remote_link.h"
 #include "remote_procedure/remote_procedure.h"
 #include "remote_ro/remote_ro.h"
@@ -16,13 +14,14 @@ class switched_load;
 class irrigation;
 class soil_sensor;
 
-// The farm devices the console shows, grouped by tab. RevPi devices are remote:
-// the console is a client of the RevPis' line servers (on the RO RevPi itself,
-// connect to 127.0.0.1), so it never touches hardware and runs anywhere.
-// WiseConn devices are read from the WiseConn cloud API directly (wiseconn_link,
-// keys built in from wiseconn_keys.txt), the same way on every machine.
-// Reads come from remote_link's snapshot cache or wiseconn_link's poll cache,
-// so they never block. The UI only sees the devices.h base classes.
+// The farm devices the console shows, grouped by tab. The console has one
+// connection, to this machine's own service on 127.0.0.1 (main_ro,
+// main_uppertank or main_host_pc), which serves every farm device (its own I/O,
+// the other RevPis' devices, WiseConn) and the RO under their config.h names.
+// So the console holds no addresses, no keys and no WiseConn code, never
+// touches hardware, and is the same program on every machine. Reads come from
+// remote_link's snapshot cache, so they never block. The UI only sees the
+// devices.h base classes.
 
 struct sensor_row {
     std::string label;
@@ -57,13 +56,13 @@ struct toggle_row {
     std::function<bool(bool&)> read;
 };
 
-// WiseConn irrigation zone, read only in the console (on/off)
+// Irrigation zone (WiseConn), read only in the console (on/off)
 struct irrigation_row {
     std::string label;
     std::shared_ptr<irrigation> device;
 };
 
-// WiseConn soil probe: moisture, EC and temperature per depth (shallowest first)
+// Soil probe (WiseConn): moisture, EC and temperature per depth (shallowest first)
 struct soil_row {
     std::string label;
     std::shared_ptr<soil_sensor> device;
@@ -72,17 +71,19 @@ struct soil_row {
 
 class console_devices{
     public:
-    console_devices(const std::string& ro_host, const std::string& upper_host);
+    console_devices();
 
     console_devices(const console_devices&) = delete;
     console_devices& operator=(const console_devices&) = delete;
 
-    remote_link ro_link;
-    remote_link upper_link;
+    remote_link local;                // this machine's service, 127.0.0.1:47100
     remote_ro ro;
-    remote_procedure ro_procedures;   // the RO's procedures ("ro_procedure" on the RO RevPi)
-    wiseconn_keys wiseconn_config;    // from wiseconn_keys.txt (zone ids), loaded before the link
-    wiseconn_link wiseconn;           // WiseConn cloud API (before the devices that use it)
+    remote_procedure ro_procedures;   // the RO's procedures ("ro_procedure")
+
+    // Header lights: a machine counts as up while one of its values reads
+    // through the local service (fails if either hop is down)
+    bool roUp();
+    bool upperTankUp();
 
     // One vector per group (tab or dashboard tile), in display order
     std::vector<sensor_row> ro_pressures;
