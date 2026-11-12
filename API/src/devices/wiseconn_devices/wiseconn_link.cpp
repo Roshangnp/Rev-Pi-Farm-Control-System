@@ -306,7 +306,7 @@ bool wiseconn_link::readZoneOn(const std::string& zone_id, bool& on) const {
     bool found = false, any_on = false;
     for (const hydraulic& h : hydraulics_) {
         if (h.type != "Valve" || std::find(h.zone_ids.begin(), h.zone_ids.end(), zone_id) == h.zone_ids.end()) continue;
-        if (h.status == "On") any_on = true;
+        if (h.status == "On" || h.status == "Operating") any_on = true;   // a running valve says "Operating"
         else if (h.status != "Off") return false;   // unknown status: don't guess
         found = true;
     }

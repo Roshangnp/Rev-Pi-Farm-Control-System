@@ -26,7 +26,7 @@
 // keeps the old values; they just age out.
 //
 // Irrigation zones: once watchHydraulics() is called, each poll also fetches
-// GET /farms/<farm_id>/hydraulics (every valve with its live "On"/"Off" status
+// GET /farms/<farm_id>/hydraulics (every valve with its live status: "Operating" (running) or "Off"
 // and the zones it feeds, one request for the whole farm). That list has no
 // timestamps, so it counts as current for 3 poll intervals (at least 3 min)
 // after the last good fetch.
