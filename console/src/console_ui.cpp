@@ -536,7 +536,7 @@ Components console_ui::loadRows(int width) {
 Element console_ui::roStatus(bool with_settling) {
     RO_state state = RO_state::OFF;
     bool state_ok = farm_.ro.readState(state);
-    Element state_text = state_ok ? text(toString(state)) | color(Color::Green) | bold : text("---") | color(Color::Red);
+    Element state_text = state_ok ? text(toString(state)) | color(state == RO_state::OFF ? Color::Yellow : Color::Green) | bold : text("---") | color(Color::Red);
 
     bool running = false;
     procedure_types p = procedure_types::LOW_PH_CIP_CYCLE;
