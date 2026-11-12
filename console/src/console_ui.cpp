@@ -55,6 +55,11 @@ Element reading(bool ok, const std::string& value, Color good = Color::Green) {
     return e | align_right | size(WIDTH, EQUAL, VALUE_WIDTH);
 }
 
+// An on/off reading: green when on, yellow when off, red "---" if the read failed
+Element onOffReading(bool ok, bool on, const std::string& on_text, const std::string& off_text) {
+    return reading(ok, on ? on_text : off_text, on ? Color::Green : Color::Yellow);
+}
+
 // Label width for a tile: the longest label plus a space
 template <typename row>
 int labelWidth(const std::vector<row>& rows) {
@@ -79,7 +84,7 @@ Element floatList(std::vector<float_row>& rows, int width) {
         bool submerged = false;
         bool ok = r.read(submerged);
         lines.push_back(hbox({label(r.label, width),
-                              reading(ok, submerged ? "SUBMERGED" : "dry", submerged ? Color::Green : Color::Red)}));
+                              onOffReading(ok, submerged, "SUBMERGED", "dry")}));
     }
     return vbox(lines);
 }
@@ -482,7 +487,7 @@ Components console_ui::pumpRows(std::vector<pump_row>& pumps, int width) {
             } else {
                 bool on = false;
                 bool ok = device->readOn(on);
-                e.push_back(reading(ok, on ? "ON" : "off"));
+                e.push_back(onOffReading(ok, on, "ON", "off"));
                 e.push_back(text("  "));
                 e.push_back(buttons->Render());
             }
@@ -520,7 +525,7 @@ Components console_ui::loadRows(int width) {
         rows.push_back(Renderer(buttons, [&l, device, buttons, width] {
             bool on = false;
             bool ok = device->readOn(on);
-            return hbox({label(l.label, width), reading(ok, on ? "ON" : "off"),
+            return hbox({label(l.label, width), onOffReading(ok, on, "ON", "off"),
                          text("  "), buttons->Render()});
         }));
     }
@@ -538,7 +543,7 @@ Element console_ui::roStatus(bool with_settling) {
     bool procedure_ok = farm_.ro_procedures.readProcedure(running, p);
     Element procedure_text = !procedure_ok ? text("---") | color(Color::Red)
                            : running ? text(toString(p)) | color(Color::Green) | bold
-                           : text("none") | color(Color::Green);
+                           : text("none") | color(Color::Yellow);
 
     Elements lines = {
         hbox({shortLabel("RO state"), state_text}),
@@ -547,7 +552,7 @@ Element console_ui::roStatus(bool with_settling) {
     if (with_settling) {
         bool settling = false;
         bool ok = farm_.ro.isSettling(settling);
-        Element settling_text = ok ? text(settling ? "valves settling" : "no") | color(Color::Green) : text("---") | color(Color::Red);
+        Element settling_text = ok ? text(settling ? "valves settling" : "no") | color(settling ? Color::Green : Color::Yellow) : text("---") | color(Color::Red);
         lines.push_back(hbox({shortLabel("Settling"), settling_text}));
     }
     return vbox(lines);
@@ -643,7 +648,7 @@ Component console_ui::roDashboard() {
             for (toggle_row& t : farm_.toggles) {   // panel switches
                 bool on = false;
                 bool ok = t.read(on);
-                lines.push_back(hbox({label(t.label, labelWidth(farm_.toggles)), reading(ok, on ? "ON" : "off")}));
+                lines.push_back(hbox({label(t.label, labelWidth(farm_.toggles)), onOffReading(ok, on, "ON", "off")}));
             }
             return vbox(lines);
         }),
@@ -667,7 +672,7 @@ Components console_ui::valveRows(int width) {
         rows.push_back(Renderer(buttons, [&v, device, buttons, width] {
             bool open = false;
             bool ok = device->readOpen(open);
-            return hbox({label(v.label, width), reading(ok, open ? "OPEN" : "closed"),
+            return hbox({label(v.label, width), onOffReading(ok, open, "OPEN", "closed"),
                          text("  "), buttons->Render()});
         }));
     }
