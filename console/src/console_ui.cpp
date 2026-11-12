@@ -50,15 +50,17 @@ Element shortLabel(const std::string& text_value) {
 }
 
 // A read value (green), or a red "---" if the read failed (owner down, stale, broken wire)
-Element reading(bool ok, const std::string& value, Color good = Color::Green) {
+Element reading(bool ok, const std::string& value, Color good = Color::Green, int width = VALUE_WIDTH) {
     Element e = ok ? text(value) | color(good) : text("---") | color(Color::Red);
-    return e | align_right | size(WIDTH, EQUAL, VALUE_WIDTH);
+    return e | align_right | size(WIDTH, EQUAL, width);
 }
 
 // An on/off reading: green when on, yellow when off, red "---" if the read failed
-Element onOffReading(bool ok, bool on, const std::string& on_text, const std::string& off_text) {
-    return reading(ok, on ? on_text : off_text, on ? Color::Green : Color::Yellow);
+Element onOffReading(bool ok, bool on, const std::string& on_text, const std::string& off_text,
+                     int width = VALUE_WIDTH) {
+    return reading(ok, on ? on_text : off_text, on ? Color::Green : Color::Yellow, width);
 }
+
 
 // Label width for a tile: the longest label plus a space
 template <typename row>
@@ -87,6 +89,22 @@ Element floatList(std::vector<float_row>& rows, int width) {
                               onOffReading(ok, submerged, "SUBMERGED", "dry")}));
     }
     return vbox(lines);
+}
+
+// WiseConn irrigation zones, ON/off, in two columns so the tile fits at 80x24
+Element irrigationList(std::vector<irrigation_row>& rows) {
+    int width = labelWidth(rows);
+    auto column = [&](size_t from, size_t to) {
+        Elements lines;
+        for (size_t i = from; i < to; ++i) {
+            bool on = false;
+            bool ok = rows[i].device->readOn(on);
+            lines.push_back(hbox({label(rows[i].label, width), onOffReading(ok, on, "ON", "off", 3)}));
+        }
+        return vbox(lines);
+    };
+    size_t half = (rows.size() + 1) / 2;
+    return hbox({column(0, half), text("   "), column(half, rows.size())});
 }
 
 // ---- Arrow keys by screen position ----
@@ -617,8 +635,8 @@ Component console_ui::procedureButtons() {
     });
 }
 
-// RO state and procedure, water tank floats and levels, the upper tank pumps.
-// TODO: WiseConn irrigation tiles
+// RO state and procedure, water tank floats and levels, the upper tank pumps,
+// the WiseConn irrigation zones (read only)
 Component console_ui::mainDashboard() {
     auto water_width = labelWidth(farm_.water_floats);
     auto level_width = labelWidth(farm_.tank_levels);
@@ -628,6 +646,7 @@ Component console_ui::mainDashboard() {
         readTile(*nav_, "Water tank floats", [this, water_width] { return floatList(farm_.water_floats, water_width); }),
         readTile(*nav_, "Water levels", [this, level_width] { return sensorList(farm_.tank_levels, 2, level_width); }),
         controlTile(*nav_, "Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),
+        readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
     });
 }
 
