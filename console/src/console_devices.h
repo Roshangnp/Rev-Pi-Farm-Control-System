@@ -88,4 +88,5 @@ class console_devices{
     std::vector<toggle_row> toggles;           // panel switches, on the RO tab
     std::vector<irrigation_row> irrigations;   // WiseConn zones, Main-Dashboard
     std::vector<soil_row> soil_probes;         // WiseConn soil probes, Main-Dashboard
+    std::vector<sensor_row> wiseconn_flows;    // WiseConn flow meters, Main-Dashboard
 };

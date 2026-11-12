@@ -8,6 +8,7 @@
 #include "devices/wiseconn_devices/wiseconn_link.h"
 #include "devices/wiseconn_devices/wiseconn_soil_sensor.h"
 #include "devices/wiseconn_devices/wiseconn_irrigation.h"
+#include "devices/wiseconn_devices/wiseconn_flow_sensor.h"
 #include "wiseconn_keys_text.h"
 #include "devices/remote_devices/device_server.h"
 
@@ -68,6 +69,14 @@ wiseconn_irrigation wiseconn_overhead_4(wiseconn, "overhead_4", wiseconn_config.
 wiseconn_irrigation wiseconn_overhead_5(wiseconn, "overhead_5", wiseconn_config.irrigation("overhead_5"));
 wiseconn_irrigation wiseconn_overhead_6(wiseconn, "overhead_6", wiseconn_config.irrigation("overhead_6"));
 wiseconn_irrigation wiseconn_city_water_fill_valve(wiseconn, "city_water_fill_valve", wiseconn_config.irrigation("city_water_fill_valve"));
+// Flow meters (gal/min)
+wiseconn_flow_sensor wiseconn_main_flow(wiseconn, wiseconn_config.flow("main_flow"));
+wiseconn_flow_sensor wiseconn_city_water_flow(wiseconn, wiseconn_config.flow("city_water_flow"));
+wiseconn_flow_sensor wiseconn_well_1_flow(wiseconn, wiseconn_config.flow("well_1_flow"));
+wiseconn_flow_sensor wiseconn_well_2_flow(wiseconn, wiseconn_config.flow("well_2_flow"));
+wiseconn_flow_sensor wiseconn_well_3_flow(wiseconn, wiseconn_config.flow("well_3_flow"));
+wiseconn_flow_sensor wiseconn_well_4_flow(wiseconn, wiseconn_config.flow("well_4_flow"));
+wiseconn_flow_sensor wiseconn_well_5_flow(wiseconn, wiseconn_config.flow("well_5_flow"));
 
 }  // namespace
 
@@ -99,6 +108,13 @@ irrigation& overhead_4 = wiseconn_overhead_4;
 irrigation& overhead_5 = wiseconn_overhead_5;
 irrigation& overhead_6 = wiseconn_overhead_6;
 irrigation& city_water_fill_valve = wiseconn_city_water_fill_valve;
+flow_sensor& main_flow = wiseconn_main_flow;
+flow_sensor& city_water_flow = wiseconn_city_water_flow;
+flow_sensor& well_1_flow = wiseconn_well_1_flow;
+flow_sensor& well_2_flow = wiseconn_well_2_flow;
+flow_sensor& well_3_flow = wiseconn_well_3_flow;
+flow_sensor& well_4_flow = wiseconn_well_4_flow;
+flow_sensor& well_5_flow = wiseconn_well_5_flow;
 
 bool addWiseconnDevices(device_server& devices) {
     bool ok = true;
@@ -129,5 +145,12 @@ bool addWiseconnDevices(device_server& devices) {
     ok = devices.addDevice("overhead_5", overhead_5) && ok;
     ok = devices.addDevice("overhead_6", overhead_6) && ok;
     ok = devices.addDevice("city_water_fill_valve", city_water_fill_valve) && ok;
+    ok = devices.addDevice("main_flow", main_flow) && ok;
+    ok = devices.addDevice("city_water_flow", city_water_flow) && ok;
+    ok = devices.addDevice("well_1_flow", well_1_flow) && ok;
+    ok = devices.addDevice("well_2_flow", well_2_flow) && ok;
+    ok = devices.addDevice("well_3_flow", well_3_flow) && ok;
+    ok = devices.addDevice("well_4_flow", well_4_flow) && ok;
+    ok = devices.addDevice("well_5_flow", well_5_flow) && ok;
     return ok;
 }

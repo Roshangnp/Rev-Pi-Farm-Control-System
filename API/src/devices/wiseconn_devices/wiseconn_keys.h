@@ -4,7 +4,8 @@
 
 // Contents of wiseconn_keys.txt (repo root, git-ignored), built into the
 // program by CMake. Format: "key = value" lines, "#" starts a comment, an
-// "[irrigations]" section maps irrigation device names to WiseConn zone ids,
+// "[irrigations]" section maps irrigation device names to WiseConn zone ids, a
+// "[flows]" section maps flow meter device names to a zone id and measure id,
 // and any other "[name]" line starts a soil sensor section:
 //
 //   api_key = ...
@@ -23,12 +24,22 @@
 //
 //   [irrigations]
 //   valve_1_1 = 163746        (zone id, from GET /farms/<id>/zones)
+//
+//   [flows]
+//   main_flow = 163746, 1-417664   (zone id, measure id of a "Flow" measure in gal/min,
+//                                   from GET /farms/<id>/measures; the zone is polled for it)
 struct wiseconn_soil_ids{
     std::string name;
     std::string zone_id;
     std::vector<std::string> moisture;     // WiseConn measure ids, shallowest first
     std::vector<std::string> etc;
     std::vector<std::string> temperature;
+};
+
+struct wiseconn_flow_ids{
+    std::string name;
+    std::string zone_id;      // polled with GET /zones/<id>/measures
+    std::string measure_id;   // the flow measure (gal/min)
 };
 
 struct wiseconn_keys{
@@ -41,11 +52,14 @@ struct wiseconn_keys{
     int max_age_minutes = 45;
     std::vector<wiseconn_soil_ids> soil_sensors;
     std::vector<std::pair<std::string, std::string>> irrigations;   // name -> zone id
+    std::vector<wiseconn_flow_ids> flows;
 
     // The [name] section, or an empty entry (no ids) if it isn't there
     wiseconn_soil_ids soil(const std::string& name) const;
     // Zone id of an irrigation in [irrigations], or "" if it isn't there
     std::string irrigation(const std::string& name) const;
+    // A flow meter in [flows], or an empty entry (no ids) if it isn't there
+    wiseconn_flow_ids flow(const std::string& name) const;
 };
 
 // False (and error set, with the line number) on a malformed file. Every soil

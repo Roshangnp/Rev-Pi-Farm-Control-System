@@ -130,6 +130,13 @@ remote_irrigation remote_overhead_4(wiseconn_main, "overhead_4");
 remote_irrigation remote_overhead_5(wiseconn_main, "overhead_5");
 remote_irrigation remote_overhead_6(wiseconn_main, "overhead_6");
 remote_irrigation remote_city_water_fill_valve(wiseconn_main, "city_water_fill_valve");
+remote_flow_sensor remote_main_flow(wiseconn_main, "main_flow");
+remote_flow_sensor remote_city_water_flow(wiseconn_main, "city_water_flow");
+remote_flow_sensor remote_well_1_flow(wiseconn_main, "well_1_flow");
+remote_flow_sensor remote_well_2_flow(wiseconn_main, "well_2_flow");
+remote_flow_sensor remote_well_3_flow(wiseconn_main, "well_3_flow");
+remote_flow_sensor remote_well_4_flow(wiseconn_main, "well_4_flow");
+remote_flow_sensor remote_well_5_flow(wiseconn_main, "well_5_flow");
 
 }  // namespace
 
@@ -208,6 +215,13 @@ irrigation& overhead_4 = remote_overhead_4;
 irrigation& overhead_5 = remote_overhead_5;
 irrigation& overhead_6 = remote_overhead_6;
 irrigation& city_water_fill_valve = remote_city_water_fill_valve;
+flow_sensor& main_flow = remote_main_flow;
+flow_sensor& city_water_flow = remote_city_water_flow;
+flow_sensor& well_1_flow = remote_well_1_flow;
+flow_sensor& well_2_flow = remote_well_2_flow;
+flow_sensor& well_3_flow = remote_well_3_flow;
+flow_sensor& well_4_flow = remote_well_4_flow;
+flow_sensor& well_5_flow = remote_well_5_flow;
 
 // Nothing wired here
 bool attachAllInterfaces() {

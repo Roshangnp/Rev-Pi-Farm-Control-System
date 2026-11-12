@@ -687,6 +687,7 @@ Component console_ui::procedureButtons() {
 Component console_ui::mainDashboard() {
     auto water_width = labelWidth(farm_.water_floats);
     auto level_width = labelWidth(farm_.tank_levels);
+    auto flow_width = labelWidth(farm_.wiseconn_flows);
     nav_ = std::make_shared<nav_map>();
     return dashboardOf({
         controlTile(*nav_, "RO", procedureButtons(), [this] { return roStatus(false); }),
@@ -695,6 +696,7 @@ Component console_ui::mainDashboard() {
         controlTile(*nav_, "Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),
         readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
         readTile(*nav_, "Soil probes (WiseConn)", [this] { return soilTable(farm_.soil_probes); }),
+        readTile(*nav_, "Flow meters (WiseConn)", [this, flow_width] { return sensorList(farm_.wiseconn_flows, 1, flow_width); }),
     });
 }
 

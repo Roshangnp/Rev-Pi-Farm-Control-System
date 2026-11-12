@@ -94,10 +94,11 @@ over HaLow). The RO RevPi's snapshot is about 3 KB, so each client polling it us
 Devices on the farm's WiseConn irrigation system, read from its cloud API
 (`https://apiv2.wiseconn.com`, `api_key` header). Polling only sends GET requests; the only
 calls that change anything are the two `scheduleIrrigation` overloads, which start real
-irrigations on the live system. Compiled only with `-DDEVICE_CONFIG=host_pc` (needs internet), bound in
-`config_host_pc.cpp`: soil probes `zone_7_soil`, `zone_8_soil`, `zone_10_3_soil`, and 24
-irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
-`city_water_fill_valve`.
+irrigations on the live system. Built into every config and bound once in
+`API/src/config/wiseconn_farm_devices.cpp` (needs internet): soil probes `zone_7_soil`,
+`zone_8_soil`, `zone_10_3_soil`, 24 irrigation zones `valve_1_1` ... `valve_10_3`,
+`overhead_1` ... `overhead_6`, `city_water_fill_valve`, and 7 flow meters `main_flow`,
+`city_water_flow`, `well_1_flow` ... `well_5_flow`.
 
 - `wiseconn_link` - one per account. A background thread fetches `GET /zones/<id>/measures`
   for each registered zone every `poll_seconds` (default 60; one HTTPS request per zone, about
@@ -111,6 +112,10 @@ irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
   WiseConn's raw "VIC" units, not uS/cm) and `readTemperature` (deg F), one value per depth,
   shallowest first (4, 8, 12 in). A read fails, leaving the vector unchanged, unless every depth
   is current.
+- `wiseconn_flow_sensor` - one per flow meter (implements `flow_sensor`): `readFlow` (gal/min) is
+  the latest value of its "Flow" measure, from its zone's poll. WiseConn updates them about every
+  5 min; a read fails once the value is older than `max_age_minutes` (Well #2's meter has sent
+  nothing since 2026-09-04, so it always fails). `update()` does nothing (WiseConn computes it).
 - `wiseconn_irrigation` - one per WiseConn irrigation zone (implements `irrigation`).
   `readOn` is true while the zone's valve is "On" in `GET /farms/<farm_id>/hydraulics` (one
   request per poll for every valve; anything but On/Off fails). That list has no timestamps, so
@@ -127,7 +132,8 @@ irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
 - `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
   `time_zone`, optional `base_url` / `poll_seconds` / `hydraulics_poll_seconds` / `max_age_minutes`, then one `[name]`
   section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`,
-  and an `[irrigations]` section of `name = zone id`.
+  an `[irrigations]` section of `name = zone id`, and a `[flows]` section of
+  `name = zone id, measure id`.
   CMake builds the file in as text (`build/generated/wiseconn/`); missing or malformed: the
   devices are off and reads fail, the program still runs.
 - `wiseconn_json` - minimal JSON parser (no JSON library on these machines).
@@ -139,7 +145,9 @@ read as local time. The machine running it must be in the farm's time zone; a mi
 Finding ids: `GET /farms` (farm id, time zone), `GET /farms/<id>/hydraulics` (valves, their
 status and the zones they feed; each irrigation zone here has exactly one valve),
 `GET /farms/<id>/zones`, then
-`GET /zones/<zone id>/measures` lists each measure's `id`, `name` and `sensorType`. In the
+`GET /zones/<zone id>/measures` lists each measure's `id`, `name` and `sensorType`.
+`GET /farms/<id>/measures` lists every measure on the farm (flow meters: `sensorType` "Flow",
+unit gal/min; the main meter is listed once per zone it feeds, with the same `id`). In the
 measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also has 16, 20 and
 24 in depths, not used.
 

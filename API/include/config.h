@@ -102,6 +102,17 @@ extern irrigation& overhead_5;
 extern irrigation& overhead_6;
 extern irrigation& city_water_fill_valve;
 
+// WiseConn flow meters (every config, wiseconn_farm_devices.cpp; read only): gal/min,
+// WiseConn updates them about every 5 min, a read fails once the value is 45 min old.
+// Zone and measure ids come from wiseconn_keys.txt [flows].
+extern flow_sensor& main_flow;
+extern flow_sensor& city_water_flow;
+extern flow_sensor& well_1_flow;
+extern flow_sensor& well_2_flow;
+extern flow_sensor& well_3_flow;
+extern flow_sensor& well_4_flow;
+extern flow_sensor& well_5_flow;
+
 // Test bench only (config_test, also on 192.168.1.20). It binds feed_pump,
 // inlet_valve and permeate_flow above to its example wiring, plus these:
 extern float_switch& feed_tank_float;

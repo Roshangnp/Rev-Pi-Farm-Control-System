@@ -223,6 +223,16 @@ console_devices::console_devices() {
         soilRow(DEVICE(zone_8_soil), {"4 in", "8 in", "12 in"}),
         soilRow(DEVICE(zone_10_3_soil), {"4 in", "8 in", "12 in"}),
     };
+
+    wiseconn_flows = {
+        flow(DEVICE(main_flow)),
+        flow(DEVICE(city_water_flow)),
+        flow(DEVICE(well_1_flow)),
+        flow(DEVICE(well_2_flow)),
+        flow(DEVICE(well_3_flow)),
+        flow(DEVICE(well_4_flow)),
+        flow(DEVICE(well_5_flow)),
+    };
 }
 
 bool console_devices::roUp() {
