@@ -14,6 +14,8 @@
 #include "devices/remote_devices/device_server.h"
 #include "wiseconn_farm_devices.h"
 #include "devices/remote_devices/remote_float_switch.h"
+#include "devices/remote_devices/remote_level_sensor.h"
+#include "devices/remote_devices/remote_pump.h"
 #include "remote_link.h"
 
 // ---------------------------------------------------------------------------
@@ -119,8 +121,12 @@ local_switch local_ro_toggle_switch(&ro_toggle_switch_input);
 // Devices owned by the upper tank RevPi
 remote_link upper_tank_revpi("192.168.1.21");
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
+remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
+remote_pump remote_irrigation_pump(upper_tank_revpi, "irrigation_pump");
+remote_pump remote_well_4_pump(upper_tank_revpi, "well_4_pump");
 
-// Shares the devices wired to this RevPi, and the WiseConn devices, with the other machines
+// Shares every device bound here (wired to this RevPi, the upper tank's, WiseConn)
+// with the other machines and local clients
 device_server devices;
 
 }  // namespace
@@ -139,6 +145,9 @@ float_switch& asa_tank_low_float = local_asa_tank_low_float;
 float_switch& permeate_tank_high_float = local_permeate_tank_high_float;
 float_switch& feed_tank_low_float = local_feed_tank_low_float;
 float_switch& upper_tank_high_float = remote_upper_tank_high_float;
+level_sensor& upper_tank_water_level = remote_upper_tank_water_level;
+pump& irrigation_pump = remote_irrigation_pump;
+pump& well_4_pump = remote_well_4_pump;
 pressure_transducer& media_outlet_pressure = local_media_outlet_pressure;
 pressure_transducer& media_inlet_pressure = local_media_inlet_pressure;
 pressure_transducer& concentrate_pressure = local_concentrate_pressure;
@@ -238,6 +247,10 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve)
            && devices.addDevice("repressure_toggle_switch", local_repressure_toggle_switch)
            && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch)
+           && devices.addDevice("upper_tank_high_float", upper_tank_high_float)
+           && devices.addDevice("upper_tank_water_level", upper_tank_water_level)
+           && devices.addDevice("irrigation_pump", irrigation_pump)
+           && devices.addDevice("well_4_pump", well_4_pump)
            && addWiseconnDevices(devices);
     return ok && devices.registerWith(server);
 }
