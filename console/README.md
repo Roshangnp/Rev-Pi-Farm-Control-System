@@ -57,21 +57,6 @@ Built with every `DEVICE_CONFIG` (it doesn't use the machine config): `cmake --b
 --target ro_console`. FTXUI (v6.1.9) is fetched by CMake on the first configure, so that needs
 internet access.
 
-## From any device (emerald-server)
-
-All on emerald-server, which the RevPis' firewalls already allow. Everyone attaches to the same
-tmux session (`farm`), so all viewers share one console and it keeps running when they leave.
-
-- **Browser:** `https://emerald-server.local:7681` (or `https://192.168.1.194:7681`). No login
-  for now. Self-signed certificate: the browser warns once.
-  Served by ttyd, `farm-console-web.service` (install steps at the top of the file).
-- **SSH:** `ssh -t emerald@emerald-server.local tmux new -A -s farm ~/tools/Rev-Pi-Farm-Control-System/build/ro_console`
-
-Leave with Ctrl+B then D (tmux detach) or close the tab/terminal. Ctrl+C quits the console for
-everyone (the next connection starts it again). Phones: landscape, 80 columns or more.
-No login: anyone who can reach emerald-server on port 7681 can switch pumps and valves
-(emerald-server has no firewall). See the service file to add a login back.
-
 ## HDMI screen on the RO RevPi
 
 `farm-console.service` runs it on tty1 (the HDMI console) and restarts it if it exits:
