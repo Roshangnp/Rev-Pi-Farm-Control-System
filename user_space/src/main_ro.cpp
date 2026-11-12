@@ -3,37 +3,28 @@
 #include "config.h"
 #include "line_server.h"
 #include "procedure_config.h"
-#include "remote_procedure/procedure_server.h"
 #include "ro_config.h"
 #include "scheduler.h"
 
 // This machine's one scheduler: procedures and user space schedule tasks on it.
 scheduler sched;
 
-// The RO procedures (CIP cycles, media backwash, empty feed tank), owned here and
-// run on sched. Declared after sched so it's destroyed first (its destructor
-// removes its tasks from sched). Bound to procedure_config.h's ro_procedure, so
-// every program reaches it the same way; served as "ro_procedure" in main().
-procedure ro_procedure_instance(sched);
-procedure_control& ro_procedure = ro_procedure_instance;
-
 namespace {
-
-// Only the RO procedures may run on ro_procedure (not e.g. a future repressure one)
-const std::vector<procedure_types> RO_PROCEDURE_TYPES = {
-    procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
-    procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK};
 
 // Moves the RO to OFF on the pass ro_procedure stops running (stopped, or its last
 // step ran). Only on that edge: a state set by hand while nothing runs (the
 // manual override) is left alone. To be replaced by procedure's planned on-stop hook.
 bool ro_procedure_was_running = false;
+procedure_types ro_procedure_last = procedure_types::LOW_PH_CIP_CYCLE;
 void offWhenROProcedureEnds() {
-    bool running = ro_procedure_instance.isRunning();
+    bool running = false;
+    procedure_types p;
+    if (!ro_procedure.readProcedure(running, p)) return;
+    if (running) ro_procedure_last = p;
     bool ended = ro_procedure_was_running && !running;
     ro_procedure_was_running = running;
     if (!ended) return;
-    std::fprintf(stderr, "RO procedure %s ended, moving the RO to OFF\n", toString(ro_procedure_instance.type()));
+    std::fprintf(stderr, "RO procedure %s ended, moving the RO to OFF\n", toString(ro_procedure_last));
     if (!setROState(RO_state::OFF)) std::fprintf(stderr, "RO procedure: moving the RO to OFF failed\n");
 }
 
@@ -67,8 +58,8 @@ int main() {
     }
     // Not fatal: the device server keeps running so the outputs can still be read and switched
     if (!addRO(server, sched)) std::fprintf(stderr, "RO controller failed to start cleanly\n");
-    procedure_server ro_procedure_server(ro_procedure_instance, "ro_procedure", RO_PROCEDURE_TYPES);
-    if (!ro_procedure_server.registerWith(server)) std::fprintf(stderr, "RO procedure server failed to register\n");
+    // This machine's procedures (ro_procedure), on sched
+    if (!addProcedures(server, sched)) std::fprintf(stderr, "Procedures failed to register\n");
     schedule_RO_operation();   // after addRO: the RO is OFF before any scheduled task can run
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");

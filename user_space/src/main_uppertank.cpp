@@ -1,6 +1,7 @@
 #include <cstdio>
 #include "config.h"
 #include "line_server.h"
+#include "procedure_config.h"
 #include "ro_config.h"
 #include "scheduler.h"
 
@@ -20,6 +21,7 @@ int main() {
         return 1;
     }
     if (!addRO(server, sched)) std::fprintf(stderr, "RO server failed to register\n");
+    addProcedures(server, sched);   // owns none here (ro_procedure is the RO RevPi's)
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");
         return 1;

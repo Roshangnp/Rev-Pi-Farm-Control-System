@@ -1,21 +1,28 @@
-# procedure (libprocedure.a): farm procedures (procedure), their server
-# (procedure_server) and client (remote_procedure). Same on every machine. The
-# procedure steps use config.h devices and the ro_config.h functions: only their
-# headers here; the program links the farm and ro (or farm_client and ro_client)
-# libraries that define them, so this library pulls in neither variant itself.
+# procedure (libprocedure.a): farm procedures for this machine. Machine specific,
+# like farm and ro: the procedure core (procedure, procedure_server,
+# remote_procedure) plus this machine's procedure config
+# (src/config/procedure_config_<DEVICE_CONFIG>.cpp: binds procedure_config.h's
+# instances, creates and serves the ones it owns in addProcedures()). A config
+# without a procedure config (test) gets only the core.
+# procedure_client (libprocedure_client.a), for ro_console: every instance as a
+# remote_procedure (src/config/procedure_client_config.cpp) on farm_client's
+# connections; nothing owned or served.
 set(procedure_dir ${CMAKE_CURRENT_LIST_DIR})
-add_library(procedure STATIC
+set(procedure_sources
     ${procedure_dir}/src/procedure.cpp
     ${procedure_dir}/src/remote_procedure/procedure_server.cpp
     ${procedure_dir}/src/remote_procedure/remote_procedure.cpp)
-target_include_directories(procedure PUBLIC ${procedure_dir}/include ${procedure_dir}/src
-                           PRIVATE ${CMAKE_SOURCE_DIR}/RO/include ${CMAKE_SOURCE_DIR}/API/include)
-target_link_libraries(procedure PUBLIC scheduler comms)
+set(procedure_config_file ${procedure_dir}/src/config/procedure_config_${DEVICE_CONFIG}.cpp)
+if(EXISTS ${procedure_config_file})
+    list(APPEND procedure_sources ${procedure_config_file})
+endif()
+add_library(procedure STATIC ${procedure_sources})
+target_include_directories(procedure PUBLIC ${procedure_dir}/include ${procedure_dir}/src)
+# The procedure steps use config.h devices and the ro_config.h functions
+target_link_libraries(procedure PUBLIC ro farm scheduler comms)
 
-# procedure_remote (libprocedure_remote.a): procedure_config.h's instances owned by
-# another machine, as remote_procedure on this machine's connection to the owner
-# (ro_revpi, from this machine's config). For programs that don't own them:
-# main_host_pc, main_uppertank, the console. Not for the RO RevPi's main_ro, which
-# owns ro_procedure.
-add_library(procedure_remote STATIC ${procedure_dir}/src/config/procedure_remote_config.cpp)
-target_link_libraries(procedure_remote PUBLIC procedure comms)
+add_library(procedure_client STATIC
+    ${procedure_dir}/src/remote_procedure/remote_procedure.cpp
+    ${procedure_dir}/src/config/procedure_client_config.cpp)
+target_include_directories(procedure_client PUBLIC ${procedure_dir}/include ${procedure_dir}/src)
+target_link_libraries(procedure_client PUBLIC farm_client scheduler comms)
