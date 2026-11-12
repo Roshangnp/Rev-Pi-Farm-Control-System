@@ -231,7 +231,8 @@ bool parseFarmTime(const std::string& text, std::chrono::system_clock::time_poin
 
 wiseconn_link::wiseconn_link(const wiseconn_keys& keys)
     : wiseconn_link(keys.api_key, keys.base_url, std::chrono::seconds(keys.poll_seconds),
-                    std::chrono::minutes(keys.max_age_minutes), keys.farm_id) {
+                    std::chrono::minutes(keys.max_age_minutes), keys.farm_id,
+                    std::chrono::seconds(keys.hydraulics_poll_seconds)) {
     std::string host = hostTimeZone();
     if (enabled() && !keys.time_zone.empty() && host != keys.time_zone) {
         std::fprintf(stderr, "wiseconn: this machine's time zone is \"%s\" but the farm's is \"%s\": "
@@ -241,9 +242,10 @@ wiseconn_link::wiseconn_link(const wiseconn_keys& keys)
 }
 
 wiseconn_link::wiseconn_link(std::string api_key, std::string base_url, std::chrono::seconds poll_interval,
-                             std::chrono::minutes max_age, std::string farm_id)
+                             std::chrono::minutes max_age, std::string farm_id,
+                             std::chrono::seconds hydraulics_interval)
     : api_key_(std::move(api_key)), base_url_(std::move(base_url)), poll_interval_(poll_interval),
-      max_age_(max_age), farm_id_(std::move(farm_id)) {
+      hydraulics_interval_(hydraulics_interval), max_age_(max_age), farm_id_(std::move(farm_id)) {
     while (!base_url_.empty() && base_url_.back() == '/') base_url_.pop_back();
     if (enabled()) worker_ = std::thread(&wiseconn_link::pollLoop, this);
 }
@@ -297,7 +299,7 @@ void wiseconn_link::watchHydraulics() {
 }
 
 std::chrono::steady_clock::duration wiseconn_link::hydraulicsMaxAge() const {
-    return std::max<std::chrono::steady_clock::duration>(3 * poll_interval_, std::chrono::minutes(3));
+    return std::max<std::chrono::steady_clock::duration>(3 * hydraulics_interval_, std::chrono::minutes(1));
 }
 
 bool wiseconn_link::readZoneOn(const std::string& zone_id, bool& on) const {
@@ -358,10 +360,15 @@ void wiseconn_link::pollLoop() {
     sigaddset(&pipe_signal, SIGPIPE);
     pthread_sigmask(SIG_BLOCK, &pipe_signal, nullptr);
 
+    // Wakes every hydraulics interval while valves are watched (else every poll
+    // interval): the valve list each time, the zone measures when they're due
     std::unique_lock<std::mutex> lock(mutex_);
+    auto zones_due = std::chrono::steady_clock::now();
     while (true) {
-        wake_.wait_for(lock, poll_interval_, [this] { return stopping_ || poll_now_; });
+        auto wait = hydraulics_wanted_ ? std::min(hydraulics_interval_, poll_interval_) : poll_interval_;
+        wake_.wait_for(lock, wait, [this] { return stopping_ || poll_now_; });
         if (stopping_) return;
+        bool poll_zones = poll_now_ || std::chrono::steady_clock::now() >= zones_due;
         poll_now_ = false;
         std::vector<std::string> zones = zones_;
         bool hydraulics = hydraulics_wanted_;
@@ -369,12 +376,15 @@ void wiseconn_link::pollLoop() {
 
         // Valves first: a status change matters sooner than 15-minute soil data
         if (hydraulics) pollHydraulics();
-        for (const std::string& zone : zones) {
-            {
-                std::lock_guard<std::mutex> check(mutex_);
-                if (stopping_) return;
+        if (poll_zones) {
+            zones_due = std::chrono::steady_clock::now() + poll_interval_;
+            for (const std::string& zone : zones) {
+                {
+                    std::lock_guard<std::mutex> check(mutex_);
+                    if (stopping_) return;
+                }
+                pollZone(zone);
             }
-            pollZone(zone);
         }
 
         lock.lock();

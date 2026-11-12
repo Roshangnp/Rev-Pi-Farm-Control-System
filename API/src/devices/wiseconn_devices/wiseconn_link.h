@@ -25,11 +25,13 @@
 // the default 45 min allows two missed reports before reads fail. A failed poll
 // keeps the old values; they just age out.
 //
-// Irrigation zones: once watchHydraulics() is called, each poll also fetches
+// Irrigation zones: once watchHydraulics() is called, the thread also fetches
 // GET /farms/<farm_id>/hydraulics (every valve with its live status: "Operating" (running) or "Off"
-// and the zones it feeds, one request for the whole farm). That list has no
-// timestamps, so it counts as current for 3 poll intervals (at least 3 min)
-// after the last good fetch.
+// and the zones it feeds, one request for the whole farm) every hydraulics
+// interval (default 10 s, much more often than the soil measures, so a zone
+// starting or stopping shows within seconds of WiseConn knowing). That list has
+// no timestamps, so it counts as current for 3 hydraulics intervals (at least
+// 1 min) after the last good fetch.
 //
 // Polling only sends GET requests. The two createIrrigation calls are the only
 // ones that change anything on WiseConn: each sends one POST /irrigations
@@ -39,7 +41,8 @@ class wiseconn_link{
     public:
     explicit wiseconn_link(const wiseconn_keys& keys);
     wiseconn_link(std::string api_key, std::string base_url, std::chrono::seconds poll_interval,
-                  std::chrono::minutes max_age, std::string farm_id = "");
+                  std::chrono::minutes max_age, std::string farm_id = "",
+                  std::chrono::seconds hydraulics_interval = std::chrono::seconds(10));
     ~wiseconn_link();
 
     wiseconn_link(const wiseconn_link&) = delete;
@@ -88,7 +91,8 @@ class wiseconn_link{
 
     std::string api_key_;
     std::string base_url_;
-    std::chrono::seconds poll_interval_;
+    std::chrono::seconds poll_interval_;          // zone measures
+    std::chrono::seconds hydraulics_interval_;    // valve list
     std::chrono::minutes max_age_;
     std::string farm_id_;
 
@@ -101,7 +105,7 @@ class wiseconn_link{
     int hydraulics_ok_ = -1;                       // last poll result (-1 = none yet), to log only changes
     struct hydraulic{
         std::string type;                  // "Valve", "Pump", ...
-        std::string status;                // "On" / "Off"
+        std::string status;                // "Operating" (running) / "Off"
         std::vector<std::string> zone_ids;
     };
     std::vector<hydraulic> hydraulics_;

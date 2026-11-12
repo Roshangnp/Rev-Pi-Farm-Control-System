@@ -101,6 +101,8 @@ bool parseWiseconnKeys(const std::string& text, wiseconn_keys& keys, std::string
             else if (key == "base_url") keys.base_url = value;
             else if (key == "poll_seconds") {
                 if (!parseInt(value, keys.poll_seconds)) return bad("poll_seconds must be a positive number");
+            } else if (key == "hydraulics_poll_seconds") {
+                if (!parseInt(value, keys.hydraulics_poll_seconds)) return bad("hydraulics_poll_seconds must be a positive number");
             } else if (key == "max_age_minutes") {
                 if (!parseInt(value, keys.max_age_minutes)) return bad("max_age_minutes must be a positive number");
             } else return bad("unknown key " + key);

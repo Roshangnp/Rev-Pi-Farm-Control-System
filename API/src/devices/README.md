@@ -102,7 +102,9 @@ irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
 - `wiseconn_link` - one per account. A background thread fetches `GET /zones/<id>/measures`
   for each registered zone every `poll_seconds` (default 60; one HTTPS request per zone, about
   1 s each, made with the `curl` program, key passed on stdin) and caches every measure. Reads
-  only look at the cache (microseconds). A value counts while WiseConn's `lastDataDate` is within
+  only look at the cache (microseconds). Once a zone's on/off is wanted it also fetches the farm's
+  valve list every `hydraulics_poll_seconds` (default 10), so a zone starting or stopping shows
+  within about 10 s of WiseConn knowing; a failed fetch keeps the old list for at most 1 min. A value counts while WiseConn's `lastDataDate` is within
   `max_age_minutes` (default 45; soil data arrives every 15 min). Failed polls keep old values,
   which then age out; poll failures and recoveries are logged once each.
 - `wiseconn_soil_sensor` - one per probe: `readMoisture` (%), `readETC` (EC/salinity in
@@ -120,10 +122,10 @@ irrigation zones `valve_1_1` ... `valve_10_3`, `overhead_1` ... `overhead_6`,
   refused without contacting WiseConn. Each call blocks until WiseConn answers (about 1 s, at
   most 20 s), is never retried (no double scheduling), returns true only on a 2xx, and logs
   WiseConn's reply; a timeout means it may or may not have been created. After a success the
-  link polls again at once so `readOn` catches up. Only "Off" has been seen so far (no zone ran while this was written).
+  link polls again at once so `readOn` catches up. A running valve's status is "Operating" (counted as on), a stopped one "Off".
   (The deprecated web UI showed each zone as a read-only "on" indicator; nothing shows them now.)
 - `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
-  `time_zone`, optional `base_url` / `poll_seconds` / `max_age_minutes`, then one `[name]`
+  `time_zone`, optional `base_url` / `poll_seconds` / `hydraulics_poll_seconds` / `max_age_minutes`, then one `[name]`
   section per probe with `zone_id` and the measure ids for `moisture`, `etc` and `temperature`,
   and an `[irrigations]` section of `name = zone id`.
   CMake builds the file in as text (`build/generated/wiseconn/`); missing or malformed: the
