@@ -162,6 +162,7 @@ class console_ui{
     // RO pieces, shared by both dashboards and the RO-Control tab
     Element roStatus(bool with_settling);
     Component procedureControls();
+    Component procedureButtons();
     Component stateControls(const std::string& row_label);
     Component onOffButtons(const std::string& name, std::function<bool()> on, std::function<bool()> off,
                            const std::string& on_word = "On", const std::string& off_word = "Off");
@@ -346,13 +347,42 @@ Component console_ui::stateControls(const std::string& row_label) {
     });
 }
 
+// One Start button per procedure plus one Stop (Main-Dashboard): no dropdown,
+// each press asks Yes/No. The running procedure is marked
+Component console_ui::procedureButtons() {
+    Components buttons;
+    for (procedure_types p : ALL_PROCEDURE_TYPES) {
+        buttons.push_back(Button("Start " + std::string(toString(p)), [this, p] {
+            ask("Start " + std::string(toString(p)) + "?", [this, p] { return farm_.ro_procedures.run(p); });
+        }, ButtonOption::Ascii()));
+    }
+    auto stop_button = Button("Stop", [this] {
+        ask("Stop the running procedure (the RO goes OFF)?", [this] { return farm_.ro_procedures.stop(); });
+    }, ButtonOption::Ascii());
+    Components all = buttons;
+    all.push_back(stop_button);
+    auto list = Container::Vertical(all);
+    return Renderer(list, [this, buttons, stop_button] {
+        bool running = false;
+        procedure_types current = procedure_types::LOW_PH_CIP_CYCLE;
+        bool ok = farm_.ro_procedures.readProcedure(running, current);
+        Elements lines;
+        for (size_t i = 0; i < buttons.size(); ++i) {
+            bool this_one = ok && running && current == ALL_PROCEDURE_TYPES[i];
+            lines.push_back(hbox({buttons[i]->Render(), this_one ? text("  running") | color(Color::Green) | bold : text("")}));
+        }
+        lines.push_back(stop_button->Render());
+        return vbox(lines);
+    });
+}
+
 // RO state and procedure, water tank floats and levels, the upper tank pumps.
 // TODO: WiseConn irrigation tiles
 Component console_ui::mainDashboard() {
     auto water_width = labelWidth(farm_.water_floats);
     auto level_width = labelWidth(farm_.tank_levels);
     return dashboard({
-        controlTile("RO", procedureControls(), [this] { return roStatus(false); }),
+        controlTile("RO", procedureButtons(), [this] { return roStatus(false); }),
         readTile("Water tank floats", [this, water_width] { return floatList(farm_.water_floats, water_width); }),
         readTile("Water levels", [this, level_width] { return sensorList(farm_.tank_levels, 2, level_width); }),
         controlTile("Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),

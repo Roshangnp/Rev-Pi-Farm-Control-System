@@ -16,7 +16,7 @@ On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when th
 
 | Tab | Shows |
 |---|---|
-| Main-Dashboard | tiles: RO state, running procedure, run/stop a procedure; water tank floats; water levels; well 4 and irrigation pumps (WiseConn to come) |
+| Main-Dashboard | tiles: RO state, running procedure, a Start button per procedure and one Stop; water tank floats; water levels; well 4 and irrigation pumps (WiseConn to come) |
 | RO-Dashboard | tiles: RO control (as on Main-Dashboard plus settling, panel toggle switches and a state override), chemical tank floats, pressures, flows, conductivity (TDS), RO pumps, CIP heater (switch + CIP temp), valves |
 
 Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
