@@ -1,4 +1,5 @@
 #include "console_ui.h"
+#include "procedure_config.h"
 #include "ro_config.h"
 
 #include <algorithm>
@@ -604,7 +605,7 @@ Element console_ui::roStatus(bool with_settling) {
 
     bool running = false;
     procedure_types p = procedure_types::LOW_PH_CIP_CYCLE;
-    bool procedure_ok = readROProcedure(running, p);
+    bool procedure_ok = ro_procedure.readProcedure(running, p);
     Element procedure_text = !procedure_ok ? text("---") | color(Color::Red)
                            : running ? text(toString(p)) | color(Color::Green) | bold
                            : text("none") | color(Color::Yellow);
@@ -626,10 +627,10 @@ Component console_ui::procedureControls() {
     auto list = dropdown(&procedures_, &procedure_selected_);
     auto run_button = button("Run", [this] {
         procedure_types p = ALL_PROCEDURE_TYPES[procedure_selected_];
-        ask("Run " + std::string(toString(p)) + "?", [this, p] { return runROProcedure(p); });
+        ask("Run " + std::string(toString(p)) + "?", [this, p] { return ro_procedure.run(p); });
     });
     auto stop_button = button("Stop", [this] {
-        ask("Stop the running procedure (the RO goes OFF)?", [this] { return stopROProcedure(); });
+        ask("Stop the running procedure (the RO goes OFF)?", [this] { return ro_procedure.stop(); });
     });
     auto row = Container::Horizontal({list, run_button, stop_button});
     return Renderer(row, [list, run_button, stop_button] {
@@ -658,11 +659,11 @@ Component console_ui::procedureButtons() {
     Components buttons;
     for (procedure_types p : ALL_PROCEDURE_TYPES) {
         buttons.push_back(button("Start " + std::string(toString(p)), [this, p] {
-            ask("Start " + std::string(toString(p)) + "?", [this, p] { return runROProcedure(p); });
+            ask("Start " + std::string(toString(p)) + "?", [this, p] { return ro_procedure.run(p); });
         }));
     }
     auto stop_button = button("Stop", [this] {
-        ask("Stop the running procedure (the RO goes OFF)?", [this] { return stopROProcedure(); });
+        ask("Stop the running procedure (the RO goes OFF)?", [this] { return ro_procedure.stop(); });
     });
     Components all = buttons;
     all.push_back(stop_button);
@@ -670,7 +671,7 @@ Component console_ui::procedureButtons() {
     return Renderer(list, [this, buttons, stop_button] {
         bool running = false;
         procedure_types current = procedure_types::LOW_PH_CIP_CYCLE;
-        bool ok = readROProcedure(running, current);
+        bool ok = ro_procedure.readProcedure(running, current);
         Elements lines;
         for (size_t i = 0; i < buttons.size(); ++i) {
             bool this_one = ok && running && current == ALL_PROCEDURE_TYPES[i];

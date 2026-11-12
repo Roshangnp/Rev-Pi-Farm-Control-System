@@ -3,16 +3,12 @@
 #include <chrono>
 
 #include "config.h"
-#include "procedure.h"   // procedure/include
-#include "scheduler.h"
 #include "types.h"
 
 class ro{
     public:
-    // Starts in RO_state::OFF without touching any outputs. sched is the
-    // machine's one scheduler (owned by main, which runs its update()); procedures
-    // are scheduled on it, so it must outlive this ro
-    explicit ro(scheduler& sched);
+    // Starts in RO_state::OFF without touching any outputs
+    ro();
     // Drives the outputs to the OFF state (pumps off, then valves closed)
     ~ro();
 
@@ -53,18 +49,10 @@ class ro{
     // failures show in update()
     bool setState(RO_state s);
 
-    // Call every loop pass. Moves to OFF when a procedure has just ended (see
-    // offWhenProcedureEnds), moves the valves once stopped pumps have had
+    // Call every loop pass. Moves the valves once stopped pumps have had
     // PUMP_STOP_MS, and starts the pending pumps once the valves have had
-    // VALVE_SETTLE_MS. False if moving to OFF, a valve or starting a pump
-    // failed. (Procedure steps run in the scheduler's update(), called by main.)
+    // VALVE_SETTLE_MS. False if a valve or starting a pump failed.
     bool update();
-
-    // The RO's procedure instance (CIP cycles, media backwash, empty feed tank):
-    // run / stop / isRunning / type. Served to other machines by a
-    // procedure_server ("ro_procedure", ro_config_ro.cpp). When it stops or
-    // finishes, update() moves the RO to OFF
-    procedure& procedures() { return procedure_; }
 
     // True while a state change is in progress: pumps stopping (phase 2) or
     // valves settling (phase 4)
@@ -77,22 +65,15 @@ class ro{
     bool setRoSpeed(float speed);
 
     private:
-    // Moves to OFF on the pass a procedure stops running (stopped, or its last
-    // step ran). Only on that edge: a state set by hand while nothing is running
-    // (the manual override) is left alone. True if nothing ended or OFF succeeded
-    bool offWhenProcedureEnds();
     // Phases 3+4: opens then closes the valves of current_state_, then schedules
     // its pumps after VALVE_SETTLE_MS (none if a valve failed). False if a valve failed
     bool moveValves();
     bool applyValveState();   // valvesFor(current_state_): open first, then close
 
-    scheduler& scheduler_;                                // the machine's scheduler (owned by main)
-    procedure procedure_;                                 // runs the RO procedures, one at a time (its destructor removes its tasks from scheduler_). Its steps go through ro_config.h (setROState), i.e. the ro created by addRO, which is this one
     RO_state current_state_;
     bool valves_pending_ = false;                         // phase 2: valves wait for stopped pumps to spin down
     std::chrono::steady_clock::time_point pumps_stopped_at_; // when setState() last stopped a running pump
     bool pumps_pending_ = false;                          // phase 4: pumps of current_state_ still to start
     std::chrono::steady_clock::time_point valves_set_at_; // when setState() moved the valves
     heater_state heater_active_ = false;
-    bool procedure_was_running_ = false;                  // procedure_.isRunning() on the previous update()
 };

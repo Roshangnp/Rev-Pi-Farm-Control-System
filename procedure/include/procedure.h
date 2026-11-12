@@ -5,7 +5,7 @@
 
 #include "scheduler.h"
 
-// Every farm procedure, run by a procedure instance (the RO ones by ro's, served as "ro_procedure")
+// Every farm procedure, run by a procedure instance (the RO ones by main_ro's ro_procedure)
 enum class procedure_types {
     LOW_PH_CIP_CYCLE,
     HIGH_PH_CIP_CYCLE,
@@ -66,8 +66,28 @@ inline bool fromString(const std::string& text, procedure_types& p) {
 #define MEDIA_BACKWASH_TIME_MIN 2
 #endif
 
+// A procedure instance as every program sees it, like the device base classes in
+// devices.h: procedure on the machine that owns it, remote_procedure
+// (remote_procedure/remote_procedure.h) everywhere else. Instances are declared
+// in procedure_config.h.
+class procedure_control {
+    public:
+    virtual ~procedure_control() = default;
+
+    // Starts procedure p. False if one is still running (or the owner refuses p
+    // or can't be reached)
+    virtual bool run(procedure_types p) = 0;
+    // Removes the remaining steps; whatever the procedure last switched stays as
+    // it is (the owner decides what happens next, e.g. main_ro sets the RO OFF)
+    virtual bool stop() = 0;
+    // running = a procedure is running, p = which one (meaningful while running).
+    // False if it can't be read
+    virtual bool readProcedure(bool& running, procedure_types& p) = 0;
+};
+
 // Runs multi-step farm procedures on a scheduler, one at a time per instance
-// (one instance per thing being controlled, e.g. the RO owns one). Every step is
+// (one instance per thing being controlled, owned by a main_*, e.g. main_ro's
+// ro_procedure). Every step is
 // a task scheduled up front (timed steps on afterDuration conditions with
 // cumulative times, float steps on float conditions). Steps use only the public
 // interfaces: devices from config.h, the RO from ro_config.h (setROState,
@@ -75,7 +95,8 @@ inline bool fromString(const std::string& text, procedure_types& p) {
 // that lacks one of them fails to link. Run only on the machine that owns the
 // devices (on the host PC, ro_config.h goes over the network). Nothing blocks;
 // sched.update() (and updateRO() for the RO procedures) must be called every
-// loop pass.
+// loop pass. The owner does whatever should follow the end of a procedure (main_ro
+// sets the RO OFF when ro_procedure stops running).
 // Changing the RO state mid-cycle doesn't stop the remaining tasks; stop() or
 // destroying the object removes them.
 //
@@ -93,7 +114,7 @@ inline bool fromString(const std::string& text, procedure_types& p) {
 //     permeate_tank_high_float is dry; done (OFF, removes its tasks) when the
 //     permeate tank is full or feed_tank_low_float is dry (at once if so at the start). A
 //     float that can't be read pauses it (OFF) until both read again (ON_RISING).
-class procedure {
+class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object
     explicit procedure(scheduler& sched);
@@ -105,7 +126,7 @@ class procedure {
 
     // Schedules procedure_type (switch/case over the procedure helpers); the first
     // step runs on the next sched.update(). One at a time: false if one is still running
-    bool run(procedure_types procedure_type);
+    bool run(procedure_types procedure_type) override;
     // True while any scheduled task hasn't run. False if none was started, it was
     // stopped, or every task has run
     bool isRunning() const;
@@ -113,7 +134,9 @@ class procedure {
     procedure_types type() const { return procedure_type_; }
     // Removes all tasks and conditions from the scheduler, so no further steps run.
     // Leaves the RO in its current state: setState(OFF) is up to the caller
-    bool stop();
+    bool stop() override;
+    // running = isRunning(), p = type()
+    bool readProcedure(bool& running, procedure_types& p) override;
 
     private:
     // Procedure helpers: each schedules its steps and populates task_ids_ and condition_ids_

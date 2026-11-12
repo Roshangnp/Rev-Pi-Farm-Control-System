@@ -44,6 +44,12 @@ bool procedure::run(procedure_types procedure_type) {
     return ok;
 }
 
+bool procedure::readProcedure(bool& running, procedure_types& p) {
+    running = isRunning();
+    p = procedure_type_;
+    return true;
+}
+
 bool procedure::stop() {
     // Tasks first: a condition still used by a task can't be removed
     for (task_id id : task_ids_) sched_.removeTask(id);

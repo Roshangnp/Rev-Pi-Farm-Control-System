@@ -11,3 +11,11 @@ add_library(procedure STATIC
 target_include_directories(procedure PUBLIC ${procedure_dir}/include ${procedure_dir}/src
                            PRIVATE ${CMAKE_SOURCE_DIR}/RO/include ${CMAKE_SOURCE_DIR}/API/include)
 target_link_libraries(procedure PUBLIC scheduler comms)
+
+# procedure_remote (libprocedure_remote.a): procedure_config.h's instances owned by
+# another machine, as remote_procedure on this machine's connection to the owner
+# (ro_revpi, from this machine's config). For programs that don't own them:
+# main_host_pc, main_uppertank, the console. Not for the RO RevPi's main_ro, which
+# owns ro_procedure.
+add_library(procedure_remote STATIC ${procedure_dir}/src/config/procedure_remote_config.cpp)
+target_link_libraries(procedure_remote PUBLIC procedure comms)

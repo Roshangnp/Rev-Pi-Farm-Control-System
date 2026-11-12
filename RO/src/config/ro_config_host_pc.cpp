@@ -1,11 +1,9 @@
 #include "ro_config.h"
 
 // Host PC (emerald-server, dev PC): the RO controller runs on the RO RevPi;
-// state calls go to its ro_server through remote_ro, procedure calls to its
-// procedure_server ("ro_procedure") through remote_procedure
+// calls go to its ro_server through remote_ro
 
 #include "remote_link.h"
-#include "remote_procedure/remote_procedure.h"
 #include "remote_ro/remote_ro.h"
 
 // The RO RevPi connection defined in config_host_pc.cpp, shared with its
@@ -16,7 +14,6 @@ extern remote_link ro_revpi;
 namespace {
 
 remote_ro ro_plant(ro_revpi);
-remote_procedure ro_procedures(ro_revpi, "ro_procedure");
 
 }  // namespace
 
@@ -44,16 +41,4 @@ bool readROSettling(bool& settling) {
 
 bool setROSpeed(float speed) {
     return ro_plant.setRoSpeed(speed);
-}
-
-bool runROProcedure(procedure_types p) {
-    return ro_procedures.run(p);
-}
-
-bool stopROProcedure() {
-    return ro_procedures.stop();
-}
-
-bool readROProcedure(bool& running, procedure_types& p) {
-    return ro_procedures.readProcedure(running, p);
 }

@@ -88,7 +88,7 @@ bool applyPumps(const pump_state& p, bool pass) {
 
 }  // namespace
 
-ro::ro(scheduler& sched) : scheduler_(sched), procedure_(sched), current_state_(RO_state::OFF) {}
+ro::ro() : current_state_(RO_state::OFF) {}
 
 ro::~ro() {
     // update() won't run again, so the phases happen here, blocking: pumps off,
@@ -237,7 +237,7 @@ bool ro::moveValves() {
 }
 
 bool ro::update() {
-    bool ok = offWhenProcedureEnds();
+    bool ok = true;
     const auto now = clock_type::now();
     if (valves_pending_) {               // phase 2: pumps stopping
         if (now - pumps_stopped_at_ < std::chrono::milliseconds(PUMP_STOP_MS)) {
@@ -254,17 +254,6 @@ bool ro::update() {
     }
     pumps_pending_ = false;
     return applyPumps(pumpsFor(current_state_), true) && ok;
-}
-
-bool ro::offWhenProcedureEnds() {
-    bool running = procedure_.isRunning();
-    bool ended = procedure_was_running_ && !running;
-    procedure_was_running_ = running;
-    if (!ended) {
-        return true;
-    }
-    std::fprintf(stderr, "RO controller: %s ended, moving to OFF\n", toString(procedure_.type()));
-    return setState(RO_state::OFF);
 }
 
 bool ro::isSettling() const {
