@@ -44,7 +44,7 @@ local_pump local_irrigation_pump(nullptr, nullptr, nullptr, &irrigation_pump_pre
 // On/off only (run relay, no speed, alarm or pressure wired)
 local_pump local_well_4_pump(nullptr, &well_4_pump_run, nullptr, nullptr);
 
-// Devices owned by the RO RevPi
+// Devices owned by the RO RevPi (bound for user space, served by their owner)
 remote_flow_sensor remote_permeate_flow(ro_revpi, "permeate_flow");
 remote_flow_sensor remote_concentrate_flow(ro_revpi, "concentrate_flow");
 remote_flow_sensor remote_feed_flow(ro_revpi, "feed_flow");
@@ -89,8 +89,8 @@ remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
-// Shares every device bound here (wired to this RevPi, the RO RevPi's, WiseConn)
-// with the other machines and local clients
+// Shares the devices wired to this RevPi, and the WiseConn devices, with the other
+// machines and local programs (each device is served by its owner only)
 device_server devices;
 
 }  // namespace
@@ -158,49 +158,6 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("upper_tank_water_level", local_upper_tank_water_level)
            && devices.addDevice("irrigation_pump", local_irrigation_pump)
            && devices.addDevice("well_4_pump", local_well_4_pump)
-           && devices.addDevice("permeate_flow", permeate_flow)
-           && devices.addDevice("concentrate_flow", concentrate_flow)
-           && devices.addDevice("feed_flow", feed_flow)
-           && devices.addDevice("feed_tank_water_level", feed_tank_water_level)
-           && devices.addDevice("high_ph_tank_float", high_ph_tank_float)
-           && devices.addDevice("cip_tank_mid_float", cip_tank_mid_float)
-           && devices.addDevice("cip_tank_low_float", cip_tank_low_float)
-           && devices.addDevice("cip_tank_high_float", cip_tank_high_float)
-           && devices.addDevice("low_ph_tank_float", low_ph_tank_float)
-           && devices.addDevice("asa_tank_low_float", asa_tank_low_float)
-           && devices.addDevice("permeate_tank_high_float", permeate_tank_high_float)
-           && devices.addDevice("feed_tank_low_float", feed_tank_low_float)
-           && devices.addDevice("repressure_toggle_switch", repressure_toggle_switch)
-           && devices.addDevice("ro_toggle_switch", ro_toggle_switch)
-           && devices.addDevice("media_outlet_pressure", media_outlet_pressure)
-           && devices.addDevice("media_inlet_pressure", media_inlet_pressure)
-           && devices.addDevice("concentrate_pressure", concentrate_pressure)
-           && devices.addDevice("cip_inlet_pressure", cip_inlet_pressure)
-           && devices.addDevice("interstage_pressure", interstage_pressure)
-           && devices.addDevice("aqualine_outlet_pressure", aqualine_outlet_pressure)
-           && devices.addDevice("cip_outlet_pressure", cip_outlet_pressure)
-           && devices.addDevice("primary_pressure", primary_pressure)
-           && devices.addDevice("aqualine_inlet_pressure", aqualine_inlet_pressure)
-           && devices.addDevice("permeate_pressure", permeate_pressure)
-           && devices.addDevice("air_pressure", air_pressure)
-           && devices.addDevice("permeate_conductivity", permeate_conductivity)
-           && devices.addDevice("feed_conductivity", feed_conductivity)
-           && devices.addDevice("cip_temp", cip_temp)
-           && devices.addDevice("feed_pump", feed_pump)
-           && devices.addDevice("ro_pump", ro_pump)
-           && devices.addDevice("repressure_pump", repressure_pump)
-           && devices.addDevice("lights", lights)
-           && devices.addDevice("cip_heater", cip_heater)
-           && devices.addDevice("asa_pump", asa_pump)
-           && devices.addDevice("high_ph_pump", high_ph_pump)
-           && devices.addDevice("low_ph_pump", low_ph_pump)
-           && devices.addDevice("flush_valve", flush_valve)
-           && devices.addDevice("cip_inlet_valve", cip_inlet_valve)
-           && devices.addDevice("inlet_valve", inlet_valve)
-           && devices.addDevice("concentrate_cip_valve", concentrate_cip_valve)
-           && devices.addDevice("media_backwash_1_valve", media_backwash_1_valve)
-           && devices.addDevice("permeate_cip_valve", permeate_cip_valve)
-           && devices.addDevice("media_backwash_2_valve", media_backwash_2_valve)
            && addWiseconnDevices(devices);
     return ok && devices.registerWith(server);
 }

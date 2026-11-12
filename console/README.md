@@ -1,18 +1,19 @@
 # Farm console (`ro_console`)
 
 Keyboard-only terminal UI for the whole farm, in the style of `raspi-config`.
-It connects only to this machine's own service on `127.0.0.1:47100` (`main_ro`,
-`main_uppertank` or `main_host_pc`), which serves every farm device (its own I/O, the other
-RevPis' devices, WiseConn) and the RO. So it has no options, addresses, keys or WiseConn code, never
-touches hardware, and is the same program on every machine:
+A user-space program like `main_host_pc`: it uses every device from `config.h` and the RO from
+`ro_config.h`, linked against the client config (`farm_client` / `ro_client`), where every device
+is a `remote_*` on a connection to its owner's `main_*`. This machine's own RevPi is reached on
+`127.0.0.1`, the other one on its LAN address, and WiseConn through this machine's own `main_*`.
+So it never touches hardware or runs a controller, and needs no keys or options:
 
 ```
 ro_console
 ```
 
-It needs that machine's service running. When the network is down, what that machine owns keeps
-working (on the RO RevPi: its devices and the RO); the rest goes to `---`. The header clock is local
-time: on the RevPis run it with `TZ=America/Los_Angeles` (farm-console.service does).
+When the network is down, what this machine owns keeps working (on the RO RevPi: its devices and
+the RO); the rest goes to `---`. The header clock is local time: on the RevPis run it with
+`TZ=America/Los_Angeles` (farm-console.service does).
 
 ## Tabs
 
@@ -24,15 +25,14 @@ time: on the RevPis run it with `TZ=America/Los_Angeles` (farm-console.service d
 Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
 the dashboard scrolls to the focused control); the tile holding the focus has a heavy border. "Running" comes from `ro readProcedure` (an older RO RevPi build shows `---`).
 
-The devices on each tab are listed in `src/console_devices.cpp` by their `config.h` names; add a
-line there to show a new one (every machine's service must serve it, see CLAUDE.md). All of them
-are `remote_*` on the one local `remote_link`, including the WiseConn zones and soil probes
-(`remote_irrigation` / `remote_soil_sensor`). The console never schedules irrigations. Zone on/off
+The devices on each tab are listed in `src/console_devices.cpp` as `DEVICE(name)` (the `config.h`
+name and device); add a line there to show a new one. It fails to link if the client config
+(`API/src/config/client_config.cpp`) doesn't bind it. The console never schedules irrigations. Zone on/off
 refreshes about every 10 s; soil probes report every 15 min (a read fails once the data is 45 min
 old). Log messages go to `~/.cache/ro_console.log` instead of the screen.
 
-Header: `RO OK` while the RO state reads, `Upper tank OK` while the upper tank high float reads,
-both through the local service, so `DOWN` means that machine, the link to it, or the local service.
+Header: `RO@<host> OK` while the RO state reads, `Upper tank@<host> OK` while the upper tank high
+float reads (hosts from the client config), so `DOWN` means that machine's `main_*` or the link to it.
 
 ## Keys
 
@@ -61,13 +61,13 @@ sensor, the value is more than 3 s old (network stall), or the link is down (hea
   its next state change, and nothing stops a manual change from fighting a running procedure.
 - Several consoles and the RO controller can be used at the same time; the RevPi
   handles each request in turn.
-- Loopback is always allowed by the firewalls; the machine's own service needs the other machines
-  (see CLAUDE.md).
+- The machine running it must be allowed through the other RevPi's firewall on port 47100 (see
+  CLAUDE.md); loopback always is.
 - Needs a UTF-8 terminal, at least 80x24.
 
 ## Build
 
-Built with every `DEVICE_CONFIG` (it doesn't use the machine config): `cmake --build build
+Built with every `DEVICE_CONFIG` (the config only picks the addresses): `cmake --build build
 --target ro_console`. No `wiseconn_keys.txt` needed. FTXUI (v6.1.9) is fetched by CMake on the first configure, so that needs
 internet access.
 

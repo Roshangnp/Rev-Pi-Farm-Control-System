@@ -33,7 +33,8 @@ add_compile_options(-Wall -Wextra)
 # One library per module, each described in <module>/<module>.cmake. They are
 # include()d, not add_subdirectory()'d, so there's no build folder per module:
 # every library (lib<name>.a) and program lands in build/.
-# Machine specific (depend on DEVICE_CONFIG): farm (API/) and ro (RO/).
+# Machine specific (depend on DEVICE_CONFIG): farm and farm_client (API/), ro and
+# ro_client (RO/); the client variants are for ro_console.
 # The same on every machine: comms, scheduler, procedure, notifications (host_pc only).
 include(comms/comms.cmake)              # comms
 include(scheduler/scheduler.cmake)      # scheduler

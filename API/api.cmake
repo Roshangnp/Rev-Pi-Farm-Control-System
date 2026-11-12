@@ -1,9 +1,13 @@
-# farm (libfarm.a): all of API/ for this machine. Machine specific: the HAL,
-# local, remote and WiseConn devices, device_server, this machine's config
-# (src/config/config_<DEVICE_CONFIG>.cpp) and the WiseConn bindings shared by
-# every config (src/config/wiseconn_farm_devices.cpp). Programs include
-# API/include (devices.h, config.h); API/src is public too, for the remote_*
-# headers the console includes.
+# API/ for this machine, in two variants built from the same compiled sources
+# (farm_objects: all of API/src except the configs, compiled once):
+#   farm (libfarm.a), for main_*: this machine's config
+#     (src/config/config_<DEVICE_CONFIG>.cpp: its own I/O local, the other RevPi's
+#     devices remote, served by device_server) and the WiseConn bindings shared by
+#     every config (src/config/wiseconn_farm_devices.cpp)
+#   farm_client (libfarm_client.a), for ro_console: src/config/client_config.cpp,
+#     every config.h device remote on a connection to its owner (127.0.0.1 for this
+#     machine's own RevPi), WiseConn from this machine's main; nothing served
+# Both machine specific. Programs include API/include (devices.h, config.h).
 set(api_dir ${CMAKE_CURRENT_LIST_DIR})
 set(config_dir ${api_dir}/src/config)
 file(GLOB config_files RELATIVE ${config_dir} ${config_dir}/config_*.cpp)
@@ -19,9 +23,31 @@ message(STATUS "Device config: ${DEVICE_CONFIG}")
 
 file(GLOB_RECURSE api_sources CONFIGURE_DEPENDS ${api_dir}/src/*.cpp)
 list(FILTER api_sources EXCLUDE REGEX "/API/src/config/")
-add_library(farm STATIC ${api_sources} ${config_file} ${config_dir}/wiseconn_farm_devices.cpp)
-target_include_directories(farm PUBLIC ${api_dir}/include ${api_dir}/src)
-target_link_libraries(farm PUBLIC comms Threads::Threads)
+add_library(farm_objects OBJECT ${api_sources})
+target_include_directories(farm_objects PUBLIC ${api_dir}/include ${api_dir}/src)
+target_link_libraries(farm_objects PUBLIC comms Threads::Threads)
+
+add_library(farm STATIC $<TARGET_OBJECTS:farm_objects> ${config_file} ${config_dir}/wiseconn_farm_devices.cpp)
+target_link_libraries(farm PUBLIC farm_objects)
+
+# The RevPis' addresses, for the client config. This machine's own RevPi is
+# 127.0.0.1, so its console works with the network down
+set(FARM_RO_REVPI_IP 192.168.1.20)
+set(FARM_UPPER_REVPI_IP 192.168.1.21)
+set(client_ro_host ${FARM_RO_REVPI_IP})
+set(client_upper_host ${FARM_UPPER_REVPI_IP})
+set(client_local "")
+if(DEVICE_CONFIG STREQUAL "ro")
+    set(client_ro_host 127.0.0.1)
+    set(client_local FARM_CLIENT_LOCAL_RO)
+elseif(DEVICE_CONFIG STREQUAL "uppertank")
+    set(client_upper_host 127.0.0.1)
+    set(client_local FARM_CLIENT_LOCAL_UPPER)
+endif()
+add_library(farm_client STATIC $<TARGET_OBJECTS:farm_objects> ${config_dir}/client_config.cpp)
+target_link_libraries(farm_client PUBLIC farm_objects)
+target_compile_definitions(farm_client PRIVATE
+    FARM_RO_HOST="${client_ro_host}" FARM_UPPER_HOST="${client_upper_host}" ${client_local})
 
 # WiseConn keys: wiseconn_keys.txt (repo root, git-ignored: API key, farm, zone and
 # measure ids) built in as text, parsed by wiseconn_farm_devices.cpp at startup.

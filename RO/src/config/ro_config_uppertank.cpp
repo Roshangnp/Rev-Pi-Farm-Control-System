@@ -6,11 +6,9 @@
 // ro_config_host_pc.cpp. main_uppertank doesn't use the RO; this gives its
 // user space the same RO access as every other machine
 
-#include "line_server.h"
 #include "remote_link.h"
 #include "remote_procedure/remote_procedure.h"
 #include "remote_ro/remote_ro.h"
-#include "remote_ro/ro_server.h"
 
 // The RO RevPi connection defined in config_uppertank.cpp, shared with its
 // devices (one snapshot poll for both). Only a reference is bound here, so the
@@ -22,15 +20,11 @@ namespace {
 remote_ro ro_plant(ro_revpi);
 remote_procedure ro_procedures(ro_revpi, "ro_procedure");
 
-// Serves the functions below as "ro" and "ro_procedure", so a client of this
-// machine reaches the RO through it
-ro_server ro_handler;
-
 }  // namespace
 
-// The controller isn't here: only serves the RO calls (passed on to the RO RevPi)
-bool addRO(line_server& server, scheduler&) {
-    return ro_handler.registerWith(server);
+// Nothing to share: the controller isn't here (the RO RevPi serves it)
+bool addRO(line_server&, scheduler&) {
+    return true;
 }
 
 // Nothing to run: the RO RevPi's own loop starts its pumps

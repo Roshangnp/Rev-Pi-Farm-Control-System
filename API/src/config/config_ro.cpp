@@ -118,15 +118,15 @@ local_valve local_media_backwash_2_valve(&media_backwash_2_valve_solenoid);
 local_switch local_repressure_toggle_switch(&repressure_toggle_switch_input);
 local_switch local_ro_toggle_switch(&ro_toggle_switch_input);
 
-// Devices owned by the upper tank RevPi
+// Devices owned by the upper tank RevPi (bound for user space, served by their owner)
 remote_link upper_tank_revpi("192.168.1.21");
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
 remote_pump remote_irrigation_pump(upper_tank_revpi, "irrigation_pump");
 remote_pump remote_well_4_pump(upper_tank_revpi, "well_4_pump");
 
-// Shares every device bound here (wired to this RevPi, the upper tank's, WiseConn)
-// with the other machines and local clients
+// Shares the devices wired to this RevPi, and the WiseConn devices, with the other
+// machines and local programs (each device is served by its owner only)
 device_server devices;
 
 }  // namespace
@@ -247,10 +247,6 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve)
            && devices.addDevice("repressure_toggle_switch", local_repressure_toggle_switch)
            && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch)
-           && devices.addDevice("upper_tank_high_float", upper_tank_high_float)
-           && devices.addDevice("upper_tank_water_level", upper_tank_water_level)
-           && devices.addDevice("irrigation_pump", irrigation_pump)
-           && devices.addDevice("well_4_pump", well_4_pump)
            && addWiseconnDevices(devices);
     return ok && devices.registerWith(server);
 }

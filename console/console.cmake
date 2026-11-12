@@ -1,15 +1,15 @@
-# Console: ro_console, a keyboard-only terminal UI for the whole farm. Connects only
-# to this machine's own service on 127.0.0.1 (main_*), which serves every device and
-# the RO. Uses only client classes: remote_* devices (farm), remote_ro (ro),
-# remote_procedure (procedure), remote_link (comms); the scheduler only for
-# procedure.h's headers. Static libraries only contribute what it uses, so it gets
-# none of the machine config, piControl or WiseConn and is the same program on every
-# machine. Rule: console code never uses a config.h device or an ro_config.h
-# function, or the machine config (and its threads) would be linked in.
+# Console: ro_console, a keyboard-only terminal UI for the whole farm. A user-space
+# program like main_host_pc: every device from config.h and the RO from ro_config.h,
+# through the client variants farm_client / ro_client (every device remote on a
+# connection to its owner, 127.0.0.1 for this machine's own RevPi; WiseConn from
+# this machine's main). Never links farm or ro, so it never touches hardware or runs
+# a controller, and it needs the owners' main_* running.
 add_executable(ro_console
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/console_devices.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/console_ui.cpp)
 target_include_directories(ro_console PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
-target_link_libraries(ro_console PRIVATE farm ro procedure scheduler comms
+# The client config's addresses, for the header (RO@<host>, Upper tank@<host>)
+target_compile_definitions(ro_console PRIVATE FARM_RO_HOST="${client_ro_host}" FARM_UPPER_HOST="${client_upper_host}")
+target_link_libraries(ro_console PRIVATE ro_client procedure farm_client scheduler comms
                       ftxui::screen ftxui::dom ftxui::component)

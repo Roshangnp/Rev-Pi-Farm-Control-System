@@ -9,8 +9,8 @@ Conflicts=getty@tty1.service
 
 [Service]
 User=pi
-# Connects to main_ro on 127.0.0.1 (it always does), so the RO RevPi's own
-# values and the RO keep working without the network
+# Built with -DDEVICE_CONFIG=ro, it reaches main_ro on 127.0.0.1, so the RO
+# RevPi's own values and the RO keep working without the network
 ExecStart=/home/pi/Rev-Pi-Farm-Control-System/build/ro_console
 StandardInput=tty
 StandardOutput=tty
