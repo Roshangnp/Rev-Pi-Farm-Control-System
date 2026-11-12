@@ -16,7 +16,7 @@ On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when th
 
 | Tab | Shows |
 |---|---|
-| Main-Dashboard | tiles: RO state, running procedure, a Start button per procedure and one Stop; water tank floats; water levels; well 4 and irrigation pumps; WiseConn irrigation zones (ON/off, read only) |
+| Main-Dashboard | tiles: RO state, running procedure, a Start button per procedure and one Stop; water tank floats; water levels; well 4 and irrigation pumps; WiseConn irrigation zones (ON/off, read only); WiseConn soil probes (moisture, EC, temperature per depth) |
 | RO-Dashboard | tiles: RO control (as on Main-Dashboard plus settling, panel toggle switches and a state override), chemical tank floats, pressures, flows, conductivity (TDS), RO pumps, CIP heater (switch + CIP temp), valves |
 
 Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
@@ -25,10 +25,10 @@ the dashboard scrolls to the focused control); the tile holding the focus has a 
 The devices on each tab are listed in `src/console_devices.cpp`; add a line there to show a new
 one (the name the owning RevPi registers in its device server, or the WiseConn name in
 `wiseconn_keys.txt` `[irrigations]`). RevPi devices are `remote_*` over `remote_link`; WiseConn
-zones are `wiseconn_irrigation` on the console's own `wiseconn_link`, read straight from the
+zones and soil probes are `wiseconn_irrigation` / `wiseconn_soil_sensor` on the console's own `wiseconn_link`, read straight from the
 WiseConn API on every machine (needs `wiseconn_keys.txt` in the repo root when building; without it
 the zones show `---`). The console never schedules irrigations. WiseConn's on/off list refreshes
-about once a minute. The process runs in the farm's time zone (keys `time_zone`), and log
+about once a minute; soil probes report every 15 min (a read fails once the data is 45 min old). The process runs in the farm's time zone (keys `time_zone`), and log
 messages go to `~/.cache/ro_console.log` instead of the screen.
 
 ## Keys

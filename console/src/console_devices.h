@@ -14,6 +14,7 @@ class pump;
 class valve;
 class switched_load;
 class irrigation;
+class soil_sensor;
 
 // The farm devices the console shows, grouped by tab. RevPi devices are remote:
 // the console is a client of the RevPis' line servers (on the RO RevPi itself,
@@ -62,6 +63,13 @@ struct irrigation_row {
     std::shared_ptr<irrigation> device;
 };
 
+// WiseConn soil probe: moisture, EC and temperature per depth (shallowest first)
+struct soil_row {
+    std::string label;
+    std::shared_ptr<soil_sensor> device;
+    std::vector<std::string> depths;   // column headings, one per depth
+};
+
 class console_devices{
     public:
     console_devices(const std::string& ro_host, const std::string& upper_host);
@@ -90,4 +98,5 @@ class console_devices{
     std::vector<valve_row> valves;
     std::vector<toggle_row> toggles;           // panel switches, on the RO tab
     std::vector<irrigation_row> irrigations;   // WiseConn zones, Main-Dashboard
+    std::vector<soil_row> soil_probes;         // WiseConn soil probes, Main-Dashboard
 };

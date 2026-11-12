@@ -91,6 +91,53 @@ Element floatList(std::vector<float_row>& rows, int width) {
     return vbox(lines);
 }
 
+// WiseConn soil probes: per probe a moisture, EC and temperature line, one
+// column per depth. A read is all depths or none (red "---" in every column)
+Element soilTable(std::vector<soil_row>& rows) {
+    constexpr int PROBE_WIDTH = 11;
+    constexpr int QUANTITY_WIDTH = 11;
+    constexpr int DEPTH_WIDTH = 7;
+    size_t depth_count = 0;
+    for (const soil_row& r : rows) depth_count = std::max(depth_count, r.depths.size());
+    const std::vector<std::string>* headings = nullptr;
+    for (const soil_row& r : rows) {
+        if (r.depths.size() == depth_count) headings = &r.depths;
+    }
+
+    Elements lines;
+    Elements head = {label("", PROBE_WIDTH + QUANTITY_WIDTH)};
+    for (size_t i = 0; i < depth_count; ++i) {
+        head.push_back(text(headings ? (*headings)[i] : "") | dim | align_right | size(WIDTH, EQUAL, DEPTH_WIDTH));
+    }
+    lines.push_back(hbox(head));
+
+    struct quantity {
+        const char* name;
+        int decimals;
+        bool (soil_sensor::*read)(std::vector<float>&);
+    };
+    const quantity quantities[] = {
+        {"moisture %", 1, &soil_sensor::readMoisture},
+        {"EC (VIC)", 0, &soil_sensor::readETC},
+        {"temp F", 1, &soil_sensor::readTemperature},
+    };
+    for (soil_row& r : rows) {
+        bool first = true;
+        for (const quantity& q : quantities) {
+            std::vector<float> values;
+            bool ok = ((*r.device).*q.read)(values);
+            Elements line = {label(first ? r.label : "", PROBE_WIDTH), label(q.name, QUANTITY_WIDTH)};
+            for (size_t i = 0; i < depth_count; ++i) {
+                bool have = ok && i < values.size();
+                line.push_back(reading(have, have ? formatFloat(values[i], q.decimals) : "", Color::Green, DEPTH_WIDTH));
+            }
+            lines.push_back(hbox(line));
+            first = false;
+        }
+    }
+    return vbox(lines);
+}
+
 // WiseConn irrigation zones, ON/off, in two columns so the tile fits at 80x24
 Element irrigationList(std::vector<irrigation_row>& rows) {
     int width = labelWidth(rows);
@@ -636,7 +683,7 @@ Component console_ui::procedureButtons() {
 }
 
 // RO state and procedure, water tank floats and levels, the upper tank pumps,
-// the WiseConn irrigation zones (read only)
+// the WiseConn irrigation zones and soil probes (read only)
 Component console_ui::mainDashboard() {
     auto water_width = labelWidth(farm_.water_floats);
     auto level_width = labelWidth(farm_.tank_levels);
@@ -647,6 +694,7 @@ Component console_ui::mainDashboard() {
         readTile(*nav_, "Water levels", [this, level_width] { return sensorList(farm_.tank_levels, 2, level_width); }),
         controlTile(*nav_, "Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),
         readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
+        readTile(*nav_, "Soil probes (WiseConn)", [this] { return soilTable(farm_.soil_probes); }),
     });
 }
 
