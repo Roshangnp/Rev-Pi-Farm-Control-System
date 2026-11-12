@@ -190,11 +190,13 @@ set(ro_config_file ${CMAKE_CURRENT_SOURCE_DIR}/RO/src/config/ro_config_${DEVICE_
 if(EXISTS ${ro_config_file})
     if(DEVICE_CONFIG STREQUAL "ro")
         # procedure (procedure/, CIP cycles etc.) drives the RO through ro_config.h on the scheduler
-        set(ro_sources RO/src/ro.cpp RO/src/remote_ro/ro_server.cpp procedure/src/procedure.cpp
+        set(ro_sources RO/src/ro.cpp procedure/src/procedure.cpp
                        procedure/src/remote_procedure/procedure_server.cpp)
     else()
         set(ro_sources RO/src/remote_ro/remote_ro.cpp procedure/src/remote_procedure/remote_procedure.cpp)
     endif()
+    # Serves "ro" / "ro_procedure" over the ro_config.h functions on every machine
+    list(APPEND ro_sources RO/src/remote_ro/ro_server.cpp)
     add_library(ro_control STATIC ${ro_sources} ${ro_config_file})
     target_include_directories(ro_control PUBLIC RO/include procedure/include PRIVATE RO/src procedure/src)
     target_compile_options(ro_control PRIVATE -Wall -Wextra)
