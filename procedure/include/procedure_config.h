@@ -17,7 +17,6 @@ class line_server;  // comms/src/line_server.h
 // server.start(). False if a name is already taken on the server.
 bool addLocalProcedures(line_server& server);
 
-// The RO procedures (CIP cycles, media backwash, empty feed tank; only those
-// types). Owner: the RO RevPi, served as "ro_procedure"; main_ro sets the RO
+// The RO procedures (CIP cycles, media backwash, empty feed tank). Owner: the RO RevPi, served as "ro_procedure"; main_ro sets the RO
 // OFF when it stops running (stopped or finished)
 extern procedure_control& ro_procedure;

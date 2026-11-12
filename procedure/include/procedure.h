@@ -74,8 +74,7 @@ class procedure_control {
     public:
     virtual ~procedure_control() = default;
 
-    // Starts procedure p. False if one is still running (or the owner refuses p
-    // or can't be reached)
+    // Starts procedure p. False if one is still running (or the owner can't be reached)
     virtual bool run(procedure_types p) = 0;
     // Removes the remaining steps; whatever the procedure last switched stays as
     // it is (the owner decides what happens next, e.g. main_ro sets the RO OFF)

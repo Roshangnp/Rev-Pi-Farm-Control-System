@@ -14,8 +14,7 @@ class remote_procedure : public procedure_control {
     remote_procedure(remote_link& link, std::string name)
     : link_(link), name_(std::move(name)){};
 
-    // Starts procedure p there. False if one is still running or that instance
-    // isn't allowed to run p
+    // Starts procedure p there. False if one is still running
     bool run(procedure_types p) override;
     // Removes the remaining steps there (what it switched stays as it is). False
     // if none is running

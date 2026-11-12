@@ -13,13 +13,11 @@ extern scheduler sched;
 
 namespace {
 
-// The RO procedures; only the RO types may be started on it
+// The RO procedures
 procedure local_ro_procedure(sched);
 
 // Shares the procedures owned here with the other machines
-procedure_server ro_procedure_server(local_ro_procedure, "ro_procedure",
-    {procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
-     procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK});
+procedure_server ro_procedure_server(local_ro_procedure, "ro_procedure");
 
 }  // namespace
 
