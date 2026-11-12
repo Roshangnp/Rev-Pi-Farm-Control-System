@@ -19,10 +19,10 @@ API/
     devices/            local devices (wired here) and remote devices (owned by another RevPi)
     HAL/                electrical_interface: one PiCtory I/O point
 comms/                  line protocol between machines: line_server (port 47100) and remote_link
-webUI/                  DEPRECATED web page (not built by default; replaced by the console)
+webUI/                  DEPRECATED web page (not built by default; replaced by console/)
+console/                ro_console: keyboard-only terminal UI (RO RevPi HDMI screen, or over SSH)
 notifications/          ntfy push notifications (host PC only)
 user_space/src/         programs; main_<config>.cpp is built only for that config
-  console/              ro_console: keyboard-only terminal UI, host_pc only (emerald-server)
 ```
 
 Each `API/src/*` folder, `comms/`, `webUI/` and `notifications/` has its own README with the details.
@@ -89,8 +89,8 @@ Float switches: `readSubmerged` gives `true` when the float is submerged (water 
 - Watchdog: if a machine that switched an output disconnects or goes silent for 20 s, the owner
   turns its pumps and switched loads off and closes its valves. Network stalls shorter than that
   don't reset anything.
-- The web UI is deprecated (2026-11-11): `main_host_pc` no longer serves it. Use `ro_console` on
-  emerald-server (`user_space/src/console/README.md`).
+- The web UI is deprecated (2026-11-11): `main_host_pc` no longer serves it. Use `ro_console`
+  (`console/README.md`).
 - The RS485 relay board has no timeout of its own: if the RevPi stops, relays hold their last state.
 
 ## Adding hardware

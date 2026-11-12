@@ -1,0 +1,26 @@
+# Farm console on the RO RevPi's HDMI screen (tty1), keyboard only.
+# Install: sudo cp console/farm-console.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now farm-console
+[Unit]
+Description=Farm console (ro_console) on the HDMI screen
+After=farm-ro.service systemd-user-sessions.service
+# Takes tty1 instead of the login prompt
+Conflicts=getty@tty1.service
+
+[Service]
+User=pi
+# Loopback to main_ro, so the RO tabs work without the network
+ExecStart=/home/pi/Rev-Pi-Farm-Control-System/build/ro_console --ro 127.0.0.1
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Environment=TERM=linux LANG=C.UTF-8
+Restart=always
+RestartSec=2
+# Control (farm-ro) comes first
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

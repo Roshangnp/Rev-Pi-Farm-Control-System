@@ -52,7 +52,3 @@ bool runROProcedure(procedure_types p);
 // RO RevPi's next updateRO() (it goes OFF whenever a procedure ends). False if none
 // is running or the RO RevPi can't be reached.
 bool stopROProcedure();
-
-// Whether a procedure is running and which (p is only set while one runs).
-// False if the RO RevPi can't be reached.
-bool readROProcedure(bool& running, procedure_types& p);

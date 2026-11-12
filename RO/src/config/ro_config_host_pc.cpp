@@ -53,7 +53,3 @@ bool runROProcedure(procedure_types p) {
 bool stopROProcedure() {
     return ro_procedures.stop();
 }
-
-bool readROProcedure(bool& running, procedure_types& p) {
-    return ro_procedures.readProcedure(running, p);
-}
