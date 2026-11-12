@@ -44,13 +44,14 @@ std::string curlExitReason(int code) {
 }
 
 // One HTTP request with the API key: GET, or POST of json_body if it isn't
-// empty. The whole request (URL, key, body) goes to curl as a config file on
+// empty, or method (e.g. "DELETE") if given. The whole request (URL, key, body) goes to curl as a config file on
 // stdin, so neither the key nor the body appears on a command line (visible
 // to other users in ps). http_code is the server's status (0 if none came
 // back); body is the reply. False only if no HTTP reply arrived (error says
 // why); the caller judges the status code.
 bool httpRequest(const std::string& url, const std::string& api_key, const std::string& json_body,
-                 std::string& body, int& http_code, std::string& error, std::atomic<int>& pid_out) {
+                 std::string& body, int& http_code, std::string& error, std::atomic<int>& pid_out,
+                 const std::string& method = "") {
     http_code = 0;
     int in_pipe[2], out_pipe[2];
     if (pipe2(in_pipe, O_CLOEXEC) < 0) {
@@ -107,6 +108,7 @@ bool httpRequest(const std::string& url, const std::string& api_key, const std::
         config += "header = \"Content-Type: application/json\"\n"
                   "data-raw = " + curlQuoted(json_body) + "\n";   // data makes it a POST
     }
+    if (!method.empty()) config += "request = " + curlQuoted(method) + "\n";
 
     // If curl exits early, the write fails with EPIPE instead of killing the
     // program: SIGPIPE is blocked on this thread around the write, and a
@@ -318,17 +320,70 @@ bool wiseconn_link::readZoneOn(const std::string& zone_id, bool& on) const {
 }
 
 bool wiseconn_link::createIrrigation(const std::string& zone_id, const std::tm& start, const std::tm& end,
-                                     std::string& error) {
+                                     std::string& irrigation_id, std::string& error) {
     return postIrrigation("{\"zoneId\":" + zone_id + ",\"initTime\":\"" + farmTimeText(start) +
-                          "\",\"endTime\":\"" + farmTimeText(end) + "\",\"directSchedule\":true}", error);
+                          "\",\"endTime\":\"" + farmTimeText(end) + "\",\"directSchedule\":true}",
+                          irrigation_id, error);
 }
 
-bool wiseconn_link::createIrrigationNow(const std::string& zone_id, int duration_minutes, std::string& error) {
+bool wiseconn_link::createIrrigationNow(const std::string& zone_id, int duration_minutes,
+                                        std::string& irrigation_id, std::string& error) {
     return postIrrigation("{\"zoneId\":" + zone_id + ",\"duration\":" + std::to_string(duration_minutes) + "}",
-                          error);
+                          irrigation_id, error);
 }
 
-bool wiseconn_link::postIrrigation(const std::string& json_body, std::string& error) {
+namespace {
+
+// The new irrigation's id from a POST /irrigations reply: the reply is an array
+// of the created irrigations (one here), each with "id"; a single object is
+// accepted too. "" if there is none.
+std::string createdIrrigationId(const std::string& body) {
+    json_value reply;
+    std::string error;
+    if (!parseJson(body, reply, error)) return "";
+    const json_value* item = &reply;
+    if (reply.type == json_value::kind::array) {
+        if (reply.items.empty()) return "";
+        item = &reply.items[0];
+    }
+    const json_value* id = item->find("id");
+    if (!id || id->type != json_value::kind::number || id->number <= 0) return "";
+    return std::to_string(static_cast<long long>(id->number));
+}
+
+}  // namespace
+
+bool wiseconn_link::deleteIrrigation(const std::string& irrigation_id, std::string& error) {
+    if (!enabled()) {
+        error = "no api_key";
+        return false;
+    }
+    if (irrigation_id.empty() || irrigation_id.find_first_not_of("0123456789") != std::string::npos) {
+        error = "bad irrigation id";
+        return false;
+    }
+    std::string body;
+    int code;
+    std::atomic<int> pid{0};
+    if (!httpRequest(base_url_ + "/irrigations/" + irrigation_id, api_key_, "", body, code, error, pid, "DELETE")) {
+        if (error == "timed out") error += ": WiseConn may or may not have deleted it, check the app";
+        return false;
+    }
+    if (code < 200 || code > 299) {
+        error = "WiseConn refused it: HTTP " + std::to_string(code) + " " + replySnippet(body);
+        return false;
+    }
+    std::fprintf(stderr, "wiseconn: irrigation %s deleted: %s\n", irrigation_id.c_str(), replySnippet(body).c_str());
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        poll_now_ = true;
+    }
+    wake_.notify_all();
+    return true;
+}
+
+bool wiseconn_link::postIrrigation(const std::string& json_body, std::string& irrigation_id, std::string& error) {
+    irrigation_id.clear();
     if (!enabled()) {
         error = "no api_key";
         return false;
@@ -344,7 +399,10 @@ bool wiseconn_link::postIrrigation(const std::string& json_body, std::string& er
         error = "WiseConn refused it: HTTP " + std::to_string(code) + " " + replySnippet(body);
         return false;
     }
-    std::fprintf(stderr, "wiseconn: irrigation created: %s -> %s\n", json_body.c_str(), replySnippet(body).c_str());
+    irrigation_id = createdIrrigationId(body);
+    std::fprintf(stderr, "wiseconn: irrigation created (id %s): %s -> %s\n",
+                 irrigation_id.empty() ? "not in reply" : irrigation_id.c_str(), json_body.c_str(),
+                 replySnippet(body).c_str());
     {
         // Refresh the zone states soon so readOn() catches the change
         std::lock_guard<std::mutex> lock(mutex_);

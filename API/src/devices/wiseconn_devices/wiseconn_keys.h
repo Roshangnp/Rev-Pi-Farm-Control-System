@@ -11,7 +11,8 @@
 //   api_key = ...
 //   farm_id = 3995
 //   time_zone = America/Los_Angeles            (the farm's, see GET /farms timeZoneName)
-//   base_url = https://apiv2.wiseconn.com     (optional, this is the default)
+//   base_url = https://api.wiseconn.com       (optional, this is the default; the
+//                                              irrigation endpoints only work here)
 //   poll_seconds = 60                          (optional, soil probe measures)
 //   hydraulics_poll_seconds = 10               (optional, valve on/off list)
 //   max_age_minutes = 45                       (optional)
@@ -46,7 +47,7 @@ struct wiseconn_keys{
     std::string api_key;
     std::string farm_id;
     std::string time_zone;
-    std::string base_url = "https://apiv2.wiseconn.com";
+    std::string base_url = "https://api.wiseconn.com";
     int poll_seconds = 60;              // soil probe measures (data arrives every 15 min)
     int hydraulics_poll_seconds = 10;   // valve on/off list, so a zone starting/stopping shows quickly
     int max_age_minutes = 45;

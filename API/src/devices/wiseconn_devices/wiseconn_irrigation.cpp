@@ -1,6 +1,7 @@
 #include "wiseconn_irrigation.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 
 namespace {
@@ -56,8 +57,10 @@ bool wiseconn_irrigation::scheduleIrrigation(int startHour, int startMinute, int
     char what[64];
     std::snprintf(what, sizeof(what), "schedule today %02d:%02d-%02d:%02d", startHour, startMinute, endHour, endMinute);
     if (zone_id_.empty()) return report(false, what, "no zone id in wiseconn_keys.txt");
-    std::string error;
-    return report(link_.createIrrigation(zone_id_, begin, finish, error), what, error);
+    std::string error, id;
+    bool ok = link_.createIrrigation(zone_id_, begin, finish, id, error);
+    saveScheduled(ok, id);
+    return report(ok, what, error);
 }
 
 bool wiseconn_irrigation::scheduleIrrigation(int durationMinutes) {
@@ -68,12 +71,41 @@ bool wiseconn_irrigation::scheduleIrrigation(int durationMinutes) {
     }
     std::string what = "irrigate now for " + std::to_string(durationMinutes) + " min";
     if (zone_id_.empty()) return report(false, what, "no zone id in wiseconn_keys.txt");
-    std::string error;
-    return report(link_.createIrrigationNow(zone_id_, durationMinutes, error), what, error);
+    std::string error, id;
+    bool ok = link_.createIrrigationNow(zone_id_, durationMinutes, id, error);
+    saveScheduled(ok, id);
+    return report(ok, what, error);
 }
 
 bool wiseconn_irrigation::report(bool ok, const std::string& what, const std::string& error) const {
     if (ok) std::fprintf(stderr, "wiseconn: %s: %s: accepted\n", name_.c_str(), what.c_str());
     else std::fprintf(stderr, "wiseconn: %s: %s failed: %s\n", name_.c_str(), what.c_str(), error.c_str());
     return ok;
+}
+
+void wiseconn_irrigation::saveScheduled(bool ok, const std::string& irrigation_id) {
+    if (!ok) return;
+    if (irrigation_id.empty()) {
+        std::fprintf(stderr, "wiseconn: %s: WiseConn's reply had no irrigation id, it can't be cancelled from here\n",
+                     name_.c_str());
+    } else if (!scheduled_id_.empty()) {
+        std::fprintf(stderr, "wiseconn: %s: irrigation %s replaces %s as the one to cancel\n", name_.c_str(),
+                     irrigation_id.c_str(), scheduled_id_.c_str());
+    }
+    scheduled_id_ = irrigation_id;
+}
+
+bool wiseconn_irrigation::readScheduledIrrigation(int& id) {
+    if (scheduled_id_.empty()) return false;
+    id = std::atoi(scheduled_id_.c_str());
+    return true;
+}
+
+bool wiseconn_irrigation::cancelIrrigation() {
+    std::string what = "cancel irrigation " + (scheduled_id_.empty() ? std::string("(none)") : scheduled_id_);
+    if (scheduled_id_.empty()) return report(false, what, "no irrigation scheduled from here");
+    std::string error;
+    bool ok = link_.deleteIrrigation(scheduled_id_, error);
+    if (ok) scheduled_id_.clear();
+    return report(ok, what, error);
 }

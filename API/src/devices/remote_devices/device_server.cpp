@@ -233,6 +233,11 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 if (parseTimeRange(arg, sh, sm, eh, em)) reply = okIf(device->scheduleIrrigation(sh, sm, eh, em));
                 else if (parseSmallInt(arg, minutes)) reply = okIf(device->scheduleIrrigation(minutes));
                 else return "err bad argument";
+            } else if (method == "readScheduledIrrigation") {
+                int id = 0;
+                reply = device->readScheduledIrrigation(id) ? "ok " + std::to_string(id) : "fail";
+            } else if (method == "cancelIrrigation") {
+                reply = okIf(device->cancelIrrigation());
             }
         }
 
@@ -261,7 +266,7 @@ void device_server::snapshot(std::string& out) {
             else if constexpr (std::is_same_v<T, toggle_switch_double_pole>) return {"readPole1", "readPole2"};
             else if constexpr (std::is_same_v<T, push_button>) return {"readPressTotal"};
             else if constexpr (std::is_same_v<T, soil_sensor>) return {"readMoisture", "readETC", "readTemperature"};
-            else if constexpr (std::is_same_v<T, irrigation>) return {"readOn"};
+            else if constexpr (std::is_same_v<T, irrigation>) return {"readOn", "readScheduledIrrigation"};
             else return {};
         }, entry.second);
         for (const char* method : methods) appendSnapshotEntry(out, name + "." + method, handleRequest(0, name, method, ""));

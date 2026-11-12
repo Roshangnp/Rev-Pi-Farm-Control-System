@@ -33,10 +33,12 @@
 // no timestamps, so it counts as current for 3 hydraulics intervals (at least
 // 1 min) after the last good fetch.
 //
-// Polling only sends GET requests. The two createIrrigation calls are the only
-// ones that change anything on WiseConn: each sends one POST /irrigations
-// (never retried, so a slow reply can't schedule twice) and blocks the caller
-// until WiseConn answers (about 1 s, at most 20 s).
+// Polling only sends GET requests. The two createIrrigation calls and
+// deleteIrrigation are the only ones that change anything on WiseConn: each
+// sends one request (POST /irrigations, DELETE /irrigations/<id>; never retried,
+// so a slow reply can't schedule twice) and blocks the caller until WiseConn
+// answers (about 1 s, at most 20 s). The irrigation endpoints only work on
+// https://api.wiseconn.com (apiv2 answers them with HTTP 500).
 class wiseconn_link{
     public:
     explicit wiseconn_link(const wiseconn_keys& keys);
@@ -70,12 +72,20 @@ class wiseconn_link{
     // is this machine's local time):
     //   POST /irrigations {"zoneId", "initTime", "endTime", "directSchedule": true}
     // True if WiseConn accepted it (2xx); otherwise error has the reason and reply.
+    // irrigation_id: the new scheduled irrigation's id from the reply ("" if the
+    // reply had none, e.g. an unexpected format).
     bool createIrrigation(const std::string& zone_id, const std::tm& start, const std::tm& end,
-                          std::string& error);
+                          std::string& irrigation_id, std::string& error);
 
     // Irrigates a zone starting now for duration_minutes:
     //   POST /irrigations {"zoneId", "duration"}
-    bool createIrrigationNow(const std::string& zone_id, int duration_minutes, std::string& error);
+    bool createIrrigationNow(const std::string& zone_id, int duration_minutes,
+                             std::string& irrigation_id, std::string& error);
+
+    // Deletes a scheduled irrigation: DELETE /irrigations/<id>. WiseConn only
+    // deletes one in the future with status "Saved" or "Sending irrigation has
+    // failed" (not one that is running or done). True on a 2xx.
+    bool deleteIrrigation(const std::string& irrigation_id, std::string& error);
 
     private:
     struct sample{
@@ -86,7 +96,7 @@ class wiseconn_link{
     void pollLoop();
     void pollZone(const std::string& zone_id);
     void pollHydraulics();
-    bool postIrrigation(const std::string& json_body, std::string& error);
+    bool postIrrigation(const std::string& json_body, std::string& irrigation_id, std::string& error);
     std::chrono::steady_clock::duration hydraulicsMaxAge() const;
 
     std::string api_key_;

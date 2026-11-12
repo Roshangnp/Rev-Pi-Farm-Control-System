@@ -1,6 +1,7 @@
 #include "remote_irrigation.h"
 
 #include <cstdio>
+#include <cstdlib>
 
 bool remote_irrigation::readOn(bool& on) {
     return link_->queryBool(device_name_, "readOn", on);
@@ -18,4 +19,19 @@ bool remote_irrigation::scheduleIrrigation(int startHour, int startMinute, int e
 
 bool remote_irrigation::scheduleIrrigation(int durationMinutes) {
     return link_->command(device_name_, "scheduleIrrigation", std::to_string(durationMinutes));
+}
+
+// Read as text, not queryFloat: WiseConn ids (22 million and up) don't fit a float exactly
+bool remote_irrigation::readScheduledIrrigation(int& id) {
+    std::string value;
+    if (!link_->query(device_name_, "readScheduledIrrigation", value)) return false;
+    char* end = nullptr;
+    long parsed = std::strtol(value.c_str(), &end, 10);
+    if (value.empty() || *end != '\0' || parsed <= 0) return false;
+    id = static_cast<int>(parsed);
+    return true;
+}
+
+bool remote_irrigation::cancelIrrigation() {
+    return link_->command(device_name_, "cancelIrrigation");
 }

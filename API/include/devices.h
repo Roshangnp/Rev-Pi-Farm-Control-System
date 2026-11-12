@@ -171,4 +171,13 @@ class irrigation{
     virtual bool readOn(bool& on) = 0;
     virtual bool scheduleIrrigation(int startHour, int startMinute, int endHour, int endMinute) = 0; // hours in 24hr format and day is infered to be today
     virtual bool scheduleIrrigation(int durationMinutes) = 0; // schedule irrigation for now for duration
+
+    // The id of the irrigation the last successful scheduleIrrigation() created
+    // (kept until cancelIrrigation() deletes it or the next one replaces it; lost
+    // on a restart). False if there is none
+    virtual bool readScheduledIrrigation(int& id) = 0;
+    // Deletes that irrigation. Only works while it is still in the future and not
+    // yet sent to the field (WiseConn status "Saved"); false otherwise, or if
+    // there is none
+    virtual bool cancelIrrigation() = 0;
 };

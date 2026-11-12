@@ -92,9 +92,9 @@ over HaLow). The RO RevPi's snapshot is about 3 KB, so each client polling it us
 ## WiseConn devices
 
 Devices on the farm's WiseConn irrigation system, read from its cloud API
-(`https://apiv2.wiseconn.com`, `api_key` header). Polling only sends GET requests; the only
+(`https://api.wiseconn.com`, `api_key` header; the scheduled-irrigation endpoints only work on this host, `apiv2.wiseconn.com` answers them with HTTP 500). Polling only sends GET requests; the only
 calls that change anything are the two `scheduleIrrigation` overloads, which start real
-irrigations on the live system. Built into every config and bound once in
+irrigations on the live system, and `cancelIrrigation`, which deletes one. Built into every config and bound once in
 `API/src/config/wiseconn_farm_devices.cpp` (needs internet): soil probes `zone_7_soil`,
 `zone_8_soil`, `zone_10_3_soil`, 24 irrigation zones `valve_1_1` ... `valve_10_3`,
 `overhead_1` ... `overhead_6`, `city_water_fill_valve`, and 7 flow meters `main_flow`,
@@ -127,7 +127,12 @@ irrigations on the live system. Built into every config and bound once in
   refused without contacting WiseConn. Each call blocks until WiseConn answers (about 1 s, at
   most 20 s), is never retried (no double scheduling), returns true only on a 2xx, and logs
   WiseConn's reply; a timeout means it may or may not have been created. After a success the
-  link polls again at once so `readOn` catches up. A running valve's status is "Operating" (counted as on), a stopped one "Off".
+  link polls again at once so `readOn` catches up. Each success saves the new irrigation's id
+  from WiseConn's reply (the first element of the returned array; replaces the previous one;
+  lost on a restart): `readScheduledIrrigation(id)` returns it, `cancelIrrigation()` sends
+  `DELETE /irrigations/<id>` and clears it on success. WiseConn only deletes one that is still
+  in the future with status "Saved" or "Sending irrigation has failed"; a running one would need
+  `PATCH /irrigations/<id>?action=stop` (not implemented). A running valve's status is "Operating" (counted as on), a stopped one "Off".
   (The deprecated web UI showed each zone as a read-only "on" indicator; nothing shows them now.)
 - `wiseconn_keys` - parses `wiseconn_keys.txt` (repo root, git-ignored): `api_key`, `farm_id`,
   `time_zone`, optional `base_url` / `poll_seconds` / `hydraulics_poll_seconds` / `max_age_minutes`, then one `[name]`

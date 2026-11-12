@@ -38,7 +38,8 @@ class device_server : public line_handler{
     bool addDevice(const std::string& name, push_button& device);
     // Per-depth values travel as "a,b,c"
     bool addDevice(const std::string& name, soil_sensor& device);
-    // scheduleIrrigation takes "HH:MM-HH:MM" (today) or a number of minutes (from now)
+    // scheduleIrrigation takes "HH:MM-HH:MM" (today) or a number of minutes (from now);
+    // cancelIrrigation and readScheduledIrrigation take no argument
     bool addDevice(const std::string& name, irrigation& device);
 
     // Registers every device added so far on server. Call after the addDevice

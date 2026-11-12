@@ -11,6 +11,9 @@
 //       POST /irrigations {zoneId, initTime, endTime, directSchedule: true}
 //   scheduleIrrigation(minutes): starting now for that long (1 min to 24 h).
 //       POST /irrigations {zoneId, duration}
+//   Each successful schedule saves the id WiseConn returns (replacing the
+//   previous one), readable with readScheduledIrrigation.
+//   cancelIrrigation: DELETE /irrigations/<saved id>; clears it on success.
 // Bad arguments are refused without contacting WiseConn. A call blocks until
 // WiseConn answers (about 1 s) and returns true only if it accepted the
 // irrigation. THESE START REAL IRRIGATIONS on the live system.
@@ -22,11 +25,17 @@ class wiseconn_irrigation : public irrigation{
     bool readOn(bool& on) override;
     bool scheduleIrrigation(int startHour, int startMinute, int endHour, int endMinute) override;
     bool scheduleIrrigation(int durationMinutes) override;
+    bool readScheduledIrrigation(int& id) override;
+    bool cancelIrrigation() override;
 
     private:
+    // On success, saves irrigation_id (logs if the reply had none)
+    void saveScheduled(bool ok, const std::string& irrigation_id);
+
     bool report(bool ok, const std::string& what, const std::string& error) const;
 
     wiseconn_link& link_;
     std::string name_;     // for log messages
     std::string zone_id_;
+    std::string scheduled_id_;   // last irrigation created here, "" if none
 };

@@ -17,6 +17,8 @@ class remote_irrigation : public irrigation{
     bool scheduleIrrigation(int startHour, int startMinute, int endHour, int endMinute) override;
     // Sent as the number of minutes
     bool scheduleIrrigation(int durationMinutes) override;
+    bool readScheduledIrrigation(int& id) override;
+    bool cancelIrrigation() override;
 
     private:
     remote_link* link_;
