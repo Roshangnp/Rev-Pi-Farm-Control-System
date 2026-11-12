@@ -91,7 +91,7 @@ int main() {
         return 1;
     }
     if (!addRO(server, sched)) std::fprintf(stderr, "RO server failed to register\n");
-    addProcedures(server, sched);   // owns none here (ro_procedure is the RO RevPi's)
+    addLocalProcedures(server);   // owns none here (ro_procedure is the RO RevPi's)
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start (port %u taken?)\n", static_cast<unsigned>(LINE_SERVER_PORT));
         return 1;

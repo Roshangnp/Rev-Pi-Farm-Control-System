@@ -1,14 +1,14 @@
 #include "procedure_config.h"
 
-// Upper tank RevPi (192.168.1.21): owns no procedure instance. ro_procedure (owned by the RO RevPi) is a
-// remote_procedure on ro_revpi, the RO RevPi connection,
-// shared with its devices and the RO.
-
 #include "remote_link.h"
 #include "remote_procedure/remote_procedure.h"
 
-// The RO RevPi connection, defined in API/src/config/config_uppertank.cpp
-extern remote_link ro_revpi;
+// ---------------------------------------------------------------------------
+// Upper tank RevPi (192.168.1.21): owns no procedures; each is a remote_procedure
+// on the connection to its owner.
+// ---------------------------------------------------------------------------
+
+extern remote_link ro_revpi;   // config_uppertank.cpp
 
 namespace {
 
@@ -16,9 +16,10 @@ remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
 
 }  // namespace
 
+// Public procedures declared in procedure_config.h
 procedure_control& ro_procedure = remote_ro_procedure;
 
-// Nothing to share: no instance is owned here
-bool addProcedures(line_server&, scheduler&) {
+// Nothing owned here, so nothing to share
+bool addLocalProcedures(line_server&) {
     return true;
 }

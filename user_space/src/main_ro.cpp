@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <vector>
 #include "config.h"
 #include "line_server.h"
 #include "procedure_config.h"
@@ -58,8 +57,7 @@ int main() {
     }
     // Not fatal: the device server keeps running so the outputs can still be read and switched
     if (!addRO(server, sched)) std::fprintf(stderr, "RO controller failed to start cleanly\n");
-    // This machine's procedures (ro_procedure), on sched
-    if (!addProcedures(server, sched)) std::fprintf(stderr, "Procedures failed to register\n");
+    if (!addLocalProcedures(server)) std::fprintf(stderr, "Procedure server failed to register\n");
     schedule_RO_operation();   // after addRO: the RO is OFF before any scheduled task can run
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");

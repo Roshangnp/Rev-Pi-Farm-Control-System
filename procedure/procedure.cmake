@@ -2,7 +2,8 @@
 # like farm and ro: the procedure core (procedure, procedure_server,
 # remote_procedure) plus this machine's procedure config
 # (src/config/procedure_config_<DEVICE_CONFIG>.cpp: binds procedure_config.h's
-# instances, creates and serves the ones it owns in addProcedures()). A config
+# instances, the ones it owns as procedure objects on main's scheduler, served by
+# addLocalProcedures()). A config
 # without a procedure config (test) gets only the core.
 # procedure_client (libprocedure_client.a), for ro_console: every instance as a
 # remote_procedure (src/config/procedure_client_config.cpp) on farm_client's
