@@ -12,6 +12,7 @@
 #include "devices/local_devices/local_switched_load.h"
 #include "devices/local_devices/local_switch.h"
 #include "devices/remote_devices/device_server.h"
+#include "wiseconn_farm_devices.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "remote_link.h"
 
@@ -119,7 +120,7 @@ local_switch local_ro_toggle_switch(&ro_toggle_switch_input);
 remote_link upper_tank_revpi("192.168.1.21");
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 
-// Shares the devices wired to this RevPi with the other machines
+// Shares the devices wired to this RevPi, and the WiseConn devices, with the other machines
 device_server devices;
 
 }  // namespace
@@ -236,6 +237,7 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("permeate_cip_valve", local_permeate_cip_valve)
            && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve)
            && devices.addDevice("repressure_toggle_switch", local_repressure_toggle_switch)
-           && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch);
+           && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch)
+           && addWiseconnDevices(devices);
     return ok && devices.registerWith(server);
 }

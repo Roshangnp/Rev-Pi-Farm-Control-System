@@ -27,6 +27,38 @@ std::string okIf(bool success) {
     return success ? "ok" : "fail";
 }
 
+// {18, 22.3, 25.1} -> "ok 18,22.3,25.1" (no spaces, ';' or '=', so it fits a snapshot entry)
+std::string okFloats(bool success, const std::vector<float>& values) {
+    if (!success) return "fail";
+    std::string reply = "ok ";
+    char text[32];
+    for (size_t i = 0; i < values.size(); ++i) {
+        std::snprintf(text, sizeof(text), "%.6g", static_cast<double>(values[i]));
+        if (i > 0) reply += ',';
+        reply += text;
+    }
+    return reply;
+}
+
+// Whole text is a non-negative integer of at most 4 digits
+bool parseSmallInt(const std::string& text, int& value) {
+    if (text.empty() || text.size() > 4 || text.find_first_not_of("0123456789") != std::string::npos) return false;
+    value = std::atoi(text.c_str());
+    return true;
+}
+
+// "HH:MM-HH:MM" -> start and end hour/minute (ranges are checked by the device)
+bool parseTimeRange(const std::string& text, int& sh, int& sm, int& eh, int& em) {
+    size_t dash = text.find('-');
+    if (dash == std::string::npos) return false;
+    auto parseTime = [](const std::string& t, int& h, int& m) {
+        size_t colon = t.find(':');
+        return colon != std::string::npos && parseSmallInt(t.substr(0, colon), h) &&
+               parseSmallInt(t.substr(colon + 1), m);
+    };
+    return parseTime(text.substr(0, dash), sh, sm) && parseTime(text.substr(dash + 1), eh, em);
+}
+
 bool parseFloat(const std::string& text, float& value) {
     if (text.empty()) return false;
     char* end = nullptr;
@@ -49,6 +81,8 @@ bool device_server::addDevice(const std::string& name, switched_load& device) {r
 bool device_server::addDevice(const std::string& name, toggle_switch& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, toggle_switch_double_pole& device) {return addDeviceRef(name, &device);}
 bool device_server::addDevice(const std::string& name, push_button& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, soil_sensor& device) {return addDeviceRef(name, &device);}
+bool device_server::addDevice(const std::string& name, irrigation& device) {return addDeviceRef(name, &device);}
 
 bool device_server::addDeviceRef(const std::string& name, device_ref device) {
     if (name.empty() || name.find_first_of(" \t\r\n") != std::string::npos || name == "ping") return false;
@@ -184,6 +218,22 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 bool success = device->readPressTotal(total);
                 reply = okUint(success, total);
             }
+        } else if constexpr (std::is_same_v<T, soil_sensor>) {
+            std::vector<float> values;
+            if (method == "readMoisture") {reply = okFloats(device->readMoisture(values), values);}
+            else if (method == "readETC") {reply = okFloats(device->readETC(values), values);}
+            else if (method == "readTemperature") {reply = okFloats(device->readTemperature(values), values);}
+        } else if constexpr (std::is_same_v<T, irrigation>) {
+            if (method == "readOn") {
+                bool on = false;
+                bool success = device->readOn(on);
+                reply = success ? okBool(on) : "fail";
+            } else if (method == "scheduleIrrigation") {
+                int sh, sm, eh, em, minutes;
+                if (parseTimeRange(arg, sh, sm, eh, em)) reply = okIf(device->scheduleIrrigation(sh, sm, eh, em));
+                else if (parseSmallInt(arg, minutes)) reply = okIf(device->scheduleIrrigation(minutes));
+                else return "err bad argument";
+            }
         }
 
         return reply;
@@ -210,6 +260,8 @@ void device_server::snapshot(std::string& out) {
             else if constexpr (std::is_same_v<T, toggle_switch>) return {"readValue"};
             else if constexpr (std::is_same_v<T, toggle_switch_double_pole>) return {"readPole1", "readPole2"};
             else if constexpr (std::is_same_v<T, push_button>) return {"readPressTotal"};
+            else if constexpr (std::is_same_v<T, soil_sensor>) return {"readMoisture", "readETC", "readTemperature"};
+            else if constexpr (std::is_same_v<T, irrigation>) return {"readOn"};
             else return {};
         }, entry.second);
         for (const char* method : methods) appendSnapshotEntry(out, name + "." + method, handleRequest(0, name, method, ""));

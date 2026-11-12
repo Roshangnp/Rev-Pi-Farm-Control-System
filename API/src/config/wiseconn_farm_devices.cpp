@@ -1,4 +1,5 @@
 #include "config.h"
+#include "wiseconn_farm_devices.h"
 
 #include <cstdlib>
 #include <ctime>
@@ -8,14 +9,16 @@
 #include "devices/wiseconn_devices/wiseconn_soil_sensor.h"
 #include "devices/wiseconn_devices/wiseconn_irrigation.h"
 #include "wiseconn_keys_text.h"
+#include "devices/remote_devices/device_server.h"
 
 // ---------------------------------------------------------------------------
 // WiseConn cloud devices, bound the same way on every machine (built into
 // farm_api next to whichever config_<name>.cpp is chosen), so every program
 // has the same WiseConn access. Read only by policy: never call
 // scheduleIrrigation against the real API. Keys from wiseconn_keys.txt (built
-// in by CMake); missing = the link is off and every read fails. Not registered
-// on any device_server. To be replaced by more RevPis eventually.
+// in by CMake); missing = the link is off and every read fails. Every config
+// serves them on its device_server (addWiseconnDevices, from addLocalDevices).
+// To be replaced by more RevPis eventually.
 // ---------------------------------------------------------------------------
 
 namespace {
@@ -96,3 +99,35 @@ irrigation& overhead_4 = wiseconn_overhead_4;
 irrigation& overhead_5 = wiseconn_overhead_5;
 irrigation& overhead_6 = wiseconn_overhead_6;
 irrigation& city_water_fill_valve = wiseconn_city_water_fill_valve;
+
+bool addWiseconnDevices(device_server& devices) {
+    bool ok = true;
+    ok = devices.addDevice("zone_7_soil", zone_7_soil) && ok;
+    ok = devices.addDevice("zone_8_soil", zone_8_soil) && ok;
+    ok = devices.addDevice("zone_10_3_soil", zone_10_3_soil) && ok;
+    ok = devices.addDevice("valve_1_1", valve_1_1) && ok;
+    ok = devices.addDevice("valve_1_2", valve_1_2) && ok;
+    ok = devices.addDevice("valve_2_1", valve_2_1) && ok;
+    ok = devices.addDevice("valve_3_1", valve_3_1) && ok;
+    ok = devices.addDevice("valve_4_1", valve_4_1) && ok;
+    ok = devices.addDevice("valve_5_1", valve_5_1) && ok;
+    ok = devices.addDevice("valve_5_2", valve_5_2) && ok;
+    ok = devices.addDevice("valve_5_3", valve_5_3) && ok;
+    ok = devices.addDevice("valve_5_4", valve_5_4) && ok;
+    ok = devices.addDevice("valve_6_1", valve_6_1) && ok;
+    ok = devices.addDevice("valve_6_2", valve_6_2) && ok;
+    ok = devices.addDevice("valve_7_1", valve_7_1) && ok;
+    ok = devices.addDevice("valve_8_1", valve_8_1) && ok;
+    ok = devices.addDevice("valve_9_1", valve_9_1) && ok;
+    ok = devices.addDevice("valve_10_1", valve_10_1) && ok;
+    ok = devices.addDevice("valve_10_2", valve_10_2) && ok;
+    ok = devices.addDevice("valve_10_3", valve_10_3) && ok;
+    ok = devices.addDevice("overhead_1", overhead_1) && ok;
+    ok = devices.addDevice("overhead_2", overhead_2) && ok;
+    ok = devices.addDevice("overhead_3", overhead_3) && ok;
+    ok = devices.addDevice("overhead_4", overhead_4) && ok;
+    ok = devices.addDevice("overhead_5", overhead_5) && ok;
+    ok = devices.addDevice("overhead_6", overhead_6) && ok;
+    ok = devices.addDevice("city_water_fill_valve", city_water_fill_valve) && ok;
+    return ok;
+}

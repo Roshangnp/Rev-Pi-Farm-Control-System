@@ -1,6 +1,8 @@
 #include "config.h"
 
 #include "remote_link.h"
+#include "wiseconn_farm_devices.h"
+#include "devices/remote_devices/device_server.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "devices/remote_devices/remote_level_sensor.h"
 #include "devices/remote_devices/remote_flow_sensor.h"
@@ -75,6 +77,9 @@ remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
+// Shares this machine's WiseConn devices
+device_server devices;
+
 }  // namespace
 
 // Public devices declared in config.h
@@ -132,7 +137,8 @@ bool attachAllInterfaces() {
     return true;
 }
 
-// Nothing wired to this machine, so nothing to share
-bool addLocalDevices(line_server&) {
-    return true;
+// No I/O wired here: shares the WiseConn devices (main_host_pc runs no
+// line_server yet, so this only takes effect in a program that does)
+bool addLocalDevices(line_server& server) {
+    return addWiseconnDevices(devices) && devices.registerWith(server);
 }

@@ -6,7 +6,7 @@
 #include "line_server.h"
 
 
-// Serves this RevPi's devices to remote_* devices on other machines, as a
+// Serves this machine's devices (local, remote or WiseConn: any config.h device) to remote_* devices on other machines, as a
 // handler on a line_server (comms/src): each device is registered under its
 // name, and requests are "<device> <method> [arg]" with method = the C++ method
 // name. The line_server owns the socket; requests are only handled inside its
@@ -36,6 +36,10 @@ class device_server : public line_handler{
     bool addDevice(const std::string& name, toggle_switch& device);
     bool addDevice(const std::string& name, toggle_switch_double_pole& device);
     bool addDevice(const std::string& name, push_button& device);
+    // Per-depth values travel as "a,b,c"
+    bool addDevice(const std::string& name, soil_sensor& device);
+    // scheduleIrrigation takes "HH:MM-HH:MM" (today) or a number of minutes (from now)
+    bool addDevice(const std::string& name, irrigation& device);
 
     // Registers every device added so far on server. Call after the addDevice
     // calls. False if a name is already taken on the server.
@@ -51,7 +55,8 @@ class device_server : public line_handler{
                                     pressure_transducer*, tds_sensor*, flow_sensor*,
                                     level_sensor*, conductivity_sensor*, temperature_sensor*,
                                     switched_load*, toggle_switch*,
-                                    toggle_switch_double_pole*, push_button*>;
+                                    toggle_switch_double_pole*, push_button*,
+                                    soil_sensor*, irrigation*>;
 
     bool addDeviceRef(const std::string& name, device_ref device);
 

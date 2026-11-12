@@ -5,6 +5,7 @@
 #include "devices/local_devices/local_level_sensor.h"
 #include "devices/local_devices/local_pump.h"
 #include "devices/remote_devices/device_server.h"
+#include "wiseconn_farm_devices.h"
 #include "remote_link.h"
 
 // ---------------------------------------------------------------------------
@@ -33,7 +34,7 @@ local_pump local_irrigation_pump(nullptr, nullptr, nullptr, &irrigation_pump_pre
 // On/off only (run relay, no speed, alarm or pressure wired)
 local_pump local_well_4_pump(nullptr, &well_4_pump_run, nullptr, nullptr);
 
-// Shares the devices wired to this RevPi with the other machines
+// Shares the devices wired to this RevPi, and the WiseConn devices, with the other machines
 device_server devices;
 
 }  // namespace
@@ -57,6 +58,7 @@ bool addLocalDevices(line_server& server) {
     bool ok = devices.addDevice("upper_tank_high_float", local_upper_tank_high_float)
            && devices.addDevice("upper_tank_water_level", local_upper_tank_water_level)
            && devices.addDevice("irrigation_pump", local_irrigation_pump)
-           && devices.addDevice("well_4_pump", local_well_4_pump);
+           && devices.addDevice("well_4_pump", local_well_4_pump)
+           && addWiseconnDevices(devices);
     return ok && devices.registerWith(server);
 }
