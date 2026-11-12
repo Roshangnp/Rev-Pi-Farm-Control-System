@@ -96,3 +96,10 @@ bool stopROProcedure() {
     }
     return p.stop();
 }
+
+bool readROProcedure(bool& running, procedure_types& type) {
+    procedure& p = plant().procedures();
+    running = p.isRunning();
+    if (running) type = p.type();
+    return true;
+}

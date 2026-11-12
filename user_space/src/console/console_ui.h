@@ -7,4 +7,4 @@
 //   Esc cancels a confirmation.
 // Everything that switches hardware asks Yes/No first.
 // Returns the exit code.
-int runConsole(console_devices& farm, const std::string& ro_host, const std::string& upper_host);
+int runConsole(console_devices& farm);

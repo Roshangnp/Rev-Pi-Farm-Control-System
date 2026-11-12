@@ -1,16 +1,18 @@
 # Farm console (`ro_console`)
 
-Keyboard-only terminal UI for the RO RevPi and the upper tank, in the style of `raspi-config`.
-It is a client of the RevPis' line servers (port 47100): it never touches
-hardware itself, so the same program runs on the RO RevPi's HDMI screen, or over SSH on
-emerald-server or the dev PC.
+Keyboard-only terminal UI for the whole farm, in the style of `raspi-config`. It runs on
+emerald-server (or the dev PC) only: the RevPis are self-contained and run no console.
+
+It is an ordinary user-space program of the `host_pc` config, like `main_host_pc`: every device
+comes from `config.h` (bound in `config_host_pc.cpp`: the RevPis' devices as `remote_*` over
+port 47100, the WiseConn zones and soil probes as `wiseconn_*` from the WiseConn API) and the RO
+from `ro_config.h`. So anything the console can do, any host_pc program can do too.
 
 ```
-ro_console [--ro HOST] [--upper HOST]     # defaults: --ro 192.168.1.20 --upper 192.168.1.21
+ro_console        # no options: the machines are set in config_host_pc.cpp
 ```
 
-On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when the network is down
-(only the upper tank values go to `---`).
+On emerald-server: `~/tools/Rev-Pi-Farm-Control-System/build/ro_console`, inside tmux over SSH.
 
 ## Tabs
 
@@ -20,16 +22,14 @@ On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when th
 | RO-Dashboard | tiles: RO control (as on Main-Dashboard plus settling, panel toggle switches and a state override), chemical tank floats, pressures, flows, conductivity (TDS), RO pumps, CIP heater (switch + CIP temp), valves |
 
 Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
-the dashboard scrolls to the focused control); the tile holding the focus has a heavy border. "Running" comes from `ro readProcedure` (an older RO RevPi build shows `---`).
+the dashboard scrolls to the focused control); the tile holding the focus has a heavy border. "Running" comes from `readROProcedure()`. The header shows each RevPi
+`OK` while it answers (RO RevPi: the RO state reads; upper tank RevPi: its high float reads).
 
-The devices on each tab are listed in `src/console_devices.cpp`; add a line there to show a new
-one (the name the owning RevPi registers in its device server, or the WiseConn name in
-`wiseconn_keys.txt` `[irrigations]`). RevPi devices are `remote_*` over `remote_link`; WiseConn
-zones and soil probes are `wiseconn_irrigation` / `wiseconn_soil_sensor` on the console's own `wiseconn_link`, read straight from the
-WiseConn API on every machine (needs `wiseconn_keys.txt` in the repo root when building; without it
-the zones show `---`). The console never schedules irrigations. WiseConn's on/off list refreshes
-about once a minute; soil probes report every 15 min (a read fails once the data is 45 min old). The process runs in the farm's time zone (keys `time_zone`), and log
-messages go to `~/.cache/ro_console.log` instead of the screen.
+The devices on each tile are listed in `console_devices.cpp` as `config.h` references
+(`DEVICE(feed_pump)`); add a line there to show a new one. It must be bound in
+`config_host_pc.cpp`, or the console fails to link. The console never schedules irrigations.
+WiseConn's on/off list refreshes every 10 s; soil probes report every 15 min (a read fails once
+the data is 45 min old). Log messages go to `~/.cache/ro_console.log` instead of the screen.
 
 ## Keys
 
@@ -59,24 +59,12 @@ sensor, the value is more than 3 s old (network stall), or the link is down (hea
 - Several consoles and the RO controller can be used at the same time; the RevPi
   handles each request in turn.
 - The machine running it must be allowed through the RevPis' firewall on port 47100 (see
-  CLAUDE.md); loopback on the RO RevPi always is.
+  CLAUDE.md), and needs `wiseconn_keys.txt` in the repo root when building (without it the
+  WiseConn tiles show `---`).
 - Needs a UTF-8 terminal, at least 80x24.
 
 ## Build
 
-Built with every `DEVICE_CONFIG` (it doesn't use the machine config): `cmake --build build
---target ro_console`. FTXUI (v6.1.9) is fetched by CMake on the first configure, so that needs
-internet access.
-
-## HDMI screen on the RO RevPi
-
-`farm-console.service` runs it on tty1 (the HDMI console) and restarts it if it exits:
-
-```
-sudo cp console/farm-console.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now farm-console
-```
-
-A bigger console font helps from a distance: `sudo dpkg-reconfigure console-setup`
-(e.g. Terminus, 16x32).
+Only with `-DDEVICE_CONFIG=host_pc`: `cmake --build build --target ro_console`. FTXUI (v6.1.9) is
+fetched by CMake on the first configure, so that needs internet access. The RevPi configs don't
+build it.

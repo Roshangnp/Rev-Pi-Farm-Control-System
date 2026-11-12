@@ -15,6 +15,7 @@
 
 #include "devices.h"
 #include "procedure.h"   // procedure_types
+#include "ro_config.h"   // the RO (on the RO RevPi, through remote_ro)
 #include "types.h"
 
 using namespace ftxui;
@@ -418,7 +419,7 @@ std::string clockText() {
 
 class console_ui{
     public:
-    console_ui(console_devices& farm, std::string ro_host, std::string upper_host);
+    explicit console_ui(console_devices& farm);
 
     int run();
 
@@ -448,8 +449,6 @@ class console_ui{
     Component dashboardOf(Components tiles);
 
     console_devices& farm_;
-    std::string ro_host_;
-    std::string upper_host_;
 
     bool confirm_shown_ = false;
     std::string confirm_question_;
@@ -470,8 +469,8 @@ class console_ui{
     std::shared_ptr<nav_map> nav_;
 };
 
-console_ui::console_ui(console_devices& farm, std::string ro_host, std::string upper_host)
-    : farm_(farm), ro_host_(std::move(ro_host)), upper_host_(std::move(upper_host)) {
+console_ui::console_ui(console_devices& farm)
+    : farm_(farm) {
     for (RO_state s : ALL_RO_STATES) states_.push_back(toString(s));
     for (procedure_types p : ALL_PROCEDURE_TYPES) procedures_.push_back(toString(p));
 }
@@ -538,7 +537,7 @@ Component console_ui::numberEntry(const std::string& what, const std::string& pl
 Components console_ui::pumpRows(std::vector<pump_row>& pumps, int width) {
     Components rows;
     for (pump_row& p : pumps) {
-        pump* device = p.device.get();
+        pump* device = p.device;
         // The irrigation pump has no run relay, only a pressure setpoint
         Component buttons = p.pressure_control
             ? Container::Horizontal({})
@@ -585,7 +584,7 @@ Components console_ui::pumpRows(std::vector<pump_row>& pumps, int width) {
 Components console_ui::loadRows(int width) {
     Components rows;
     for (load_row& l : farm_.loads) {
-        switched_load* device = l.device.get();
+        switched_load* device = l.device;
         auto buttons = onOffButtons(l.label, [device] { return device->setOn(); }, [device] { return device->setOff(); });
         rows.push_back(Renderer(buttons, [&l, device, buttons, width] {
             bool on = false;
@@ -600,12 +599,12 @@ Components console_ui::loadRows(int width) {
 // RO state and the running procedure
 Element console_ui::roStatus(bool with_settling) {
     RO_state state = RO_state::OFF;
-    bool state_ok = farm_.ro.readState(state);
+    bool state_ok = readROState(state);
     Element state_text = state_ok ? text(toString(state)) | color(state == RO_state::OFF ? Color::Yellow : Color::Green) | bold : text("---") | color(Color::Red);
 
     bool running = false;
     procedure_types p = procedure_types::LOW_PH_CIP_CYCLE;
-    bool procedure_ok = farm_.ro_procedures.readProcedure(running, p);
+    bool procedure_ok = readROProcedure(running, p);
     Element procedure_text = !procedure_ok ? text("---") | color(Color::Red)
                            : running ? text(toString(p)) | color(Color::Green) | bold
                            : text("none") | color(Color::Yellow);
@@ -616,7 +615,7 @@ Element console_ui::roStatus(bool with_settling) {
     };
     if (with_settling) {
         bool settling = false;
-        bool ok = farm_.ro.isSettling(settling);
+        bool ok = readROSettling(settling);
         Element settling_text = ok ? text(settling ? "valves settling" : "no") | color(settling ? Color::Green : Color::Yellow) : text("---") | color(Color::Red);
         lines.push_back(hbox({shortLabel("Settling"), settling_text}));
     }
@@ -627,10 +626,10 @@ Component console_ui::procedureControls() {
     auto list = dropdown(&procedures_, &procedure_selected_);
     auto run_button = button("Run", [this] {
         procedure_types p = ALL_PROCEDURE_TYPES[procedure_selected_];
-        ask("Run " + std::string(toString(p)) + "?", [this, p] { return farm_.ro_procedures.run(p); });
+        ask("Run " + std::string(toString(p)) + "?", [p] { return runROProcedure(p); });
     });
     auto stop_button = button("Stop", [this] {
-        ask("Stop the running procedure (the RO goes OFF)?", [this] { return farm_.ro_procedures.stop(); });
+        ask("Stop the running procedure (the RO goes OFF)?", [] { return stopROProcedure(); });
     });
     auto row = Container::Horizontal({list, run_button, stop_button});
     return Renderer(row, [list, run_button, stop_button] {
@@ -645,7 +644,7 @@ Component console_ui::stateControls(const std::string& row_label) {
     auto list = dropdown(&states_, &state_selected_);
     auto set_button = button("Set state", [this] {
         RO_state s = ALL_RO_STATES[state_selected_];
-        ask("Set the RO to " + std::string(toString(s)) + "?", [this, s] { return farm_.ro.setState(s); });
+        ask("Set the RO to " + std::string(toString(s)) + "?", [s] { return setROState(s); });
     });
     auto row = Container::Horizontal({list, set_button});
     return Renderer(row, [row_label, list, set_button] {
@@ -659,11 +658,11 @@ Component console_ui::procedureButtons() {
     Components buttons;
     for (procedure_types p : ALL_PROCEDURE_TYPES) {
         buttons.push_back(button("Start " + std::string(toString(p)), [this, p] {
-            ask("Start " + std::string(toString(p)) + "?", [this, p] { return farm_.ro_procedures.run(p); });
+            ask("Start " + std::string(toString(p)) + "?", [p] { return runROProcedure(p); });
         }));
     }
     auto stop_button = button("Stop", [this] {
-        ask("Stop the running procedure (the RO goes OFF)?", [this] { return farm_.ro_procedures.stop(); });
+        ask("Stop the running procedure (the RO goes OFF)?", [] { return stopROProcedure(); });
     });
     Components all = buttons;
     all.push_back(stop_button);
@@ -671,7 +670,7 @@ Component console_ui::procedureButtons() {
     return Renderer(list, [this, buttons, stop_button] {
         bool running = false;
         procedure_types current = procedure_types::LOW_PH_CIP_CYCLE;
-        bool ok = farm_.ro_procedures.readProcedure(running, current);
+        bool ok = readROProcedure(running, current);
         Elements lines;
         for (size_t i = 0; i < buttons.size(); ++i) {
             bool this_one = ok && running && current == ALL_PROCEDURE_TYPES[i];
@@ -733,7 +732,7 @@ Component console_ui::roDashboard() {
 Components console_ui::valveRows(int width) {
     Components rows;
     for (valve_row& v : farm_.valves) {
-        valve* device = v.device.get();
+        valve* device = v.device;
         auto buttons = onOffButtons(v.label, [device] { return device->setOpen(); },
                                     [device] { return device->setClosed(); }, "Open", "Close");
         rows.push_back(Renderer(buttons, [&v, device, buttons, width] {
@@ -747,14 +746,12 @@ Components console_ui::valveRows(int width) {
 }
 
 Element console_ui::header() {
-    auto link_status = [](const std::string& name, const std::string& host, const remote_link& link) {
-        bool up = link.isConnected();
-        return hbox({text(name + "@" + host + " "),
-                     text(up ? "OK" : "DOWN") | color(up ? Color::Green : Color::Red) | bold});
+    auto link_status = [](const std::string& name, bool up) {
+        return hbox({text(name + " "), text(up ? "OK" : "DOWN") | color(up ? Color::Green : Color::Red) | bold});
     };
     return hbox({text(" Farm console") | bold, text("   "),
-                 link_status("RO", ro_host_, farm_.ro_link), text("   "),
-                 link_status("Upper tank", upper_host_, farm_.upper_link),
+                 link_status("RO RevPi", farm_.ro_up()), text("   "),
+                 link_status("Upper tank RevPi", farm_.upper_up()),
                  filler(), text(clockText() + " ")});
 }
 
@@ -819,7 +816,7 @@ int console_ui::run() {
 
 }  // namespace
 
-int runConsole(console_devices& farm, const std::string& ro_host, const std::string& upper_host) {
-    console_ui ui(farm, ro_host, upper_host);
+int runConsole(console_devices& farm) {
+    console_ui ui(farm);
     return ui.run();
 }
