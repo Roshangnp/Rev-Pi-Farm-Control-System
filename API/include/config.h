@@ -66,14 +66,14 @@ extern valve& permeate_cip_valve;
 extern valve& media_backwash_1_valve;
 extern valve& media_backwash_2_valve;
 
-// WiseConn cloud soil probes (host PC only, read only). Values per depth,
+// WiseConn cloud soil probes (every config, wiseconn_farm_devices.cpp; read only). Values per depth,
 // 4 in / 8 in / 12 in; refreshed from the cloud every 60 s, measured every 15 min.
 // Ids and the API key come from wiseconn_keys.txt.
 extern soil_sensor& zone_7_soil;
 extern soil_sensor& zone_8_soil;
 extern soil_sensor& zone_10_3_soil;
 
-// WiseConn irrigation zones (host PC only): readOn() is the zone's live valve
+// WiseConn irrigation zones (every config, wiseconn_farm_devices.cpp): readOn() is the zone's live valve
 // status (refreshed every 60 s); scheduleIrrigation() creates a WiseConn
 // irrigation, not enabled yet (always returns false). Zone ids come from
 // wiseconn_keys.txt [irrigations].
