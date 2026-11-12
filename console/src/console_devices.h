@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "remote_link.h"
+#include "remote_procedure/remote_procedure.h"
 #include "remote_ro/remote_ro.h"
 
 class pump;
@@ -59,15 +60,19 @@ class console_devices{
     remote_link ro_link;
     remote_link upper_link;
     remote_ro ro;
+    remote_procedure ro_procedures;   // the RO's procedures ("ro_procedure" on the RO RevPi)
 
-    // One vector per tab, in display order
+    // One vector per group (tab or dashboard tile), in display order
     std::vector<sensor_row> ro_pressures;
-    std::vector<sensor_row> ro_flows;          // plus conductivity and CIP temperature
+    std::vector<sensor_row> ro_flows;
+    std::vector<sensor_row> conductivities;    // feed and permeate TDS (uS/cm)
+    std::vector<sensor_row> cip_temps;         // CIP tank temperature, in the CIP heater tile
     std::vector<sensor_row> tank_levels;
     std::vector<float_row> chemical_floats;
     std::vector<float_row> water_floats;
-    std::vector<pump_row> pumps;
-    std::vector<load_row> loads;               // CIP heater, on the pump tab
+    std::vector<pump_row> ro_pumps;            // RO-Dashboard and the pump tab
+    std::vector<pump_row> upper_pumps;         // well 4, irrigation: Main-Dashboard and the pump tab
+    std::vector<load_row> loads;               // CIP heater, with the RO pumps
     std::vector<valve_row> valves;
     std::vector<toggle_row> toggles;           // panel switches, on the RO tab
 };

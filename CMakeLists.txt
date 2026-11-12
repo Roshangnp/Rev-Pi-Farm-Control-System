@@ -187,13 +187,14 @@ endif()
 set(ro_config_file ${CMAKE_CURRENT_SOURCE_DIR}/RO/src/config/ro_config_${DEVICE_CONFIG}.cpp)
 if(EXISTS ${ro_config_file})
     if(DEVICE_CONFIG STREQUAL "ro")
-        # procedures (CIP cycles) drive the local ro on the scheduler
-        set(ro_sources RO/src/ro.cpp RO/src/remote_ro/ro_server.cpp RO/src/procedures.cpp)
+        # procedure (procedure/, CIP cycles etc.) drives the RO through ro_config.h on the scheduler
+        set(ro_sources RO/src/ro.cpp RO/src/remote_ro/ro_server.cpp procedure/src/procedure.cpp
+                       procedure/src/remote_procedure/procedure_server.cpp)
     else()
-        set(ro_sources RO/src/remote_ro/remote_ro.cpp)
+        set(ro_sources RO/src/remote_ro/remote_ro.cpp procedure/src/remote_procedure/remote_procedure.cpp)
     endif()
     add_library(ro_control STATIC ${ro_sources} ${ro_config_file})
-    target_include_directories(ro_control PUBLIC RO/include PRIVATE RO/src)
+    target_include_directories(ro_control PUBLIC RO/include procedure/include PRIVATE RO/src procedure/src)
     target_compile_options(ro_control PRIVATE -Wall -Wextra)
     target_link_libraries(ro_control PUBLIC farm_api scheduler)   # config.h devices, comms; procedures
     target_link_libraries(main_${DEVICE_CONFIG} PRIVATE ro_control)
@@ -217,7 +218,8 @@ add_executable(ro_console
     console/src/main.cpp
     console/src/console_devices.cpp
     console/src/console_ui.cpp
-    RO/src/remote_ro/remote_ro.cpp)
-target_include_directories(ro_console PRIVATE console/src RO/include RO/src)
+    RO/src/remote_ro/remote_ro.cpp
+    procedure/src/remote_procedure/remote_procedure.cpp)
+target_include_directories(ro_console PRIVATE console/src RO/include RO/src procedure/include procedure/src)
 target_compile_options(ro_console PRIVATE -Wall -Wextra)
-target_link_libraries(ro_console PRIVATE remote_devices ftxui::screen ftxui::dom ftxui::component)
+target_link_libraries(ro_console PRIVATE remote_devices scheduler ftxui::screen ftxui::dom ftxui::component)   # scheduler: procedure.h includes scheduler.h

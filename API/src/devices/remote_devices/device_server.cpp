@@ -64,12 +64,12 @@ bool device_server::registerWith(line_server& server) {
 
 std::string device_server::handleRequest(int client_id, const std::string& name,
                                          const std::string& method, const std::string& arg) {
+    (void)client_id;
     auto found = devices_.find(name);
     if (found == devices_.end()) return "err unknown device";
 
     return std::visit([&](auto* device) -> std::string {
         using T = std::remove_pointer_t<decltype(device)>;
-        bool is_command = false;
         std::string reply = "err unknown method";
 
         if constexpr (std::is_same_v<T, pump>) {
@@ -92,23 +92,21 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 bool success = device->readPressure(pressure);
                 reply = okFloat(success, pressure);
             }
-            else if (method == "setOn") {is_command = true; reply = okIf(device->setOn());}
-            else if (method == "setOff") {is_command = true; reply = okIf(device->setOff());}
+            else if (method == "setOn") {reply = okIf(device->setOn());}
+            else if (method == "setOff") {reply = okIf(device->setOff());}
             else if (method == "setSpeed") {
                 float speed;
                 if (!parseFloat(arg, speed)) return "err bad argument";
-                is_command = true;
                 reply = okIf(device->setSpeed(speed));
             }
             else if (method == "setPressure") {
                 float pressure;
                 if (!parseFloat(arg, pressure)) return "err bad argument";
-                is_command = true;
                 reply = okIf(device->setPressure(pressure));
             }
         } else if constexpr (std::is_same_v<T, valve>) {
-            if (method == "setOpen") {is_command = true; reply = okIf(device->setOpen());}
-            else if (method == "setClosed") {is_command = true; reply = okIf(device->setClosed());}
+            if (method == "setOpen") {reply = okIf(device->setOpen());}
+            else if (method == "setClosed") {reply = okIf(device->setClosed());}
             else if (method == "readOpen") {
                 bool open = false;
                 bool success = device->readOpen(open);
@@ -157,8 +155,8 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 reply = okFloat(success, deg_f);
             }
         } else if constexpr (std::is_same_v<T, switched_load>) {
-            if (method == "setOn") {is_command = true; reply = okIf(device->setOn());}
-            else if (method == "setOff") {is_command = true; reply = okIf(device->setOff());}
+            if (method == "setOn") {reply = okIf(device->setOn());}
+            else if (method == "setOff") {reply = okIf(device->setOff());}
             else if (method == "readOn") {
                 bool on = false;
                 bool success = device->readOn(on);
@@ -188,7 +186,6 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
             }
         }
 
-        if (is_command) commanded_by_[name] = client_id;
         return reply;
     }, found->second);
 }
@@ -215,23 +212,6 @@ void device_server::snapshot(std::string& out) {
             else if constexpr (std::is_same_v<T, push_button>) return {"readPressTotal"};
             else return {};
         }, entry.second);
-        // Reads never record a client, so the id doesn't matter
         for (const char* method : methods) appendSnapshotEntry(out, name + "." + method, handleRequest(0, name, method, ""));
-    }
-}
-
-void device_server::clientGone(int client_id) {
-    for (auto it = commanded_by_.begin(); it != commanded_by_.end();) {
-        if (it->second != client_id) {
-            ++it;
-            continue;
-        }
-        std::visit([](auto* device) {
-            using T = std::remove_pointer_t<decltype(device)>;
-            if constexpr (std::is_same_v<T, pump>) device->setOff();
-            else if constexpr (std::is_same_v<T, valve>) device->setClosed();
-            else if constexpr (std::is_same_v<T, switched_load>) device->setOff();
-        }, devices_.at(it->first));
-        it = commanded_by_.erase(it);
     }
 }

@@ -23,10 +23,6 @@ class line_handler{
     // alone if the read failed. Values must not contain ';', '=' or whitespace.
     // Must only read (never command anything)
     virtual void snapshot(std::string& out) {(void)out;}
-
-    // client_id disconnected, or sent nothing for the server's watchdog time.
-    // Called on every handler, whether or not that client used it
-    virtual void clientGone(int client_id) {(void)client_id;}
 };
 
 // Adds one snapshot entry from a handleRequest-style reply: "ok <value>" gives
@@ -41,14 +37,14 @@ void appendSnapshotEntry(std::string& out, const std::string& key, const std::st
 // Single threaded: requests are only handled inside poll(), so handlers never
 // run at the same time as the code that calls poll().
 //
-// Watchdog: a client that disconnects (at once) or sends nothing for watchdog_ms
-// (default 20 s) is dropped and every handler's clientGone() is called.
-// remote_link asks for a snapshot every 0.5 s, so silence means the controller
-// or the network is down; stalls shorter than watchdog_ms are ridden out.
+// A client that sends nothing for idle_timeout_ms (default 20 s) is dropped, so
+// dead connections (client powered off, network gone) don't pile up. Dropping a
+// client changes nothing on the hardware. remote_link asks for a snapshot every
+// 0.5 s, so a live client is never idle that long.
 class line_server{
     public:
-    line_server(uint16_t port = LINE_SERVER_PORT, int watchdog_ms = 20000)
-    : port_(port), watchdog_(watchdog_ms){};
+    line_server(uint16_t port = LINE_SERVER_PORT, int idle_timeout_ms = 20000)
+    : port_(port), idle_timeout_(idle_timeout_ms){};
     ~line_server();
 
     line_server(const line_server&) = delete;
@@ -62,7 +58,7 @@ class line_server{
     // Opens the listening socket. False if the port can't be opened.
     bool start();
 
-    // Handles pending requests and runs the watchdog. Waits up to timeout_ms
+    // Handles pending requests and drops idle clients. Waits up to timeout_ms
     // for activity, so it can double as the control loop's sleep.
     void poll(int timeout_ms);
 
@@ -83,10 +79,10 @@ class line_server{
     void dropClient(size_t index);
 
     uint16_t port_;
-    std::chrono::milliseconds watchdog_;
+    std::chrono::milliseconds idle_timeout_;
     int listen_fd_ = -1;
     int next_client_id_ = 1;
     std::vector<client> clients_;
     std::map<std::string, line_handler*> names_;
-    std::vector<line_handler*> handlers_; // each once, for clientGone() and snapshot()
+    std::vector<line_handler*> handlers_; // each once, for snapshot()
 };

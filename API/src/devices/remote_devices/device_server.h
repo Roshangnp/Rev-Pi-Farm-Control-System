@@ -9,14 +9,12 @@
 // Serves this RevPi's devices to remote_* devices on other machines, as a
 // handler on a line_server (comms/src): each device is registered under its
 // name, and requests are "<device> <method> [arg]" with method = the C++ method
-// name. The line_server owns the socket and the client watchdog; requests are
-// only handled inside its poll(), so devices are never touched at the same time
-// as the local control code.
+// name. The line_server owns the socket; requests are only handled inside its
+// poll(), so devices are never touched at the same time as the local control code.
 //
-// Safe state: when the line_server drops a client (it disconnected, or sent
-// nothing for the server's watchdog time, default 20 s), every pump it last
-// commanded is turned off, every valve it last commanded is closed, and every
-// switched load it last commanded is turned off.
+// No watchdog: a command holds after its client disconnects (removed
+// 2026-11-11; manual commands are a precaution, and resetting them on
+// disconnect could close a valve the RO controller needed open).
 class device_server : public line_handler{
     public:
     device_server() = default;
@@ -47,7 +45,6 @@ class device_server : public line_handler{
                               const std::string& method, const std::string& arg) override;
     // Every read method of every device ("<device>.<method>=<value>"), for remote_link's cache
     void snapshot(std::string& out) override;
-    void clientGone(int client_id) override;
 
     private:
     using device_ref = std::variant<pump*, float_switch*, valve*,
@@ -59,5 +56,4 @@ class device_server : public line_handler{
     bool addDeviceRef(const std::string& name, device_ref device);
 
     std::map<std::string, device_ref> devices_;
-    std::map<std::string, int> commanded_by_; // device name -> client id that last commanded it
 };

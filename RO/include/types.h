@@ -55,42 +55,6 @@ inline bool fromString(const std::string& text, RO_state& s) {
     return false;
 }
 
-// Multi-step procedures the RO can run (RO/src/procedures.h, ro::runProcedure)
-enum class procedure_types {
-    LOW_PH_CIP_CYCLE,
-    HIGH_PH_CIP_CYCLE,
-    MEDIA_BACKWASH_CYCLE,
-    EMPTY_FEED_TANK
-};
-
-// Every procedure, in enum order: add new ones here too, or fromString() can't parse them
-inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
-    procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
-    procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK,
-};
-
-// The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
-inline const char* toString(procedure_types p) {
-    switch (p) {
-    case procedure_types::LOW_PH_CIP_CYCLE: return "LOW_PH_CIP_CYCLE";
-    case procedure_types::HIGH_PH_CIP_CYCLE: return "HIGH_PH_CIP_CYCLE";
-    case procedure_types::MEDIA_BACKWASH_CYCLE: return "MEDIA_BACKWASH_CYCLE";
-    case procedure_types::EMPTY_FEED_TANK: return "EMPTY_FEED_TANK";
-    }
-    return "UNKNOWN";
-}
-
-// Inverse of toString (exact match). False if text names no procedure
-inline bool fromString(const std::string& text, procedure_types& p) {
-    for (procedure_types candidate : ALL_PROCEDURE_TYPES) {
-        if (text == toString(candidate)) {
-            p = candidate;
-            return true;
-        }
-    }
-    return false;
-}
-
 #define NON_ZERO_PRESSURE 50
 #define PRESSURE_TOL 5
 #define NON_ZERO_FLOW 20

@@ -16,14 +16,12 @@ On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when th
 
 | Tab | Shows |
 |---|---|
-| RO-Pressure-Sensors | the 11 RO pressures (psi) |
-| RO-Flow-Sensors | feed, permeate, concentrate flow (gpm), feed/permeate conductivity, CIP temperature |
-| Tank-Water-Levels | feed tank and upper tank level |
-| Chemical-Tank-Floats | high pH, low pH, ASA, CIP low/mid/high |
-| Water-Tank-Floats | feed tank low, permeate tank high, upper tank high |
-| Manual-Pump-Control | pumps On/Off (RO pump speed 0-1, irrigation pump pressure setpoint), CIP heater |
-| Manual-RO-Valve-Control | the 7 RO valves Open/Close |
-| RO-Control | RO state and settling, panel toggle switches, set state, run/stop a procedure, RO pump speed |
+| Main-Dashboard | tiles: RO state, running procedure, run/stop a procedure; water tank floats; water levels; well 4 and irrigation pumps (WiseConn to come) |
+| RO-Dashboard | tiles: RO control (as on Main-Dashboard plus settling, panel toggle switches and a state override), chemical tank floats, pressures, flows, conductivity (TDS), RO pumps, CIP heater (switch + CIP temp), valves |
+
+Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
+the dashboard scrolls to the focused tile); Up/Down walk through every tile, the focused one has a
+heavy border. "Running" comes from `ro readProcedure` (an older RO RevPi build shows `---`).
 
 The devices on each tab are listed in `src/console_devices.cpp`; add a line there to show a new
 one (the name the owning RevPi registers in its device server).
@@ -43,10 +41,10 @@ sensor, the value is more than 3 s old (network stall), or the link is down (hea
 
 ## Things to know
 
-- Each console is its own client, so the device server's watchdog applies: when the console
-  exits (Ctrl+C, SSH dropped), pumps, loads and valves that *this console* switched on go off /
-  close. RO state changes and procedures are not affected. Run it inside `tmux` over SSH so a
-  dropped connection doesn't end it.
+- Nothing is undone when a console exits (Ctrl+C, SSH dropped): pumps, loads and valves it
+  switched stay as they are (the device server has no watchdog since 2026-11-11). Manual pump
+  and valve control is a precaution; the RO controller only reapplies its pumps and valves on
+  its next state change, and nothing stops a manual change from fighting a running procedure.
 - Several consoles, the web UI and the RO controller can be used at the same time; the RevPi
   handles each request in turn.
 - The machine running it must be allowed through the RevPis' firewall on port 47100 (see

@@ -73,7 +73,7 @@ toggle_row toggleSwitch(remote_link& link, const std::string& name) {
 // Device names are the ones each RevPi registers in its device_server
 // (config_ro.cpp, config_uppertank.cpp). Add a line here to show a new device.
 console_devices::console_devices(const std::string& ro_host, const std::string& upper_host)
-    : ro_link(ro_host), upper_link(upper_host), ro(ro_link) {
+    : ro_link(ro_host), upper_link(upper_host), ro(ro_link), ro_procedures(ro_link, "ro_procedure") {
     remote_link& r = ro_link;
     remote_link& u = upper_link;
 
@@ -95,8 +95,14 @@ console_devices::console_devices(const std::string& ro_host, const std::string& 
         flow(r, "feed_flow"),
         flow(r, "permeate_flow"),
         flow(r, "concentrate_flow"),
+    };
+
+    conductivities = {
         conductivity(r, "feed_conductivity"),
         conductivity(r, "permeate_conductivity"),
+    };
+
+    cip_temps = {
         temperature(r, "cip_temp"),
     };
 
@@ -120,13 +126,16 @@ console_devices::console_devices(const std::string& ro_host, const std::string& 
         floatSwitch(u, "upper_tank_high_float"),
     };
 
-    pumps = {
+    ro_pumps = {
         pumpRow(r, "feed_pump"),
         pumpRow(r, "ro_pump", true),
         pumpRow(r, "repressure_pump"),
         pumpRow(r, "asa_pump"),
         pumpRow(r, "high_ph_pump"),
         pumpRow(r, "low_ph_pump"),
+    };
+
+    upper_pumps = {
         pumpRow(u, "well_4_pump"),
         pumpRow(u, "irrigation_pump", false, true),
     };

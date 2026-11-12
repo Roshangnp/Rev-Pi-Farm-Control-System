@@ -74,10 +74,10 @@ void line_server::poll(int timeout_ms) {
         fds.push_back({c.fd, events, 0});
     }
 
-    // Don't sleep past the next watchdog deadline
+    // Don't sleep past the next idle deadline
     auto now = std::chrono::steady_clock::now();
     for (const client& c : clients_) {
-        auto left = std::chrono::duration_cast<std::chrono::milliseconds>(c.last_seen + watchdog_ - now).count();
+        auto left = std::chrono::duration_cast<std::chrono::milliseconds>(c.last_seen + idle_timeout_ - now).count();
         if (left < timeout_ms) timeout_ms = left > 0 ? static_cast<int>(left) : 0;
     }
 
@@ -98,7 +98,7 @@ void line_server::poll(int timeout_ms) {
 
     now = std::chrono::steady_clock::now();
     for (size_t i = clients_.size(); i-- > 0;) {
-        if (now - clients_[i].last_seen > watchdog_) dropClient(i);
+        if (now - clients_[i].last_seen > idle_timeout_) dropClient(i);
     }
 }
 
@@ -169,8 +169,6 @@ std::string line_server::snapshot() {
 }
 
 void line_server::dropClient(size_t index) {
-    int id = clients_[index].id;
     close(clients_[index].fd);
     clients_.erase(clients_.begin() + static_cast<std::ptrdiff_t>(index));
-    for (line_handler* h : handlers_) h->clientGone(id);
 }

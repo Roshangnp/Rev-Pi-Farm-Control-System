@@ -15,7 +15,7 @@
 inline constexpr uint16_t LINE_SERVER_PORT = 47100;
 
 namespace link_timing {
-// remote_link asks for a snapshot this often (also keeps the owner's watchdog fed)
+// remote_link asks for a snapshot this often (also keeps the connection from idling out)
 inline constexpr auto SNAPSHOT_PERIOD = std::chrono::milliseconds(500);
 // A cached value older than this is a failed read
 inline constexpr auto STALE_TIMEOUT = std::chrono::milliseconds(3000);
@@ -27,7 +27,7 @@ inline constexpr auto FIRST_SNAPSHOT_GRACE = std::chrono::milliseconds(2000);
 inline constexpr auto CONNECT_TIMEOUT = std::chrono::milliseconds(1000);
 inline constexpr auto RECONNECT_BACKOFF = std::chrono::milliseconds(1000);
 // The link is dropped after this long with requests outstanding and nothing
-// received. Longer than the owner's 20 s watchdog, so the owner alone decides
-// when a stall resets outputs (closing the socket would reset them at once)
+// received (longer than the owner's 20 s idle timeout, so a stall is ridden out
+// on both ends)
 inline constexpr auto LINK_DEAD_TIMEOUT = std::chrono::seconds(25);
 }  // namespace link_timing

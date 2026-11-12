@@ -1,5 +1,6 @@
 #pragma once
 
+#include "procedure.h"   // procedure_types (procedure/include)
 #include "types.h"
 
 // The RO controller, like config.h for the API: every machine includes this
@@ -23,9 +24,9 @@ class scheduler;    // scheduler/include/scheduler.h
 // Host PC: nothing to share, returns true.
 bool addRO(line_server& server, scheduler& sched);
 
-// RO RevPi: call every loop pass, next to server.poll(): starts the pumps of the
-// current state once the valves have settled. False only if starting a pump
-// failed. Host PC: returns true.
+// RO RevPi: call every loop pass, next to server.poll(): moves the RO to OFF
+// when a procedure has just ended, and starts the pumps of the current state once
+// the valves have settled. False if either failed. Host PC: returns true.
 bool updateRO();
 
 // Move the RO to state s. Non-blocking: valves move at once, pumps start
@@ -47,7 +48,7 @@ bool setROSpeed(float speed);
 // procedure is still running or the RO RevPi can't be reached.
 bool runROProcedure(procedure_types p);
 
-// Cancels the running procedure's remaining steps and moves the RO to OFF. False if
-// none is running (the state is left alone), moving to OFF failed, or the RO RevPi
-// can't be reached.
+// Cancels the running procedure's remaining steps; the RO then moves to OFF on the
+// RO RevPi's next updateRO() (it goes OFF whenever a procedure ends). False if none
+// is running or the RO RevPi can't be reached.
 bool stopROProcedure();

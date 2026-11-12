@@ -7,7 +7,7 @@
 int main() {
     if (!attachAllInterfaces()) std::fprintf(stderr, "Some interfaces failed to attach (check PiCtory pin names)\n");
 
-    line_server server;   // port 47100, 20 s client watchdog
+    line_server server;   // port 47100, drops clients idle 20 s
     if (!addLocalDevices(server) || !server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");
         return 1;

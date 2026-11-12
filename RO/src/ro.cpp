@@ -68,7 +68,7 @@ bool applyPumps(const pump_state& p, bool pass) {
 
 }  // namespace
 
-ro::ro(scheduler& sched) : scheduler_(sched), procedure_(*this, sched), current_state_(RO_state::OFF) {}
+ro::ro(scheduler& sched) : scheduler_(sched), procedure_(sched), current_state_(RO_state::OFF) {}
 
 ro::~ro() {
     setState(RO_state::OFF);   // pumps stop before valves close
@@ -190,28 +190,27 @@ bool ro::setState(RO_state s) {
 }
 
 bool ro::update() {
+    bool ok = offWhenProcedureEnds();
     if (!pumps_pending_) {
-        return true;
+        return ok;
     }
     if (std::chrono::steady_clock::now() - valves_set_at_
             < std::chrono::milliseconds(VALVE_SETTLE_MS)) {
-        return true;                     // still settling
+        return ok;                       // still settling
     }
     pumps_pending_ = false;
-    return applyPumps(pumpsFor(current_state_), true);
+    return applyPumps(pumpsFor(current_state_), true) && ok;
 }
 
-bool ro::runProcedure(procedure_types p) {
-    return procedure_.run(p);
-}
-
-bool ro::stopProcedure() {
-    if (!procedure_.isRunning()) {
-        std::fprintf(stderr, "RO controller: no procedure is running\n");
-        return false;
+bool ro::offWhenProcedureEnds() {
+    bool running = procedure_.isRunning();
+    bool ended = procedure_was_running_ && !running;
+    procedure_was_running_ = running;
+    if (!ended) {
+        return true;
     }
-    bool ok = procedure_.stop();
-    return setState(RO_state::OFF) && ok;
+    std::fprintf(stderr, "RO controller: %s ended, moving to OFF\n", toString(procedure_.type()));
+    return setState(RO_state::OFF);
 }
 
 bool ro::isSettling() const {

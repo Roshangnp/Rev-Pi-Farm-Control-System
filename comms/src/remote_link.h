@@ -19,7 +19,7 @@
 // every readable value every link_timing::SNAPSHOT_PERIOD (protocol.h). Reads
 // (query*) answer from that cache at once and never touch the network: a value
 // older than STALE_TIMEOUT, or one the owner couldn't read, is a failed read.
-// The snapshot requests also feed the owner's client watchdog. When the link
+// The snapshot requests also keep the owner from idling the connection out. When the link
 // drops (the owner closed it, e.g. a restart) the cache is cleared, so reads fail
 // at once; a stall with the link still up fails reads after STALE_TIMEOUT.
 //

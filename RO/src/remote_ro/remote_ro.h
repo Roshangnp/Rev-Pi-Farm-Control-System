@@ -6,7 +6,8 @@
 
 // The RO controller on the RO RevPi, seen from another machine (e.g.
 // emerald-server's web UI). Talks to its ro_server over a remote_link to the
-// RO RevPi. Every call returns false if the RO RevPi can't be reached or
+// RO RevPi. Its procedures are a separate remote_procedure ("ro_procedure").
+// Every call returns false if the RO RevPi can't be reached or
 // refuses the request.
 class remote_ro{
     public:
@@ -21,12 +22,6 @@ class remote_ro{
     bool isSettling(bool& settling);
     // RO pump VFD speed, 0-1
     bool setRoSpeed(float speed);
-    // Starts procedure p on the RO RevPi (scheduled there, its first step runs
-    // on the next loop pass). False if one is still running
-    bool runProcedure(procedure_types p);
-    // Cancels the running procedure on the RO RevPi and moves the RO to OFF.
-    // False if none is running (the state is left alone) or moving to OFF failed
-    bool stopProcedure();
 
     private:
     remote_link& link_;

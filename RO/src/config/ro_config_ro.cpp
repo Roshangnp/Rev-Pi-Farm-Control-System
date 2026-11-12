@@ -10,6 +10,7 @@
 #include "ro.h"
 #include "scheduler.h"
 #include "remote_ro/ro_server.h"
+#include "remote_procedure/procedure_server.h"
 
 namespace {
 
@@ -34,6 +35,15 @@ ro_server& handler() {
     return instance;
 }
 
+// The RO's procedure instance, served as "ro_procedure". Only the RO procedures
+// may be started on it (not e.g. a future repressure one)
+procedure_server& procedure_handler() {
+    static procedure_server instance(plant().procedures(), "ro_procedure",
+                                     {procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
+                                      procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK});
+    return instance;
+}
+
 }  // namespace
 
 bool addRO(line_server& server, scheduler& sched) {
@@ -42,6 +52,10 @@ bool addRO(line_server& server, scheduler& sched) {
     if (!ok) std::fprintf(stderr, "RO controller: driving the outputs to OFF failed\n");
     if (!handler().registerWith(server)) {
         std::fprintf(stderr, "RO controller: name \"ro\" is already taken on the server\n");
+        ok = false;
+    }
+    if (!procedure_handler().registerWith(server)) {
+        std::fprintf(stderr, "RO controller: name \"ro_procedure\" is already taken on the server\n");
         ok = false;
     }
     return ok;
@@ -70,9 +84,15 @@ bool setROSpeed(float speed) {
 }
 
 bool runROProcedure(procedure_types p) {
-    return plant().runProcedure(p);
+    return plant().procedures().run(p);
 }
 
+// The RO goes OFF on the next updateRO() (ro::update sees the procedure end)
 bool stopROProcedure() {
-    return plant().stopProcedure();
+    procedure& p = plant().procedures();
+    if (!p.isRunning()) {
+        std::fprintf(stderr, "RO controller: no procedure is running\n");
+        return false;
+    }
+    return p.stop();
 }

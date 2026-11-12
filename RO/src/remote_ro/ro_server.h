@@ -11,12 +11,11 @@
 //   ro readState            ->  ok NORMAL_OP
 //   ro isSettling           ->  ok 0 | ok 1
 //   ro setRoSpeed 0.5       ->  ok | fail | err bad argument
-//   ro runProcedure LOW_PH_CIP_CYCLE  ->  ok | fail | err bad argument
-//   ro stopProcedure        ->  ok | fail
 // Requests are only handled inside the line_server's poll(), so they never run
 // at the same time as the RO control loop.
 //
-// No watchdog: a client disconnecting does not change the RO state, so the RO
+// Procedures are served separately (procedure_server "ro_procedure").
+// A client disconnecting does not change the RO state, so the RO
 // keeps running if emerald-server or the network goes down.
 class ro_server : public line_handler{
     public:

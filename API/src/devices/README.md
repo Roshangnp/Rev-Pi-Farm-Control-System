@@ -52,15 +52,14 @@ the owner for a `snapshot` of every readable value every 0.5 s; reads answer fro
 once and never wait on the network. A value older than 3 s (a stall), or one the owner couldn't
 read, is a failed read; when the link drops (the owner restarted) the cache is cleared and reads
 fail at once. In the first 2 s after the link is created, reads wait for the first snapshot.
-The snapshots also keep the owner's watchdog happy.
+The snapshots also keep the owner from idling the connection out.
 
 Commands (`setOn`, `setSpeed`, `setState`, ...) go over the same connection and wait up to
 1.5 s for their own reply; a late reply is discarded when it arrives, and while disconnected
 commands fail at once. A successful command triggers a fresh snapshot, so its readback shows up
 within a round trip. The connection is only dropped after 25 s with requests outstanding and
-nothing from the owner: closing it makes the owner reset this controller's outputs at once, and
-25 s is longer than the owner's 20 s watchdog, so the owner alone decides when a stall resets
-anything. The timings are in `comms/src/protocol.h` (`link_timing`).
+nothing from the owner (longer than the owner's 20 s idle timeout, so short stalls are ridden
+out on both ends). The timings are in `comms/src/protocol.h` (`link_timing`).
 
 `device_server` runs on the owner, as a handler on the `line_server` (`comms/src/`) that the
 owner's `main` creates: `addLocalDevices(server)` registers each local device under its name.
@@ -83,9 +82,9 @@ own entries (`device_server`: every read method of every device; `ro_server`: `r
 Method names are the C++ method names. There is no authentication; the firewall must limit
 port 47100 to the other farm machines.
 
-**Watchdog:** if a client disconnects (at once) or sends nothing for 20 s (the `line_server`'s
-`watchdog_ms`), the server drops it and `device_server::clientGone` turns off every pump and
-switched load it last commanded and closes every valve it last commanded.
+**No watchdog** (removed 2026-11-11): a command holds after its client disconnects or goes
+silent. The `line_server` still drops a client idle for 20 s, which changes nothing on the
+hardware.
 
 Reads cost microseconds (cache lookups). A command costs one round trip (~1 ms on the LAN, more
 over HaLow). The RO RevPi's snapshot is about 3 KB, so each client polling it uses ~6 KB/s.
@@ -147,6 +146,6 @@ measure names, no depth suffix = 4 in, then "(8)", "(12)". Zone 8's probe also h
 1. `API/include/devices.h`: the abstract class.
 2. `local_devices/local_<type>.h/.cpp` and `remote_devices/remote_<type>.h/.cpp`.
 3. `remote_devices/device_server.h/.cpp`: an `addDevice` overload, the type in `device_ref`,
-   its methods in `handleRequest`, and its safe state in `clientGone` if it is an output.
+   its methods in `handleRequest`, and its read methods in `snapshot`.
 4. `webUI/src/web_ui.h/.cpp` (outside the API): an `addDevice` overload, the type in `device_ref`, its fields
    in `devicesJson`, and its commands in `runCommand`.

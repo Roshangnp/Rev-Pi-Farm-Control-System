@@ -3,7 +3,7 @@
 #include <chrono>
 
 #include "config.h"
-#include "procedures.h"
+#include "procedure.h"   // procedure/include
 #include "scheduler.h"
 #include "types.h"
 
@@ -45,19 +45,17 @@ class ro{
     // pending start (and restarts the wait). False if any device failed
     bool setState(RO_state s);
 
-    // Call every loop pass. Starts the pending pumps once the valves have had
-    // VALVE_SETTLE_MS to move. False only if starting a pump failed. (Procedure
-    // steps run in the scheduler's update(), called by main.)
+    // Call every loop pass. Moves to OFF when a procedure has just ended (see
+    // offWhenProcedureEnds), then starts the pending pumps once the valves have
+    // had VALVE_SETTLE_MS to move. False if moving to OFF or starting a pump
+    // failed. (Procedure steps run in the scheduler's update(), called by main.)
     bool update();
 
-    // Schedules procedure p (RO/src/procedures.h) on the scheduler; its first
-    // step runs on the next scheduler update(). One procedure at a time: false if
-    // one is still running
-    bool runProcedure(procedure_types p);
-
-    // Cancels the running procedure's remaining steps and moves to OFF. False if
-    // none is running (the state is left alone) or moving to OFF failed
-    bool stopProcedure();
+    // The RO's procedure instance (CIP cycles, media backwash, empty feed tank):
+    // run / stop / isRunning / type. Served to other machines by a
+    // procedure_server ("ro_procedure", ro_config_ro.cpp). When it stops or
+    // finishes, update() moves the RO to OFF
+    procedure& procedures() { return procedure_; }
 
     // True between setState() and update() starting the pumps
     bool isSettling() const;
@@ -69,10 +67,16 @@ class ro{
     bool setRoSpeed(float speed);
 
     private:
+    // Moves to OFF on the pass a procedure stops running (stopped, or its last
+    // step ran). Only on that edge: a state set by hand while nothing is running
+    // (the manual override) is left alone. True if nothing ended or OFF succeeded
+    bool offWhenProcedureEnds();
+
     scheduler& scheduler_;                                // the machine's scheduler (owned by main)
-    ro_procedure procedure_;                              // runs the procedures, one at a time (its destructor removes its tasks from scheduler_)
+    procedure procedure_;                                 // runs the RO procedures, one at a time (its destructor removes its tasks from scheduler_). Its steps go through ro_config.h (setROState), i.e. the ro created by addRO, which is this one
     RO_state current_state_;
     bool pumps_pending_ = false;                          // pumps of current_state_ still to start
     std::chrono::steady_clock::time_point valves_set_at_; // when setState() moved the valves
     heater_state heater_active_ = false;
+    bool procedure_was_running_ = false;                  // procedure_.isRunning() on the previous update()
 };
