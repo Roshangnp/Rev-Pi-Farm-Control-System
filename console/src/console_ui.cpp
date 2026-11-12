@@ -174,7 +174,6 @@ class nav_map {
 
     private:
     static int centerX(const Box& b) { return (b.x_min + b.x_max) / 2; }
-    static bool overlapX(const Box& a, const Box& b) { return a.x_min <= b.x_max && b.x_min <= a.x_max; }
     static bool overlapY(const Box& a, const Box& b) { return a.y_min <= b.y_max && b.y_min <= a.y_max; }
     static bool inside(const Box& inner, const Box& outer) {
         return inner.x_min >= outer.x_min && inner.x_max <= outer.x_max &&
@@ -191,47 +190,54 @@ class nav_map {
         return b;
     }
 
-    // Up/Down: the nearest line of stops above/below, preferring the same
-    // tile, then the tiles in the same column, then anything; on that line
-    // the stop closest to the column we started from (kept over repeated
-    // Up/Down, so passing a shorter row doesn't lose it)
+    // Best stop by a "less than" ordering, or nullptr if none passes the filter
+    template <typename filter, typename less>
+    nav_item* best(nav_item* current, filter allowed, less better) {
+        nav_item* found = nullptr;
+        for (auto& i : items_) {
+            if (i.get() == current || !allowed(i->box_)) continue;
+            if (!found || better(i->box_, found->box_)) found = i.get();
+        }
+        return found;
+    }
+
+    // Up/Down: the next line of stops in the same tile; past the tile's edge,
+    // the next tile above/below (the one under the column we started from,
+    // kept over repeated Up/Down so passing a shorter row doesn't lose it)
+    // and its first line from that side. Tiles go before lines, so a tile
+    // with few controls isn't skipped
     nav_item* findVertical(nav_item* current, int dy) {
         const Box c = current->box_;
         const Box tile = tileOf(c);
-        int x = current == sticky_item_ ? sticky_x_ : centerX(c);
-
-        std::vector<nav_item*> candidates;
-        for (auto& i : items_) {
-            const Box& b = i->box_;
-            if (i.get() != current && (dy > 0 ? b.y_min > c.y_max : b.y_max < c.y_min)) {
-                candidates.push_back(i.get());
-            }
-        }
-
-        auto pick = [&](const std::function<bool(const Box&)>& allowed) -> nav_item* {
-            nav_item* nearest = nullptr;
-            for (nav_item* i : candidates) {
-                if (!allowed(i->box_)) continue;
-                if (!nearest || (dy > 0 ? i->box_.y_min < nearest->box_.y_min : i->box_.y_max > nearest->box_.y_max)) {
-                    nearest = i;
-                }
-            }
-            if (!nearest) return nullptr;
-            nav_item* best = nullptr;
-            for (nav_item* i : candidates) {
-                if (!allowed(i->box_) || !overlapY(i->box_, nearest->box_)) continue;
-                if (!best || distanceX(i->box_, x) < distanceX(best->box_, x) ||
-                    (distanceX(i->box_, x) == distanceX(best->box_, x) &&
-                     std::abs(centerX(i->box_) - x) < std::abs(centerX(best->box_) - x))) {
-                    best = i;
-                }
-            }
-            return best;
+        const int x = current == sticky_item_ ? sticky_x_ : centerX(c);
+        auto beyond = [&](const Box& b, const Box& from) { return dy > 0 ? b.y_min > from.y_max : b.y_max < from.y_min; };
+        auto nearer = [&](const Box& a, const Box& b) { return dy > 0 ? a.y_min < b.y_min : a.y_max > b.y_max; };
+        auto closerToX = [&](const Box& a, const Box& b) {
+            if (distanceX(a, x) != distanceX(b, x)) return distanceX(a, x) < distanceX(b, x);
+            return std::abs(centerX(a) - x) < std::abs(centerX(b) - x);
+        };
+        // Among the stops allowed, the nearest line, then the closest to x on it
+        auto onNearestLine = [&](auto allowed) -> nav_item* {
+            nav_item* line = best(current, allowed, nearer);
+            if (!line) return nullptr;
+            const Box l = line->box_;
+            return best(current, [&](const Box& b) { return allowed(b) && overlapY(b, l); }, closerToX);
         };
 
-        nav_item* target = pick([&](const Box& b) { return inside(b, tile); });
-        if (!target) target = pick([&](const Box& b) { return overlapX(tileOf(b), tile); });
-        if (!target) target = pick([](const Box&) { return true; });
+        nav_item* target = onNearestLine([&](const Box& b) { return inside(b, tile) && beyond(b, c); });
+        if (!target) {
+            // Nearest tile beyond this one, then of the tiles level with it the one closest to x
+            nav_item* first = best(current, [&](const Box& b) { return beyond(tileOf(b), tile); },
+                                   [&](const Box& a, const Box& b) { return nearer(tileOf(a), tileOf(b)); });
+            if (first) {
+                const Box level = tileOf(first->box_);
+                nav_item* in_tile = best(current,
+                    [&](const Box& b) { return beyond(tileOf(b), tile) && overlapY(tileOf(b), level); },
+                    [&](const Box& a, const Box& b) { return closerToX(tileOf(a), tileOf(b)); });
+                const Box chosen = tileOf(in_tile->box_);
+                target = onNearestLine([&](const Box& b) { return inside(b, chosen); });
+            }
+        }
         if (target) {
             sticky_item_ = target;
             sticky_x_ = x;
@@ -239,32 +245,35 @@ class nav_map {
         return target;
     }
 
-    // Left/Right: the nearest stop on the same line (the top one when
-    // leaving a tall read-only tile), else the nearest one anywhere on that side
+    // Left/Right: the next stop on the same line in the same tile; past the
+    // tile's edge, the nearest tile across and its stop closest to this line
+    // (nearest the edge we came from)
     nav_item* findHorizontal(nav_item* current, int dx) {
         sticky_item_ = nullptr;
         const Box c = current->box_;
-        auto gapX = [&](const Box& b) { return dx > 0 ? b.x_min - c.x_max : c.x_min - b.x_max; };
+        const Box tile = tileOf(c);
+        auto gapX = [&](const Box& b, const Box& from) { return dx > 0 ? b.x_min - from.x_max : from.x_min - b.x_max; };
         auto gapY = [&](const Box& b) { return std::max({0, b.y_min - c.y_max, c.y_min - b.y_max}); };
-        auto lineTop = [&](const Box& b) { return std::max(b.y_min, c.y_min); };   // first line it shares with c
+        auto closest = [&](const Box& a, const Box& b) {
+            if (gapY(a) != gapY(b)) return gapY(a) < gapY(b);
+            if (gapX(a, c) != gapX(b, c)) return gapX(a, c) < gapX(b, c);
+            return a.y_min < b.y_min;   // leaving a tall read-only tile: the top
+        };
 
-        nav_item* same_line = nullptr;
-        nav_item* anywhere = nullptr;
-        for (auto& i : items_) {
-            const Box& b = i->box_;
-            if (i.get() == current || gapX(b) <= 0) continue;
-            if (overlapY(b, c)) {
-                if (!same_line || gapX(b) < gapX(same_line->box_) ||
-                    (gapX(b) == gapX(same_line->box_) &&
-                     lineTop(b) < lineTop(same_line->box_))) {
-                    same_line = i.get();
-                }
-            } else if (!anywhere || gapY(b) < gapY(anywhere->box_) ||
-                       (gapY(b) == gapY(anywhere->box_) && gapX(b) < gapX(anywhere->box_))) {
-                anywhere = i.get();
-            }
+        nav_item* target = best(current, [&](const Box& b) { return inside(b, tile) && gapX(b, c) > 0 && overlapY(b, c); },
+                                [&](const Box& a, const Box& b) { return gapX(a, c) < gapX(b, c); });
+        if (target) return target;
+
+        // Nearest tile across that shares a line with this stop, else any tile on that side
+        auto across = [&](const Box& b) { return gapX(tileOf(b), tile) > 0; };
+        nav_item* first = best(current, [&](const Box& b) { return across(b) && overlapY(tileOf(b), c); },
+                               [&](const Box& a, const Box& b) { return gapX(tileOf(a), tile) < gapX(tileOf(b), tile); });
+        if (!first) {
+            first = best(current, across, closest);
         }
-        return same_line ? same_line : anywhere;
+        if (!first) return nullptr;
+        const Box chosen = tileOf(first->box_);
+        return best(current, [&](const Box& b) { return inside(b, chosen); }, closest);
     }
 
     std::vector<std::shared_ptr<nav_item>> items_;

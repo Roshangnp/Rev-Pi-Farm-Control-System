@@ -27,9 +27,10 @@ one (the name the owning RevPi registers in its device server).
 
 ## Keys
 
-- Arrow keys on a dashboard go by screen position, ignoring the tiles: Up/Down to the nearest
-  control above/below (staying in the same column of tiles, keeping the column over shorter rows),
-  Left/Right to the nearest one on the same line, into the next tile across. Read-only tiles are
+- Arrow keys on a dashboard go by screen position: Up/Down to the next line of controls in the
+  tile, then into the tile above/below (the one under your column, kept over shorter rows),
+  Left/Right to the next control on the line, then into the tile beside it (its control closest
+  to your line), so a tile with only one row of buttons is never skipped. Read-only tiles are
   one stop each. Left with nothing to the left goes back to the tab list. In a text box Left/Right
   move the cursor first; an open list keeps the arrows until Enter or Esc closes it
 - In the tab list: Up/Down pick a tab, Right goes into it
