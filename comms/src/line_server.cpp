@@ -52,7 +52,7 @@ bool line_server::start() {
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_addr.s_addr = htonl(loopback_only_ ? INADDR_LOOPBACK : INADDR_ANY);
     address.sin_port = htons(port_);
     if (bind(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0 ||
         listen(fd, LISTEN_BACKLOG) < 0) {

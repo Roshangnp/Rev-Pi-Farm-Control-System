@@ -43,8 +43,10 @@ void appendSnapshotEntry(std::string& out, const std::string& key, const std::st
 // 0.5 s, so a live client is never idle that long.
 class line_server{
     public:
-    line_server(uint16_t port = LINE_SERVER_PORT, int idle_timeout_ms = 20000)
-    : port_(port), idle_timeout_(idle_timeout_ms){};
+    // loopback_only: listen on 127.0.0.1 only, so only programs on this machine
+    // can connect (e.g. the host PC, which has no firewall); default all interfaces
+    line_server(uint16_t port = LINE_SERVER_PORT, int idle_timeout_ms = 20000, bool loopback_only = false)
+    : port_(port), idle_timeout_(idle_timeout_ms), loopback_only_(loopback_only){};
     ~line_server();
 
     line_server(const line_server&) = delete;
@@ -80,6 +82,7 @@ class line_server{
 
     uint16_t port_;
     std::chrono::milliseconds idle_timeout_;
+    bool loopback_only_;
     int listen_fd_ = -1;
     int next_client_id_ = 1;
     std::vector<client> clients_;

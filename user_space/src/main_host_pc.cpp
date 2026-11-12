@@ -1,17 +1,26 @@
 #include <chrono>
 #include <cstdio>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "config.h"
+#include "line_server.h"
 #include "ntfy.h"
 #include "ntfy_config.h"
+#include "ro_config.h"
+#include "scheduler.h"
 
-// Host PC (emerald-server): watches the RevPis' devices and sends an ntfy push
-// notification when a pump VFD alarms or the lights relay switches on (topic
-// from ntfy_topic.txt). The web UI it used to serve is deprecated (webUI/);
-// use ro_console instead.
+// Host PC (emerald-server): serves every device it binds (the RevPis' devices,
+// passed on to their owners, and the WiseConn devices) and the RO ("ro",
+// "ro_procedure", passed on to the RO RevPi) on port 47100, like the RevPis,
+// but on 127.0.0.1 only: this machine has no firewall, and its clients (the
+// console) run here. Also sends an ntfy push notification when a pump VFD
+// alarms or the lights relay switches on (topic from ntfy_topic.txt).
+
+// This machine's one scheduler (user space schedules tasks on it). A global, so
+// it outlives anything that holds a reference to it.
+scheduler sched;
+
 namespace {
 
 using clock_type = std::chrono::steady_clock;
@@ -75,6 +84,17 @@ void updateAlarm(vfd_alarm& a, clock_type::time_point now, ntfy_notifier& notifi
 int main() {
     attachAllInterfaces();
 
+    line_server server(LINE_SERVER_PORT, 20000, /*loopback_only=*/true);   // drops clients idle 20 s
+    if (!addLocalDevices(server)) {
+        std::fprintf(stderr, "Device server failed to start\n");
+        return 1;
+    }
+    if (!addRO(server, sched)) std::fprintf(stderr, "RO server failed to register\n");
+    if (!server.start()) {
+        std::fprintf(stderr, "Device server failed to start (port %u taken?)\n", static_cast<unsigned>(LINE_SERVER_PORT));
+        return 1;
+    }
+
     ntfy_notifier notifier(NTFY_TOPIC, NTFY_SERVER);
     if (notifier.enabled()) std::printf("VFD alarm notifications to %s/%s\n", NTFY_SERVER, NTFY_TOPIC);
     else std::printf("Notifications off (no topic in ntfy_topic.txt)\n");
@@ -82,17 +102,24 @@ int main() {
 
     std::vector<vfd_alarm> alarms = {{"Feed pump", feed_pump}, {"RO pump", ro_pump}};
     bool lights_were_on = false;
+    auto next_check = clock_type::now();
     while (true) {
         auto now = clock_type::now();
-        for (vfd_alarm& a : alarms) updateAlarm(a, now, notifier);
+        if (now >= next_check) {
+            next_check = now + CHECK_INTERVAL;
+            for (vfd_alarm& a : alarms) updateAlarm(a, now, notifier);
 
-        // Once when the lights relay goes off -> on; a failed read changes nothing
-        bool lights_on;
-        if (lights.readOn(lights_on)) {
-            if (lights_on && !lights_were_on) notifier.send("LIGHTS RELAY SWITCHED", "", 3, "");
-            lights_were_on = lights_on;
+            // Once when the lights relay goes off -> on; a failed read changes nothing
+            bool lights_on;
+            if (lights.readOn(lights_on)) {
+                if (lights_on && !lights_were_on) notifier.send("LIGHTS RELAY SWITCHED", "", 3, "");
+                lights_were_on = lights_on;
+            }
         }
         // Remote reads are cache lookups (remote_link polls in the background)
-        std::this_thread::sleep_for(CHECK_INTERVAL);
+
+        if (!sched.update()) std::fprintf(stderr, "Scheduler: a task failed\n");
+        updateRO();
+        server.poll(20);   // handles requests, doubles as the loop sleep
     }
 }
