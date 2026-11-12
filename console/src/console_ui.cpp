@@ -84,34 +84,227 @@ Element floatList(std::vector<float_row>& rows, int width) {
     return vbox(lines);
 }
 
+// ---- Arrow keys by screen position ----
+// The arrow keys move to the nearest control on screen in that direction, as
+// if the tiles weren't there: Down from a valve's Close goes to the Close
+// under it, Right goes to whatever is to the right (the next tile across),
+// Down from a tile's last row goes to the tile below it.
+
+// Records the box an element was laid out in. Unlike reflect(), not clipped
+// to the visible area, so controls scrolled out of view can still be found
+class box_tracker : public Node {
+    public:
+    box_tracker(Element child, Box* out) : Node({std::move(child)}), out_(out) {}
+
+    void ComputeRequirement() override {
+        Node::ComputeRequirement();
+        requirement_ = children_[0]->requirement();
+    }
+
+    void SetBox(Box box) override {
+        *out_ = box;
+        Node::SetBox(box);
+        children_[0]->SetBox(box);
+    }
+
+    private:
+    Box* out_;
+};
+
+// One stop for the arrow keys: a button, text box, dropdown or read-only tile
+class nav_item : public ComponentBase {
+    public:
+    // grabs: while it returns true (an open dropdown) the item gets every arrow key
+    nav_item(Component child, std::function<bool()> grabs) : grabs_(std::move(grabs)) {
+        Add(std::move(child));
+    }
+
+    Element OnRender() override {
+        return std::make_shared<box_tracker>(ChildAt(0)->Render(), &box_);
+    }
+
+    Box box_;
+    std::function<bool()> grabs_;
+};
+
+// The stops and tiles of one dashboard
+class nav_map {
+    public:
+    Component item(Component child, std::function<bool()> grabs = nullptr) {
+        auto i = std::make_shared<nav_item>(std::move(child), std::move(grabs));
+        items_.push_back(i);
+        return i;
+    }
+
+    // Box a tile records itself in (used to keep Up/Down within a column of tiles)
+    Box* newTile() {
+        tiles_.push_back(std::make_unique<Box>());
+        return tiles_.back().get();
+    }
+
+    // Handles every arrow key (so the containers never move the focus
+    // themselves); left_edge runs on Left with nothing to the left
+    bool onArrow(const Event& event, const std::function<void()>& left_edge) {
+        int dx = 0;
+        int dy = 0;
+        if (event == Event::ArrowUp) dy = -1;
+        else if (event == Event::ArrowDown) dy = 1;
+        else if (event == Event::ArrowLeft) dx = -1;
+        else if (event == Event::ArrowRight) dx = 1;
+        else return false;
+
+        nav_item* current = nullptr;
+        for (auto& i : items_) {
+            if (i->Focused()) current = i.get();
+        }
+        if (!current) return false;
+
+        if (current->grabs_ && current->grabs_()) {
+            current->OnEvent(event);
+            return true;
+        }
+        // Left/Right move the cursor in a text box first
+        if (dx != 0 && current->OnEvent(event)) return true;
+
+        nav_item* target = dy != 0 ? findVertical(current, dy) : findHorizontal(current, dx);
+        if (target) target->TakeFocus();
+        else if (dx < 0 && left_edge) left_edge();
+        return true;
+    }
+
+    private:
+    static int centerX(const Box& b) { return (b.x_min + b.x_max) / 2; }
+    static bool overlapX(const Box& a, const Box& b) { return a.x_min <= b.x_max && b.x_min <= a.x_max; }
+    static bool overlapY(const Box& a, const Box& b) { return a.y_min <= b.y_max && b.y_min <= a.y_max; }
+    static bool inside(const Box& inner, const Box& outer) {
+        return inner.x_min >= outer.x_min && inner.x_max <= outer.x_max &&
+               inner.y_min >= outer.y_min && inner.y_max <= outer.y_max;
+    }
+    // Columns between x and the box (0 if x is over it)
+    static int distanceX(const Box& b, int x) { return std::max({0, b.x_min - x, x - b.x_max}); }
+
+    // The tile a stop sits in (a read-only tile is its own)
+    Box tileOf(const Box& b) const {
+        for (const auto& t : tiles_) {
+            if (inside(b, *t)) return *t;
+        }
+        return b;
+    }
+
+    // Up/Down: the nearest line of stops above/below, preferring the same
+    // tile, then the tiles in the same column, then anything; on that line
+    // the stop closest to the column we started from (kept over repeated
+    // Up/Down, so passing a shorter row doesn't lose it)
+    nav_item* findVertical(nav_item* current, int dy) {
+        const Box c = current->box_;
+        const Box tile = tileOf(c);
+        int x = current == sticky_item_ ? sticky_x_ : centerX(c);
+
+        std::vector<nav_item*> candidates;
+        for (auto& i : items_) {
+            const Box& b = i->box_;
+            if (i.get() != current && (dy > 0 ? b.y_min > c.y_max : b.y_max < c.y_min)) {
+                candidates.push_back(i.get());
+            }
+        }
+
+        auto pick = [&](const std::function<bool(const Box&)>& allowed) -> nav_item* {
+            nav_item* nearest = nullptr;
+            for (nav_item* i : candidates) {
+                if (!allowed(i->box_)) continue;
+                if (!nearest || (dy > 0 ? i->box_.y_min < nearest->box_.y_min : i->box_.y_max > nearest->box_.y_max)) {
+                    nearest = i;
+                }
+            }
+            if (!nearest) return nullptr;
+            nav_item* best = nullptr;
+            for (nav_item* i : candidates) {
+                if (!allowed(i->box_) || !overlapY(i->box_, nearest->box_)) continue;
+                if (!best || distanceX(i->box_, x) < distanceX(best->box_, x) ||
+                    (distanceX(i->box_, x) == distanceX(best->box_, x) &&
+                     std::abs(centerX(i->box_) - x) < std::abs(centerX(best->box_) - x))) {
+                    best = i;
+                }
+            }
+            return best;
+        };
+
+        nav_item* target = pick([&](const Box& b) { return inside(b, tile); });
+        if (!target) target = pick([&](const Box& b) { return overlapX(tileOf(b), tile); });
+        if (!target) target = pick([](const Box&) { return true; });
+        if (target) {
+            sticky_item_ = target;
+            sticky_x_ = x;
+        }
+        return target;
+    }
+
+    // Left/Right: the nearest stop on the same line (the top one when
+    // leaving a tall read-only tile), else the nearest one anywhere on that side
+    nav_item* findHorizontal(nav_item* current, int dx) {
+        sticky_item_ = nullptr;
+        const Box c = current->box_;
+        auto gapX = [&](const Box& b) { return dx > 0 ? b.x_min - c.x_max : c.x_min - b.x_max; };
+        auto gapY = [&](const Box& b) { return std::max({0, b.y_min - c.y_max, c.y_min - b.y_max}); };
+        auto lineTop = [&](const Box& b) { return std::max(b.y_min, c.y_min); };   // first line it shares with c
+
+        nav_item* same_line = nullptr;
+        nav_item* anywhere = nullptr;
+        for (auto& i : items_) {
+            const Box& b = i->box_;
+            if (i.get() == current || gapX(b) <= 0) continue;
+            if (overlapY(b, c)) {
+                if (!same_line || gapX(b) < gapX(same_line->box_) ||
+                    (gapX(b) == gapX(same_line->box_) &&
+                     lineTop(b) < lineTop(same_line->box_))) {
+                    same_line = i.get();
+                }
+            } else if (!anywhere || gapY(b) < gapY(anywhere->box_) ||
+                       (gapY(b) == gapY(anywhere->box_) && gapX(b) < gapX(anywhere->box_))) {
+                anywhere = i.get();
+            }
+        }
+        return same_line ? same_line : anywhere;
+    }
+
+    std::vector<std::shared_ptr<nav_item>> items_;
+    std::vector<std::unique_ptr<Box>> tiles_;
+    nav_item* sticky_item_ = nullptr;
+    int sticky_x_ = 0;
+};
+
 // A dashboard tile: a titled box, heavy border while it holds the focus
 Element tile(const std::string& title, Element content, bool focused) {
     return window(text(" " + title + " ") | bold, content, focused ? HEAVY : ROUNDED);
 }
 
-// Read-only tile. Focusable, so Up/Down walk through every tile and the
-// dashboard scrolls to it on a small terminal
-Component readTile(const std::string& title, std::function<Element()> content) {
-    return Renderer([title, content](bool focused) {
-        Element e = tile(title, content(), focused);
+// Read-only tile. A stop for the arrow keys, so the dashboard scrolls to it
+// on a small terminal
+Component readTile(nav_map& nav, const std::string& title, std::function<Element()> content) {
+    Box* box = nav.newTile();
+    return nav.item(Renderer([title, content, box](bool focused) {
+        Element e = std::make_shared<box_tracker>(tile(title, content(), focused), box);
         return focused ? e | focus : e;
-    });
+    }));
 }
 
 // Tile around controls; top (optional) is read-only content shown above them
-Component controlTile(const std::string& title, Component inner, std::function<Element()> top = nullptr) {
-    return Renderer(inner, [title, inner, top] {
+Component controlTile(nav_map& nav, const std::string& title, Component inner,
+                      std::function<Element()> top = nullptr) {
+    Box* box = nav.newTile();
+    return Renderer(inner, [title, inner, top, box] {
         Element content = top ? vbox({top(), inner->Render()}) : inner->Render();
-        return tile(title, content, inner->Focused());
+        return std::make_shared<box_tracker>(tile(title, content, inner->Focused()), box);
     });
 }
 
 // Tiles laid out in rows as wide as the screen allows (one column on an
 // 80-column terminal), scrolling to the focused tile when they don't fit.
-// Up/Down move through the tiles in reading order
-Component dashboard(Components tiles) {
+// The arrow keys go by screen position (nav_map); Left with nothing to the
+// left runs left_edge (back to the tab list)
+Component dashboard(Components tiles, std::shared_ptr<nav_map> nav, std::function<void()> left_edge) {
     auto container = Container::Vertical(tiles);
-    return Renderer(container, [container, tiles] {
+    auto view = Renderer(container, [container, tiles] {
         int width = Terminal::Size().dimx - MENU_WIDTH - 1;
         Elements rows;
         Elements row;
@@ -134,6 +327,7 @@ Component dashboard(Components tiles) {
         if (!container->Focused() && !rows.empty()) rows[0] = rows[0] | focus;
         return vbox(rows) | vscroll_indicator | yframe | flex;
     });
+    return CatchEvent(view, [nav, left_edge](Event event) { return nav->onArrow(event, left_edge); });
 }
 
 std::string clockText() {
@@ -169,6 +363,11 @@ class console_ui{
     Component numberEntry(const std::string& what, const std::string& placeholder, std::function<bool(float)> send);
     Element header();
 
+    // Buttons, text boxes and dropdowns on a dashboard are stops for the arrow keys
+    Component button(const std::string& text_value, std::function<void()> on_press);
+    Component dropdown(std::vector<std::string>* entries, int* selected);
+    Component dashboardOf(Components tiles);
+
     console_devices& farm_;
     std::string ro_host_;
     std::string upper_host_;
@@ -183,12 +382,40 @@ class console_ui{
     std::vector<std::string> procedures_;
     int state_selected_ = 0;
     int procedure_selected_ = 0;
+
+    // Tab list on the left, made before the dashboards so Left can return to it
+    std::vector<std::string> tab_names_ = {"Main-Dashboard", "RO-Dashboard"};
+    int tab_selected_ = 0;
+    Component tab_menu_;
+    // Stops of the dashboard being built
+    std::shared_ptr<nav_map> nav_;
 };
 
 console_ui::console_ui(console_devices& farm, std::string ro_host, std::string upper_host)
     : farm_(farm), ro_host_(std::move(ro_host)), upper_host_(std::move(upper_host)) {
     for (RO_state s : ALL_RO_STATES) states_.push_back(toString(s));
     for (procedure_types p : ALL_PROCEDURE_TYPES) procedures_.push_back(toString(p));
+}
+
+Component console_ui::button(const std::string& text_value, std::function<void()> on_press) {
+    return nav_->item(Button(text_value, std::move(on_press), ButtonOption::Ascii()));
+}
+
+// While open, the dropdown keeps the arrow keys for its list
+Component console_ui::dropdown(std::vector<std::string>* entries, int* selected) {
+    auto open = std::make_shared<bool>(false);
+    DropdownOption option;
+    option.radiobox.entries = entries;
+    option.radiobox.selected = selected;
+    option.checkbox.checked = open.get();
+    return nav_->item(Dropdown(option), [open] { return *open; });
+}
+
+Component console_ui::dashboardOf(Components tiles) {
+    Component menu = tab_menu_;
+    auto view = dashboard(std::move(tiles), nav_, [menu] { menu->TakeFocus(); });
+    nav_ = nullptr;
+    return view;
 }
 
 void console_ui::ask(const std::string& question, std::function<bool()> action) {
@@ -199,12 +426,12 @@ void console_ui::ask(const std::string& question, std::function<bool()> action) 
 
 Component console_ui::onOffButtons(const std::string& name, std::function<bool()> on, std::function<bool()> off,
                                    const std::string& on_word, const std::string& off_word) {
-    auto on_button = Button(on_word, [this, name, on, on_word] {
+    auto on_button = button(on_word, [this, name, on, on_word] {
         ask("Set " + name + " " + on_word + "?", on);
-    }, ButtonOption::Ascii());
-    auto off_button = Button(off_word, [this, name, off, off_word] {
+    });
+    auto off_button = button(off_word, [this, name, off, off_word] {
         ask("Set " + name + " " + off_word + "?", off);
-    }, ButtonOption::Ascii());
+    });
     return Container::Horizontal({on_button, off_button});
 }
 
@@ -214,15 +441,15 @@ Component console_ui::numberEntry(const std::string& what, const std::string& pl
     auto entry = std::make_shared<std::string>();
     InputOption option;
     option.multiline = false;
-    auto input = Input(entry.get(), placeholder, option);
-    auto send_button = Button("Send", [this, entry, what, send] {
+    auto input = nav_->item(Input(entry.get(), placeholder, option));
+    auto send_button = button("Send", [this, entry, what, send] {
         float value;
         if (!parseFloat(*entry, value)) {
             status_ = "Not a number: \"" + *entry + "\"";
             return;
         }
         ask("Set " + what + " to " + *entry + "?", [send, value] { return send(value); });
-    }, ButtonOption::Ascii());
+    });
     auto row = Container::Horizontal({input, send_button});
     return Renderer(row, [input, send_button, entry] {
         return hbox({text("["), input->Render() | size(WIDTH, EQUAL, 8), text("] "), send_button->Render()});
@@ -318,14 +545,14 @@ Element console_ui::roStatus(bool with_settling) {
 }
 
 Component console_ui::procedureControls() {
-    auto list = Dropdown(&procedures_, &procedure_selected_);
-    auto run_button = Button("Run", [this] {
+    auto list = dropdown(&procedures_, &procedure_selected_);
+    auto run_button = button("Run", [this] {
         procedure_types p = ALL_PROCEDURE_TYPES[procedure_selected_];
         ask("Run " + std::string(toString(p)) + "?", [this, p] { return farm_.ro_procedures.run(p); });
-    }, ButtonOption::Ascii());
-    auto stop_button = Button("Stop", [this] {
+    });
+    auto stop_button = button("Stop", [this] {
         ask("Stop the running procedure (the RO goes OFF)?", [this] { return farm_.ro_procedures.stop(); });
-    }, ButtonOption::Ascii());
+    });
     auto row = Container::Horizontal({list, run_button, stop_button});
     return Renderer(row, [list, run_button, stop_button] {
         return hbox({shortLabel("Procedure"), list->Render(), text(" "), run_button->Render() | vcenter,
@@ -336,11 +563,11 @@ Component console_ui::procedureControls() {
 // Sets the RO state directly (an override: a running procedure keeps its
 // remaining steps, which can change the state again)
 Component console_ui::stateControls(const std::string& row_label) {
-    auto list = Dropdown(&states_, &state_selected_);
-    auto set_button = Button("Set state", [this] {
+    auto list = dropdown(&states_, &state_selected_);
+    auto set_button = button("Set state", [this] {
         RO_state s = ALL_RO_STATES[state_selected_];
         ask("Set the RO to " + std::string(toString(s)) + "?", [this, s] { return farm_.ro.setState(s); });
-    }, ButtonOption::Ascii());
+    });
     auto row = Container::Horizontal({list, set_button});
     return Renderer(row, [row_label, list, set_button] {
         return hbox({shortLabel(row_label), list->Render(), text(" "), set_button->Render() | vcenter});
@@ -352,13 +579,13 @@ Component console_ui::stateControls(const std::string& row_label) {
 Component console_ui::procedureButtons() {
     Components buttons;
     for (procedure_types p : ALL_PROCEDURE_TYPES) {
-        buttons.push_back(Button("Start " + std::string(toString(p)), [this, p] {
+        buttons.push_back(button("Start " + std::string(toString(p)), [this, p] {
             ask("Start " + std::string(toString(p)) + "?", [this, p] { return farm_.ro_procedures.run(p); });
-        }, ButtonOption::Ascii()));
+        }));
     }
-    auto stop_button = Button("Stop", [this] {
+    auto stop_button = button("Stop", [this] {
         ask("Stop the running procedure (the RO goes OFF)?", [this] { return farm_.ro_procedures.stop(); });
-    }, ButtonOption::Ascii());
+    });
     Components all = buttons;
     all.push_back(stop_button);
     auto list = Container::Vertical(all);
@@ -381,11 +608,12 @@ Component console_ui::procedureButtons() {
 Component console_ui::mainDashboard() {
     auto water_width = labelWidth(farm_.water_floats);
     auto level_width = labelWidth(farm_.tank_levels);
-    return dashboard({
-        controlTile("RO", procedureButtons(), [this] { return roStatus(false); }),
-        readTile("Water tank floats", [this, water_width] { return floatList(farm_.water_floats, water_width); }),
-        readTile("Water levels", [this, level_width] { return sensorList(farm_.tank_levels, 2, level_width); }),
-        controlTile("Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),
+    nav_ = std::make_shared<nav_map>();
+    return dashboardOf({
+        controlTile(*nav_, "RO", procedureButtons(), [this] { return roStatus(false); }),
+        readTile(*nav_, "Water tank floats", [this, water_width] { return floatList(farm_.water_floats, water_width); }),
+        readTile(*nav_, "Water levels", [this, level_width] { return sensorList(farm_.tank_levels, 2, level_width); }),
+        controlTile(*nav_, "Upper tank pumps", Container::Vertical(pumpRows(farm_.upper_pumps, PUMP_LABEL_WIDTH))),
     });
 }
 
@@ -397,10 +625,11 @@ Component console_ui::roDashboard() {
     int flow_width = labelWidth(farm_.ro_flows);
     int conductivity_width = labelWidth(farm_.conductivities);
     constexpr int HEATER_WIDTH = 12;   // "cip heater", "cip temp"
+    nav_ = std::make_shared<nav_map>();
 
     auto ro_controls = Container::Vertical({procedureControls(), stateControls("Override")});
-    return dashboard({
-        controlTile("RO control", ro_controls, [this] {
+    return dashboardOf({
+        controlTile(*nav_, "RO control", ro_controls, [this] {
             Elements lines = {roStatus(true)};
             for (toggle_row& t : farm_.toggles) {   // panel switches
                 bool on = false;
@@ -409,14 +638,14 @@ Component console_ui::roDashboard() {
             }
             return vbox(lines);
         }),
-        readTile("Chemical tank floats", [this, chemical_width] { return floatList(farm_.chemical_floats, chemical_width); }),
-        readTile("Pressure sensors", [this, pressure_width] { return sensorList(farm_.ro_pressures, 1, pressure_width); }),
-        readTile("Flow sensors", [this, flow_width] { return sensorList(farm_.ro_flows, 2, flow_width); }),
-        readTile("Conductivity", [this, conductivity_width] { return sensorList(farm_.conductivities, 1, conductivity_width); }),
-        controlTile("Pumps", Container::Vertical(pumpRows(farm_.ro_pumps, PUMP_LABEL_WIDTH))),
-        controlTile("CIP heater", Container::Vertical(loadRows(HEATER_WIDTH)),
+        readTile(*nav_, "Chemical tank floats", [this, chemical_width] { return floatList(farm_.chemical_floats, chemical_width); }),
+        readTile(*nav_, "Pressure sensors", [this, pressure_width] { return sensorList(farm_.ro_pressures, 1, pressure_width); }),
+        readTile(*nav_, "Flow sensors", [this, flow_width] { return sensorList(farm_.ro_flows, 2, flow_width); }),
+        readTile(*nav_, "Conductivity", [this, conductivity_width] { return sensorList(farm_.conductivities, 1, conductivity_width); }),
+        controlTile(*nav_, "Pumps", Container::Vertical(pumpRows(farm_.ro_pumps, PUMP_LABEL_WIDTH))),
+        controlTile(*nav_, "CIP heater", Container::Vertical(loadRows(HEATER_WIDTH)),
                     [this] { return sensorList(farm_.cip_temps, 1, HEATER_WIDTH); }),
-        controlTile("Valves", Container::Vertical(valveRows(labelWidth(farm_.valves)))),
+        controlTile(*nav_, "Valves", Container::Vertical(valveRows(labelWidth(farm_.valves)))),
     });
 }
 
@@ -449,10 +678,9 @@ Element console_ui::header() {
 }
 
 int console_ui::run() {
-    std::vector<std::string> tab_names = {"Main-Dashboard", "RO-Dashboard"};
-    int tab_selected = 0;
-    auto tab_menu = Menu(&tab_names, &tab_selected);
-    auto tabs = Container::Tab({mainDashboard(), roDashboard()}, &tab_selected);
+    tab_menu_ = Menu(&tab_names_, &tab_selected_);
+    auto tab_menu = tab_menu_;
+    auto tabs = Container::Tab({mainDashboard(), roDashboard()}, &tab_selected_);
 
     auto main_container = Container::Horizontal({tab_menu, tabs});
     auto main_view = Renderer(main_container, [&] {

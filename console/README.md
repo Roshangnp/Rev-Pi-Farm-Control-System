@@ -20,16 +20,20 @@ On the RO RevPi itself use `--ro 127.0.0.1`, so the RO tabs keep working when th
 | RO-Dashboard | tiles: RO control (as on Main-Dashboard plus settling, panel toggle switches and a state override), chemical tank floats, pressures, flows, conductivity (TDS), RO pumps, CIP heater (switch + CIP temp), valves |
 
 Dashboard tiles are laid out in rows as wide as the screen allows (one column at 80x24, where
-the dashboard scrolls to the focused tile); Up/Down walk through every tile, the focused one has a
-heavy border. "Running" comes from `ro readProcedure` (an older RO RevPi build shows `---`).
+the dashboard scrolls to the focused control); the tile holding the focus has a heavy border. "Running" comes from `ro readProcedure` (an older RO RevPi build shows `---`).
 
 The devices on each tab are listed in `src/console_devices.cpp`; add a line there to show a new
 one (the name the owning RevPi registers in its device server).
 
 ## Keys
 
-- Up/Down: pick a tab, or a control inside a tab
-- Right/Left (or Tab/Shift+Tab): move between the tab list and the tab
+- Arrow keys on a dashboard go by screen position, ignoring the tiles: Up/Down to the nearest
+  control above/below (staying in the same column of tiles, keeping the column over shorter rows),
+  Left/Right to the nearest one on the same line, into the next tile across. Read-only tiles are
+  one stop each. Left with nothing to the left goes back to the tab list. In a text box Left/Right
+  move the cursor first; an open list keeps the arrows until Enter or Esc closes it
+- In the tab list: Up/Down pick a tab, Right goes into it
+- Tab/Shift+Tab still walk every control in order
 - Enter: press a button, open a list (Enter again picks)
 - Type a number in a `[    ]` box, then Right and Enter on Send
 - Every change asks Yes/No first (No is selected, Esc cancels)
