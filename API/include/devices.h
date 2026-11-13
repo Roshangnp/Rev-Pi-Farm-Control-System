@@ -179,4 +179,9 @@ class irrigation{
     // still in the future and not yet sent to the field (status "Saved"); false if
     // any was refused (it is kept for the next cancel), or if there is none
     virtual bool cancelIrrigation() = 0;
+    // Deletes only the latest irrigation booked from here (the one
+    // readScheduledIrrigation returns) and drops it from the list, so the next call
+    // cancels the one before it: one request per call, for callers that space them
+    // out. Refused: it stays on top for the next call. False if there is none
+    virtual bool cancelTopIrrigation() = 0;
 };

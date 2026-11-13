@@ -116,3 +116,15 @@ bool wiseconn_irrigation::cancelIrrigation() {
     scheduled_ids_ = kept;
     return ok;
 }
+
+// Deletes the latest irrigation booked from here; removed from the list if WiseConn
+// accepts, kept on top if it refuses (or can't be reached), so the next call retries it
+bool wiseconn_irrigation::cancelTopIrrigation() {
+    if (scheduled_ids_.empty()) return report(false, "cancel top irrigation", "no irrigation scheduled from here");
+    const std::string id = scheduled_ids_.back();
+    std::string error;
+    bool deleted = link_.deleteIrrigation(id, error);
+    report(deleted, "cancel irrigation " + id, error);
+    if (deleted) scheduled_ids_.pop_back();
+    return deleted;
+}

@@ -141,12 +141,13 @@ class procedure_control {
 //     dry and the pump is off, off when the float is submerged (or can't be read)
 //     and the pump is on, so a manual change is undone at once either way
 //     (ON_RISING tasks: runs until stop()).
-//   CANCEL_OVERHEAD_PATTERN_1: cancels what overhead_1..overhead_6 have booked
-//     (cancelIrrigation, every booking each zone made; zones with none skipped), one
-//     zone every 2 s, so the WiseConn DELETEs don't block the loop for long or hit
-//     WiseConn's rate limit in one burst. A zone WiseConn refuses keeps its bookings
-//     for the next run. WiseConn only deletes ones not yet sent to the field.
-//   CANCEL_IRRIGATION_PATTERN_1: the same for valve_1_1..valve_10_3.
+//   CANCEL_OVERHEAD_PATTERN_1: cancels what overhead_1..overhead_6 have booked, one
+//     booking per task (cancelTopIrrigation: one WiseConn DELETE), one task every 2 s,
+//     so the DELETEs don't block the loop for long or hit WiseConn's rate limit in a
+//     burst: 3 rounds of the 6 zones (OVERHEAD_PATTERN_1 books each 3 times); a zone
+//     with nothing left is skipped, a refused booking stays for the next round or run.
+//     WiseConn only deletes ones not yet sent to the field.
+//   CANCEL_IRRIGATION_PATTERN_1: the same for valve_1_1..valve_10_3, one round.
 class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object.

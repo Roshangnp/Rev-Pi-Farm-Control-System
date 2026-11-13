@@ -417,14 +417,29 @@ bool procedure::run_irrigation_pattern_1() {
 
 bool procedure::cancel_overhead1_pattern() {
 
-    // Cancels what each overhead booked (cancelIrrigation: every booking the zone made,
-    // one WiseConn DELETE each, about 1 s, blocking the loop it runs in; zones with
-    // nothing booked are skipped), one zone every 2 s
+    // Cancels what the overheads booked, one booking per task (cancelTopIrrigation:
+    // the zone's latest, one WiseConn DELETE, about 1 s, blocking the loop it runs
+    // in), one task every 2 s, so all the timing stays in the scheduler.
+    // OVERHEAD_PATTERN_1 books each overhead 3 times, so there are 3 rounds of the
+    // 6 zones; a zone with nothing (left) booked is skipped, and one WiseConn refused
+    // stays booked for the next round or run
     condition_id step_2_id = sched_.addCondition(condition::afterDuration("cancel_step_2", std::chrono::seconds(2)));
     condition_id step_3_id = sched_.addCondition(condition::afterDuration("cancel_step_3", std::chrono::seconds(4)));
     condition_id step_4_id = sched_.addCondition(condition::afterDuration("cancel_step_4", std::chrono::seconds(6)));
     condition_id step_5_id = sched_.addCondition(condition::afterDuration("cancel_step_5", std::chrono::seconds(8)));
     condition_id step_6_id = sched_.addCondition(condition::afterDuration("cancel_step_6", std::chrono::seconds(10)));
+    condition_id step_7_id = sched_.addCondition(condition::afterDuration("cancel_step_7", std::chrono::seconds(12)));
+    condition_id step_8_id = sched_.addCondition(condition::afterDuration("cancel_step_8", std::chrono::seconds(14)));
+    condition_id step_9_id = sched_.addCondition(condition::afterDuration("cancel_step_9", std::chrono::seconds(16)));
+    condition_id step_10_id = sched_.addCondition(condition::afterDuration("cancel_step_10", std::chrono::seconds(18)));
+    condition_id step_11_id = sched_.addCondition(condition::afterDuration("cancel_step_11", std::chrono::seconds(20)));
+    condition_id step_12_id = sched_.addCondition(condition::afterDuration("cancel_step_12", std::chrono::seconds(22)));
+    condition_id step_13_id = sched_.addCondition(condition::afterDuration("cancel_step_13", std::chrono::seconds(24)));
+    condition_id step_14_id = sched_.addCondition(condition::afterDuration("cancel_step_14", std::chrono::seconds(26)));
+    condition_id step_15_id = sched_.addCondition(condition::afterDuration("cancel_step_15", std::chrono::seconds(28)));
+    condition_id step_16_id = sched_.addCondition(condition::afterDuration("cancel_step_16", std::chrono::seconds(30)));
+    condition_id step_17_id = sched_.addCondition(condition::afterDuration("cancel_step_17", std::chrono::seconds(32)));
+    condition_id step_18_id = sched_.addCondition(condition::afterDuration("cancel_step_18", std::chrono::seconds(34)));
 
     task_id cancel_1_id;
     task_id cancel_2_id;
@@ -432,23 +447,49 @@ bool procedure::cancel_overhead1_pattern() {
     task_id cancel_4_id;
     task_id cancel_5_id;
     task_id cancel_6_id;
-    sched_.addTask({"cancel_overhead_1", [] {int id; return !overhead_1.readScheduledIrrigation(id) || overhead_1.cancelIrrigation();}, {}, task_mode::ONCE}, cancel_1_id);
-    sched_.addTask({"cancel_overhead_2", [] {int id; return !overhead_2.readScheduledIrrigation(id) || overhead_2.cancelIrrigation();}, {step_2_id}, task_mode::ONCE}, cancel_2_id);
-    sched_.addTask({"cancel_overhead_3", [] {int id; return !overhead_3.readScheduledIrrigation(id) || overhead_3.cancelIrrigation();}, {step_3_id}, task_mode::ONCE}, cancel_3_id);
-    sched_.addTask({"cancel_overhead_4", [] {int id; return !overhead_4.readScheduledIrrigation(id) || overhead_4.cancelIrrigation();}, {step_4_id}, task_mode::ONCE}, cancel_4_id);
-    sched_.addTask({"cancel_overhead_5", [] {int id; return !overhead_5.readScheduledIrrigation(id) || overhead_5.cancelIrrigation();}, {step_5_id}, task_mode::ONCE}, cancel_5_id);
-    sched_.addTask({"cancel_overhead_6", [] {int id; return !overhead_6.readScheduledIrrigation(id) || overhead_6.cancelIrrigation();}, {step_6_id}, task_mode::ONCE}, cancel_6_id);
+    task_id cancel_7_id;
+    task_id cancel_8_id;
+    task_id cancel_9_id;
+    task_id cancel_10_id;
+    task_id cancel_11_id;
+    task_id cancel_12_id;
+    task_id cancel_13_id;
+    task_id cancel_14_id;
+    task_id cancel_15_id;
+    task_id cancel_16_id;
+    task_id cancel_17_id;
+    task_id cancel_18_id;
+    sched_.addTask({"cancel_overhead_1_round_1", [] {int id; return !overhead_1.readScheduledIrrigation(id) || overhead_1.cancelTopIrrigation();}, {}, task_mode::ONCE}, cancel_1_id);
+    sched_.addTask({"cancel_overhead_2_round_1", [] {int id; return !overhead_2.readScheduledIrrigation(id) || overhead_2.cancelTopIrrigation();}, {step_2_id}, task_mode::ONCE}, cancel_2_id);
+    sched_.addTask({"cancel_overhead_3_round_1", [] {int id; return !overhead_3.readScheduledIrrigation(id) || overhead_3.cancelTopIrrigation();}, {step_3_id}, task_mode::ONCE}, cancel_3_id);
+    sched_.addTask({"cancel_overhead_4_round_1", [] {int id; return !overhead_4.readScheduledIrrigation(id) || overhead_4.cancelTopIrrigation();}, {step_4_id}, task_mode::ONCE}, cancel_4_id);
+    sched_.addTask({"cancel_overhead_5_round_1", [] {int id; return !overhead_5.readScheduledIrrigation(id) || overhead_5.cancelTopIrrigation();}, {step_5_id}, task_mode::ONCE}, cancel_5_id);
+    sched_.addTask({"cancel_overhead_6_round_1", [] {int id; return !overhead_6.readScheduledIrrigation(id) || overhead_6.cancelTopIrrigation();}, {step_6_id}, task_mode::ONCE}, cancel_6_id);
+    sched_.addTask({"cancel_overhead_1_round_2", [] {int id; return !overhead_1.readScheduledIrrigation(id) || overhead_1.cancelTopIrrigation();}, {step_7_id}, task_mode::ONCE}, cancel_7_id);
+    sched_.addTask({"cancel_overhead_2_round_2", [] {int id; return !overhead_2.readScheduledIrrigation(id) || overhead_2.cancelTopIrrigation();}, {step_8_id}, task_mode::ONCE}, cancel_8_id);
+    sched_.addTask({"cancel_overhead_3_round_2", [] {int id; return !overhead_3.readScheduledIrrigation(id) || overhead_3.cancelTopIrrigation();}, {step_9_id}, task_mode::ONCE}, cancel_9_id);
+    sched_.addTask({"cancel_overhead_4_round_2", [] {int id; return !overhead_4.readScheduledIrrigation(id) || overhead_4.cancelTopIrrigation();}, {step_10_id}, task_mode::ONCE}, cancel_10_id);
+    sched_.addTask({"cancel_overhead_5_round_2", [] {int id; return !overhead_5.readScheduledIrrigation(id) || overhead_5.cancelTopIrrigation();}, {step_11_id}, task_mode::ONCE}, cancel_11_id);
+    sched_.addTask({"cancel_overhead_6_round_2", [] {int id; return !overhead_6.readScheduledIrrigation(id) || overhead_6.cancelTopIrrigation();}, {step_12_id}, task_mode::ONCE}, cancel_12_id);
+    sched_.addTask({"cancel_overhead_1_round_3", [] {int id; return !overhead_1.readScheduledIrrigation(id) || overhead_1.cancelTopIrrigation();}, {step_13_id}, task_mode::ONCE}, cancel_13_id);
+    sched_.addTask({"cancel_overhead_2_round_3", [] {int id; return !overhead_2.readScheduledIrrigation(id) || overhead_2.cancelTopIrrigation();}, {step_14_id}, task_mode::ONCE}, cancel_14_id);
+    sched_.addTask({"cancel_overhead_3_round_3", [] {int id; return !overhead_3.readScheduledIrrigation(id) || overhead_3.cancelTopIrrigation();}, {step_15_id}, task_mode::ONCE}, cancel_15_id);
+    sched_.addTask({"cancel_overhead_4_round_3", [] {int id; return !overhead_4.readScheduledIrrigation(id) || overhead_4.cancelTopIrrigation();}, {step_16_id}, task_mode::ONCE}, cancel_16_id);
+    sched_.addTask({"cancel_overhead_5_round_3", [] {int id; return !overhead_5.readScheduledIrrigation(id) || overhead_5.cancelTopIrrigation();}, {step_17_id}, task_mode::ONCE}, cancel_17_id);
+    sched_.addTask({"cancel_overhead_6_round_3", [] {int id; return !overhead_6.readScheduledIrrigation(id) || overhead_6.cancelTopIrrigation();}, {step_18_id}, task_mode::ONCE}, cancel_18_id);
 
-    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id};
-    task_ids_ = {cancel_1_id, cancel_2_id, cancel_3_id, cancel_4_id, cancel_5_id, cancel_6_id};
+    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id};
+    task_ids_ = {cancel_1_id, cancel_2_id, cancel_3_id, cancel_4_id, cancel_5_id, cancel_6_id, cancel_7_id, cancel_8_id, cancel_9_id, cancel_10_id, cancel_11_id, cancel_12_id, cancel_13_id, cancel_14_id, cancel_15_id, cancel_16_id, cancel_17_id, cancel_18_id};
     return true;
 }
 
 bool procedure::cancel_irrigation_pattern_1() {
 
-    // Cancels what each irrigation valve booked (cancelIrrigation: every booking the
-    // zone made, one WiseConn DELETE each, about 1 s, blocking the loop it runs in;
-    // valves with nothing booked are skipped), one valve every 2 s
+    // Cancels what the irrigation valves booked, one booking per task
+    // (cancelTopIrrigation: the valve's latest, one WiseConn DELETE, about 1 s,
+    // blocking the loop it runs in), one task every 2 s. IRRIGATION_PATTERN_1 books
+    // each valve once; a valve with nothing booked is skipped, and one WiseConn
+    // refused stays booked for the next run
     condition_id step_2_id = sched_.addCondition(condition::afterDuration("cancel_step_2", std::chrono::seconds(2)));
     condition_id step_3_id = sched_.addCondition(condition::afterDuration("cancel_step_3", std::chrono::seconds(4)));
     condition_id step_4_id = sched_.addCondition(condition::afterDuration("cancel_step_4", std::chrono::seconds(6)));
@@ -483,23 +524,23 @@ bool procedure::cancel_irrigation_pattern_1() {
     task_id cancel_15_id;
     task_id cancel_16_id;
     task_id cancel_17_id;
-    sched_.addTask({"cancel_valve_1_1", [] {int id; return !valve_1_1.readScheduledIrrigation(id) || valve_1_1.cancelIrrigation();}, {}, task_mode::ONCE}, cancel_1_id);
-    sched_.addTask({"cancel_valve_1_2", [] {int id; return !valve_1_2.readScheduledIrrigation(id) || valve_1_2.cancelIrrigation();}, {step_2_id}, task_mode::ONCE}, cancel_2_id);
-    sched_.addTask({"cancel_valve_2_1", [] {int id; return !valve_2_1.readScheduledIrrigation(id) || valve_2_1.cancelIrrigation();}, {step_3_id}, task_mode::ONCE}, cancel_3_id);
-    sched_.addTask({"cancel_valve_3_1", [] {int id; return !valve_3_1.readScheduledIrrigation(id) || valve_3_1.cancelIrrigation();}, {step_4_id}, task_mode::ONCE}, cancel_4_id);
-    sched_.addTask({"cancel_valve_4_1", [] {int id; return !valve_4_1.readScheduledIrrigation(id) || valve_4_1.cancelIrrigation();}, {step_5_id}, task_mode::ONCE}, cancel_5_id);
-    sched_.addTask({"cancel_valve_5_1", [] {int id; return !valve_5_1.readScheduledIrrigation(id) || valve_5_1.cancelIrrigation();}, {step_6_id}, task_mode::ONCE}, cancel_6_id);
-    sched_.addTask({"cancel_valve_5_2", [] {int id; return !valve_5_2.readScheduledIrrigation(id) || valve_5_2.cancelIrrigation();}, {step_7_id}, task_mode::ONCE}, cancel_7_id);
-    sched_.addTask({"cancel_valve_5_3", [] {int id; return !valve_5_3.readScheduledIrrigation(id) || valve_5_3.cancelIrrigation();}, {step_8_id}, task_mode::ONCE}, cancel_8_id);
-    sched_.addTask({"cancel_valve_5_4", [] {int id; return !valve_5_4.readScheduledIrrigation(id) || valve_5_4.cancelIrrigation();}, {step_9_id}, task_mode::ONCE}, cancel_9_id);
-    sched_.addTask({"cancel_valve_6_1", [] {int id; return !valve_6_1.readScheduledIrrigation(id) || valve_6_1.cancelIrrigation();}, {step_10_id}, task_mode::ONCE}, cancel_10_id);
-    sched_.addTask({"cancel_valve_6_2", [] {int id; return !valve_6_2.readScheduledIrrigation(id) || valve_6_2.cancelIrrigation();}, {step_11_id}, task_mode::ONCE}, cancel_11_id);
-    sched_.addTask({"cancel_valve_7_1", [] {int id; return !valve_7_1.readScheduledIrrigation(id) || valve_7_1.cancelIrrigation();}, {step_12_id}, task_mode::ONCE}, cancel_12_id);
-    sched_.addTask({"cancel_valve_8_1", [] {int id; return !valve_8_1.readScheduledIrrigation(id) || valve_8_1.cancelIrrigation();}, {step_13_id}, task_mode::ONCE}, cancel_13_id);
-    sched_.addTask({"cancel_valve_9_1", [] {int id; return !valve_9_1.readScheduledIrrigation(id) || valve_9_1.cancelIrrigation();}, {step_14_id}, task_mode::ONCE}, cancel_14_id);
-    sched_.addTask({"cancel_valve_10_1", [] {int id; return !valve_10_1.readScheduledIrrigation(id) || valve_10_1.cancelIrrigation();}, {step_15_id}, task_mode::ONCE}, cancel_15_id);
-    sched_.addTask({"cancel_valve_10_2", [] {int id; return !valve_10_2.readScheduledIrrigation(id) || valve_10_2.cancelIrrigation();}, {step_16_id}, task_mode::ONCE}, cancel_16_id);
-    sched_.addTask({"cancel_valve_10_3", [] {int id; return !valve_10_3.readScheduledIrrigation(id) || valve_10_3.cancelIrrigation();}, {step_17_id}, task_mode::ONCE}, cancel_17_id);
+    sched_.addTask({"cancel_valve_1_1", [] {int id; return !valve_1_1.readScheduledIrrigation(id) || valve_1_1.cancelTopIrrigation();}, {}, task_mode::ONCE}, cancel_1_id);
+    sched_.addTask({"cancel_valve_1_2", [] {int id; return !valve_1_2.readScheduledIrrigation(id) || valve_1_2.cancelTopIrrigation();}, {step_2_id}, task_mode::ONCE}, cancel_2_id);
+    sched_.addTask({"cancel_valve_2_1", [] {int id; return !valve_2_1.readScheduledIrrigation(id) || valve_2_1.cancelTopIrrigation();}, {step_3_id}, task_mode::ONCE}, cancel_3_id);
+    sched_.addTask({"cancel_valve_3_1", [] {int id; return !valve_3_1.readScheduledIrrigation(id) || valve_3_1.cancelTopIrrigation();}, {step_4_id}, task_mode::ONCE}, cancel_4_id);
+    sched_.addTask({"cancel_valve_4_1", [] {int id; return !valve_4_1.readScheduledIrrigation(id) || valve_4_1.cancelTopIrrigation();}, {step_5_id}, task_mode::ONCE}, cancel_5_id);
+    sched_.addTask({"cancel_valve_5_1", [] {int id; return !valve_5_1.readScheduledIrrigation(id) || valve_5_1.cancelTopIrrigation();}, {step_6_id}, task_mode::ONCE}, cancel_6_id);
+    sched_.addTask({"cancel_valve_5_2", [] {int id; return !valve_5_2.readScheduledIrrigation(id) || valve_5_2.cancelTopIrrigation();}, {step_7_id}, task_mode::ONCE}, cancel_7_id);
+    sched_.addTask({"cancel_valve_5_3", [] {int id; return !valve_5_3.readScheduledIrrigation(id) || valve_5_3.cancelTopIrrigation();}, {step_8_id}, task_mode::ONCE}, cancel_8_id);
+    sched_.addTask({"cancel_valve_5_4", [] {int id; return !valve_5_4.readScheduledIrrigation(id) || valve_5_4.cancelTopIrrigation();}, {step_9_id}, task_mode::ONCE}, cancel_9_id);
+    sched_.addTask({"cancel_valve_6_1", [] {int id; return !valve_6_1.readScheduledIrrigation(id) || valve_6_1.cancelTopIrrigation();}, {step_10_id}, task_mode::ONCE}, cancel_10_id);
+    sched_.addTask({"cancel_valve_6_2", [] {int id; return !valve_6_2.readScheduledIrrigation(id) || valve_6_2.cancelTopIrrigation();}, {step_11_id}, task_mode::ONCE}, cancel_11_id);
+    sched_.addTask({"cancel_valve_7_1", [] {int id; return !valve_7_1.readScheduledIrrigation(id) || valve_7_1.cancelTopIrrigation();}, {step_12_id}, task_mode::ONCE}, cancel_12_id);
+    sched_.addTask({"cancel_valve_8_1", [] {int id; return !valve_8_1.readScheduledIrrigation(id) || valve_8_1.cancelTopIrrigation();}, {step_13_id}, task_mode::ONCE}, cancel_13_id);
+    sched_.addTask({"cancel_valve_9_1", [] {int id; return !valve_9_1.readScheduledIrrigation(id) || valve_9_1.cancelTopIrrigation();}, {step_14_id}, task_mode::ONCE}, cancel_14_id);
+    sched_.addTask({"cancel_valve_10_1", [] {int id; return !valve_10_1.readScheduledIrrigation(id) || valve_10_1.cancelTopIrrigation();}, {step_15_id}, task_mode::ONCE}, cancel_15_id);
+    sched_.addTask({"cancel_valve_10_2", [] {int id; return !valve_10_2.readScheduledIrrigation(id) || valve_10_2.cancelTopIrrigation();}, {step_16_id}, task_mode::ONCE}, cancel_16_id);
+    sched_.addTask({"cancel_valve_10_3", [] {int id; return !valve_10_3.readScheduledIrrigation(id) || valve_10_3.cancelTopIrrigation();}, {step_17_id}, task_mode::ONCE}, cancel_17_id);
 
     condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id};
     task_ids_ = {cancel_1_id, cancel_2_id, cancel_3_id, cancel_4_id, cancel_5_id, cancel_6_id, cancel_7_id, cancel_8_id, cancel_9_id, cancel_10_id, cancel_11_id, cancel_12_id, cancel_13_id, cancel_14_id, cancel_15_id, cancel_16_id, cancel_17_id};

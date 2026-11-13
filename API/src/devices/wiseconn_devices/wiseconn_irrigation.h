@@ -16,6 +16,8 @@
 //   restart); readScheduledIrrigation returns the latest.
 //   cancelIrrigation: DELETE /irrigations/<id> for every id in the list; the
 //   deleted ones are removed, refused ones kept for the next cancel.
+//   cancelTopIrrigation: the same for the latest id only (one request); removed
+//   if deleted, kept on top if refused.
 // Bad arguments are refused without contacting WiseConn. A call blocks until
 // WiseConn answers (about 1 s) and returns true only if it accepted the
 // irrigation. THESE START REAL IRRIGATIONS on the live system.
@@ -29,6 +31,7 @@ class wiseconn_irrigation : public irrigation{
     bool scheduleIrrigation(int durationMinutes) override;
     bool readScheduledIrrigation(int& id) override;
     bool cancelIrrigation() override;
+    bool cancelTopIrrigation() override;
 
     private:
     // On success, saves irrigation_id (logs if the reply had none)

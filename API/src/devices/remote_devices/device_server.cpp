@@ -238,6 +238,8 @@ std::string device_server::handleRequest(int client_id, const std::string& name,
                 reply = device->readScheduledIrrigation(id) ? "ok " + std::to_string(id) : "fail";
             } else if (method == "cancelIrrigation") {
                 reply = okIf(device->cancelIrrigation());
+            } else if (method == "cancelTopIrrigation") {
+                reply = okIf(device->cancelTopIrrigation());
             }
         }
 

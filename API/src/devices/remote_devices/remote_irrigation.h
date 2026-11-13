@@ -19,6 +19,7 @@ class remote_irrigation : public irrigation{
     bool scheduleIrrigation(int durationMinutes) override;
     bool readScheduledIrrigation(int& id) override;
     bool cancelIrrigation() override;
+    bool cancelTopIrrigation() override;
 
     private:
     remote_link* link_;

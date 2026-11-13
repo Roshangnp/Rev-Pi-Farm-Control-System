@@ -35,3 +35,7 @@ bool remote_irrigation::readScheduledIrrigation(int& id) {
 bool remote_irrigation::cancelIrrigation() {
     return link_->command(device_name_, "cancelIrrigation");
 }
+
+bool remote_irrigation::cancelTopIrrigation() {
+    return link_->command(device_name_, "cancelTopIrrigation");
+}
