@@ -1,4 +1,5 @@
 #include "console_ui.h"
+#include "config.h"
 #include "procedure_config.h"
 #include "ro_config.h"
 
@@ -697,6 +698,23 @@ Component console_ui::mainDashboard() {
         readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
         readTile(*nav_, "Soil probes (WiseConn)", [this] { return soilTable(farm_.soil_probes); }),
         readTile(*nav_, "Flow meters (WiseConn)", [this, flow_width] { return sensorList(farm_.wiseconn_flows, 1, flow_width); }),
+        // Overhead 6: schedule today 20:00-21:00 / cancel it (real WiseConn irrigations)
+        controlTile(*nav_, "Overhead 6 (WiseConn)", Container::Horizontal({
+            button("Schedule 20:00-21:00", [this] {
+                ask("Schedule overhead 6 today 20:00-21:00 (a real irrigation)?",
+                    [] { return overhead_6.scheduleIrrigation(20, 0, 21, 0); });
+            }),
+            button("Cancel scheduled", [this] {
+                ask("Cancel overhead 6's scheduled irrigation?", [] { return overhead_6.cancelIrrigation(); });
+            }),
+        }), [] {
+            bool on = false;
+            bool ok = overhead_6.readOn(on);
+            int id = 0;
+            bool scheduled = overhead_6.readScheduledIrrigation(id);
+            return vbox({hbox({label("overhead 6", 12), onOffReading(ok, on, "ON", "off")}),
+                         hbox({label("scheduled", 12), text(scheduled ? "id " + std::to_string(id) : "none")})});
+        }),
     });
 }
 
