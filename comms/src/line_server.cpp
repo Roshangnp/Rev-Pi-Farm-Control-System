@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <sstream>
 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -104,8 +105,18 @@ void line_server::poll(int timeout_ms) {
 
 void line_server::acceptClients() {
     while (true) {
-        int fd = accept4(listen_fd_, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
+        sockaddr_in peer{};
+        socklen_t peer_size = sizeof(peer);
+        int fd = accept4(listen_fd_, reinterpret_cast<sockaddr*>(&peer), &peer_size, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (fd < 0) return;
+        if (!allowed_.empty()) {
+            char address[INET_ADDRSTRLEN] = "";
+            inet_ntop(AF_INET, &peer.sin_addr, address, sizeof(address));
+            if (std::find(allowed_.begin(), allowed_.end(), address) == allowed_.end()) {
+                close(fd);   // not on the list
+                continue;
+            }
+        }
         int one = 1;
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
         clients_.push_back({fd, next_client_id_++, "", "", std::chrono::steady_clock::now()});

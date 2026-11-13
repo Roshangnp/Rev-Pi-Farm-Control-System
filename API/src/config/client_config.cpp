@@ -102,6 +102,10 @@ remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
+// The overheads come from emerald-server's main, which holds their bookings
+// (irrigation_procedure runs there), so every console sees what's scheduled
+remote_link overheads_main(FARM_OVERHEADS_HOST);
+
 // WiseConn, through this machine's main
 remote_soil_sensor remote_zone_7_soil(wiseconn_main, "zone_7_soil");
 remote_soil_sensor remote_zone_8_soil(wiseconn_main, "zone_8_soil");
@@ -123,12 +127,12 @@ remote_irrigation remote_valve_9_1(wiseconn_main, "valve_9_1");
 remote_irrigation remote_valve_10_1(wiseconn_main, "valve_10_1");
 remote_irrigation remote_valve_10_2(wiseconn_main, "valve_10_2");
 remote_irrigation remote_valve_10_3(wiseconn_main, "valve_10_3");
-remote_irrigation remote_overhead_1(wiseconn_main, "overhead_1");
-remote_irrigation remote_overhead_2(wiseconn_main, "overhead_2");
-remote_irrigation remote_overhead_3(wiseconn_main, "overhead_3");
-remote_irrigation remote_overhead_4(wiseconn_main, "overhead_4");
-remote_irrigation remote_overhead_5(wiseconn_main, "overhead_5");
-remote_irrigation remote_overhead_6(wiseconn_main, "overhead_6");
+remote_irrigation remote_overhead_1(overheads_main, "overhead_1");
+remote_irrigation remote_overhead_2(overheads_main, "overhead_2");
+remote_irrigation remote_overhead_3(overheads_main, "overhead_3");
+remote_irrigation remote_overhead_4(overheads_main, "overhead_4");
+remote_irrigation remote_overhead_5(overheads_main, "overhead_5");
+remote_irrigation remote_overhead_6(overheads_main, "overhead_6");
 remote_irrigation remote_city_water_fill_valve(wiseconn_main, "city_water_fill_valve");
 remote_flow_sensor remote_main_flow(wiseconn_main, "main_flow");
 remote_flow_sensor remote_city_water_flow(wiseconn_main, "city_water_flow");

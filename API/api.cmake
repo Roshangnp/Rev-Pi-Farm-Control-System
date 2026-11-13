@@ -46,8 +46,15 @@ elseif(DEVICE_CONFIG STREQUAL "uppertank")
 endif()
 add_library(farm_client STATIC $<TARGET_OBJECTS:farm_objects> ${config_dir}/client_config.cpp)
 target_link_libraries(farm_client PUBLIC farm_objects)
+# emerald-server's main holds the overheads' bookings (irrigation_procedure runs there)
+if(DEVICE_CONFIG STREQUAL "host_pc")
+    set(client_overheads_host 127.0.0.1)
+else()
+    set(client_overheads_host 192.168.1.194)
+endif()
 target_compile_definitions(farm_client PRIVATE
-    FARM_RO_HOST="${client_ro_host}" FARM_UPPER_HOST="${client_upper_host}" ${client_local})
+    FARM_RO_HOST="${client_ro_host}" FARM_UPPER_HOST="${client_upper_host}"
+    FARM_OVERHEADS_HOST="${client_overheads_host}" ${client_local})
 
 # WiseConn keys: wiseconn_keys.txt (repo root, git-ignored: API key, farm, zone and
 # measure ids) built in as text, parsed by wiseconn_farm_devices.cpp at startup.

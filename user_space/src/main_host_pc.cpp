@@ -14,8 +14,7 @@
 // Host PC (emerald-server): serves every device it binds (the RevPis' devices,
 // passed on to their owners, and the WiseConn devices) and the RO ("ro",
 // "ro_procedure", passed on to the RO RevPi) on port 47100, like the RevPis,
-// but on 127.0.0.1 only: this machine has no firewall, and its clients (the
-// console) run here. Also sends an ntfy push notification when a pump VFD
+// to this machine and the two RevPis only (allowOnly; this machine has no firewall). Also sends an ntfy push notification when a pump VFD
 // alarms or the lights relay switches on (topic from ntfy_topic.txt).
 
 // This machine's one scheduler (user space schedules tasks on it). A global, so
@@ -85,7 +84,10 @@ void updateAlarm(vfd_alarm& a, clock_type::time_point now, ntfy_notifier& notifi
 int main() {
     attachAllInterfaces();
 
-    line_server server(LINE_SERVER_PORT, 20000, /*loopback_only=*/true);   // drops clients idle 20 s
+    // All interfaces, but only this machine and the two RevPis may connect: emerald
+    // has no firewall, and this serves real irrigations (WiseConn, irrigation_procedure)
+    line_server server;   // drops clients idle 20 s
+    server.allowOnly({"127.0.0.1", "192.168.1.20", "192.168.1.21"});
     if (!addLocalDevices(server)) {
         std::fprintf(stderr, "Device server failed to start\n");
         return 1;

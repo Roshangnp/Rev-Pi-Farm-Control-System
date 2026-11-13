@@ -57,6 +57,11 @@ class line_server{
     // not "ping" or "snapshot". The handler must outlive the server.
     bool addName(const std::string& name, line_handler& handler);
 
+    // Only these client addresses (e.g. "127.0.0.1", "192.168.1.20") may connect;
+    // any other connection is closed as soon as it is accepted. Empty (default) =
+    // anyone. For a machine without a firewall (the host PC)
+    void allowOnly(std::vector<std::string> addresses) { allowed_ = std::move(addresses); }
+
     // Opens the listening socket. False if the port can't be opened.
     bool start();
 
@@ -83,6 +88,7 @@ class line_server{
     uint16_t port_;
     std::chrono::milliseconds idle_timeout_;
     bool loopback_only_;
+    std::vector<std::string> allowed_;   // client addresses allowed to connect, empty = anyone
     int listen_fd_ = -1;
     int next_client_id_ = 1;
     std::vector<client> clients_;
