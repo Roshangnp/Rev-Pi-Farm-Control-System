@@ -697,23 +697,25 @@ Component console_ui::mainDashboard() {
     auto flow_width = labelWidth(farm_.wiseconn_flows);
     nav_ = std::make_shared<nav_map>();
 
-    // Procedures tile: one row per procedure (name, idle/running, Run, Stop).
+    // Procedures tile: one row per procedure (name, idle/running/stopping, Run, Stop).
     // Add a line to procedures to show another one
     struct procedure_entry {
         std::string name;
         procedure_control* instance;
         procedure_types type;
         std::string warning;   // added to the Run question
+        // The irrigation patterns: Stop also runs this cancel procedure (the pattern's
+        // own stop only removes its tasks), shown as "stopping" while it runs
+        procedure_control* cancel_instance = nullptr;
+        procedure_types cancel_type = procedure_types::CANCEL_OVERHEAD_PATTERN_1;
     };
     const std::vector<procedure_entry> procedures = {
         {"overhead pattern 1", &overhead_pattern_procedure, procedure_types::OVERHEAD_PATTERN_1,
-         "books 18 real irrigations, today 14:00-16:15"},
+         "books 18 real irrigations, today 14:00-16:15",
+         &overhead_cancel_procedure, procedure_types::CANCEL_OVERHEAD_PATTERN_1},
         {"irrigation pattern 1", &irrigation_pattern_procedure, procedure_types::IRRIGATION_PATTERN_1,
-         "books 17 real 1 h irrigations back to back, starting 1 h from now, today only"},
-        {"cancel overhead 1", &overhead_cancel_procedure, procedure_types::CANCEL_OVERHEAD_PATTERN_1,
-         "cancels every overhead booking from emerald-server, one zone every 2 s"},
-        {"cancel irrigation 1", &irrigation_cancel_procedure, procedure_types::CANCEL_IRRIGATION_PATTERN_1,
-         "cancels every valve booking from emerald-server, one valve every 2 s"},
+         "books 17 real 1 h irrigations back to back, starting 1 h from now, today only",
+         &irrigation_cancel_procedure, procedure_types::CANCEL_IRRIGATION_PATTERN_1},
         {"repressure", &repressure_procedure, procedure_types::REPRESSURE_CONTROL, ""},
     };
     Components procedure_rows;
@@ -723,14 +725,30 @@ Component console_ui::mainDashboard() {
             ask(question, [entry] { return entry.instance->run(entry.type); });
         });
         auto stop_button = button("Stop", [this, entry] {
-            ask("Stop " + entry.name + "?", [entry] { return entry.instance->stop(); });
+            if (!entry.cancel_instance) {
+                ask("Stop " + entry.name + "?", [entry] { return entry.instance->stop(); });
+                return;
+            }
+            // Removes the pattern's remaining tasks (fails if it already finished,
+            // which doesn't matter), then cancels its bookings, one zone every 2 s
+            ask("Stop " + entry.name + " and cancel its bookings?", [entry] {
+                entry.instance->stop();
+                return entry.cancel_instance->run(entry.cancel_type);
+            });
         });
         auto buttons = Container::Horizontal({run_button, stop_button});
         procedure_rows.push_back(Renderer(buttons, [entry, buttons] {
             bool running = false;
             procedure_types current;
             bool ok = entry.instance->readProcedure(running, current);
+            // Its cancel procedure (the Stop button's) is running
+            bool cancel_running = false;
+            procedure_types cancel_current;
+            bool cancelling = entry.cancel_instance
+                && entry.cancel_instance->readProcedure(cancel_running, cancel_current)
+                && cancel_running && cancel_current == entry.cancel_type;
             Element state = !ok ? text("---") | color(Color::Red)
+                          : cancelling ? text("stopping") | color(Color::Magenta) | bold
                           : running && current == entry.type ? text("running") | color(Color::Green) | bold
                           : running ? text("busy") | color(Color::Yellow)
                           : text("idle") | color(Color::Yellow);
