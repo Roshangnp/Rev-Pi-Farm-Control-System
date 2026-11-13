@@ -9,3 +9,8 @@ wiseconn_keys.txt
 
 # CMake build output (contains the generated password and key headers)
 build/
+
+# Local test programs, analysis tools and irrigation section data (not part of the build)
+tests/
+tools/
+section_data/
