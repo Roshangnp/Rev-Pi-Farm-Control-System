@@ -103,7 +103,7 @@ remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
 
 // The overheads come from emerald-server's main, which holds their bookings
-// (irrigation_procedure runs there), so every console sees what's scheduled
+// (the WiseConn procedures run there), so every console sees what's scheduled
 remote_link overheads_main(FARM_OVERHEADS_HOST);
 
 // WiseConn, through this machine's main

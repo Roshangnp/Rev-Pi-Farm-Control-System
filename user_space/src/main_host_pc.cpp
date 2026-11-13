@@ -85,7 +85,7 @@ int main() {
     attachAllInterfaces();
 
     // All interfaces, but only this machine and the two RevPis may connect: emerald
-    // has no firewall, and this serves real irrigations (WiseConn, irrigation_procedure)
+    // has no firewall, and this serves real irrigations (WiseConn, the WiseConn procedures)
     line_server server;   // drops clients idle 20 s
     server.allowOnly({"127.0.0.1", "192.168.1.20", "192.168.1.21"});
     if (!addLocalDevices(server)) {
@@ -93,7 +93,7 @@ int main() {
         return 1;
     }
     if (!addRO(server, sched)) std::fprintf(stderr, "RO server failed to register\n");
-    if (!addLocalProcedures(server)) std::fprintf(stderr, "Procedure server failed to register\n");   // irrigation_procedure
+    if (!addLocalProcedures(server)) std::fprintf(stderr, "Procedure server failed to register\n");   // the WiseConn procedures
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start (port %u taken?)\n", static_cast<unsigned>(LINE_SERVER_PORT));
         return 1;

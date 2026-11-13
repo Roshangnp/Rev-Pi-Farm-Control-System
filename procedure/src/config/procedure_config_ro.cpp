@@ -27,14 +27,18 @@ procedure local_repressure_procedure(sched, [] { return repressure_pump.setOff()
 procedure_server ro_procedure_server(local_ro_procedure, "ro_procedure");
 procedure_server repressure_procedure_server(local_repressure_procedure, "repressure_procedure");
 
-// irrigation_procedure is owned by emerald-server (procedure_config_host_pc.cpp)
+// The WiseConn procedures are owned by emerald-server (procedure_config_host_pc.cpp)
 remote_link host_pc("192.168.1.194");
-remote_procedure remote_irrigation_procedure(host_pc, "irrigation_procedure");
+remote_procedure remote_overhead_pattern_procedure(host_pc, "overhead_pattern_procedure");
+remote_procedure remote_irrigation_pattern_procedure(host_pc, "irrigation_pattern_procedure");
+remote_procedure remote_city_fill_valve_procedure(host_pc, "city_fill_valve_procedure");
 
 }  // namespace
 
 // Public procedures declared in procedure_config.h
-procedure_control& irrigation_procedure = remote_irrigation_procedure;
+procedure_control& overhead_pattern_procedure = remote_overhead_pattern_procedure;
+procedure_control& irrigation_pattern_procedure = remote_irrigation_pattern_procedure;
+procedure_control& city_fill_valve_procedure = remote_city_fill_valve_procedure;
 procedure_control& ro_procedure = local_ro_procedure;
 procedure_control& repressure_procedure = local_repressure_procedure;
 

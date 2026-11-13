@@ -706,7 +706,7 @@ Component console_ui::mainDashboard() {
         std::string warning;   // added to the Run question
     };
     const std::vector<procedure_entry> procedures = {
-        {"overhead pattern 1", &irrigation_procedure, procedure_types::OVERHEAD_PATTERN_1,
+        {"overhead pattern 1", &overhead_pattern_procedure, procedure_types::OVERHEAD_PATTERN_1,
          "books 18 real irrigations, today 14:00-16:15"},
         {"repressure", &repressure_procedure, procedure_types::REPRESSURE_CONTROL, ""},
     };
