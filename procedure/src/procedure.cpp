@@ -325,16 +325,18 @@ bool procedure::repressure_control() {
     condition_id repressure_toggle_on = sched_.addCondition(condition::when("repressure toggle switch on", [] { bool on; return repressure_toggle_switch.readValue(on) && on; }));
     condition_id ro_toggle_on = sched_.addCondition(condition::when("RO toggle switch on", [] { bool on; return ro_toggle_switch.readValue(on) && on; }));
     condition_id repressure_pump_off = sched_.addCondition(condition::when("repressure pump off", [] { bool on; return repressure_pump.readOn(on) && !on; }));
+    condition_id repressure_pump_on = sched_.addCondition(condition::when("repressure pump on", [] { bool on; return repressure_pump.readOn(on) && on; }));
 
     task_id pump_on_id;
     task_id pump_off_full_id;
     task_id pump_off_read_failed_id;
     sched_.addTask({"repressure pump on: upper tank not full", [] { return repressure_pump.setOn(); }, {upper_tank_high_dry, repressure_pump_off}, task_mode::ON_RISING}, pump_on_id);
-    sched_.addTask({"repressure pump off: upper tank full", [] { return repressure_pump.setOff(); }, {upper_tank_high_submerged}, task_mode::ON_RISING}, pump_off_full_id);
-    sched_.addTask({"repressure pump off: upper tank float read failed", [] { return repressure_pump.setOff(); }, {upper_tank_high_read_failed}, task_mode::ON_RISING}, pump_off_read_failed_id);
+    sched_.addTask({"repressure pump off: upper tank full", [] { return repressure_pump.setOff(); }, {upper_tank_high_submerged, repressure_pump_on}, task_mode::ON_RISING}, pump_off_full_id);
+    sched_.addTask({"repressure pump off: upper tank float read failed", [] { return repressure_pump.setOff(); }, {upper_tank_high_read_failed, repressure_pump_on}, task_mode::ON_RISING}, pump_off_read_failed_id);
 
     condition_ids_ = {feed_tank_low_submerged, product_tank_high_dry, upper_tank_high_dry, upper_tank_high_submerged,
-                      upper_tank_high_read_failed, repressure_toggle_on, ro_toggle_on, repressure_pump_off};
+                      upper_tank_high_read_failed, repressure_toggle_on, ro_toggle_on, repressure_pump_off,
+                      repressure_pump_on};
     task_ids_ = {pump_on_id, pump_off_full_id, pump_off_read_failed_id};
     return true;
 }

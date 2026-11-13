@@ -122,8 +122,9 @@ class procedure_control {
 //   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
 //     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
 //     one every 2 s; WiseConn runs them at those times.
-//   REPRESSURE_CONTROL: repressure pump on while the upper tank high float is
-//     dry and the pump is off, off when it is submerged or can't be read
+//   REPRESSURE_CONTROL: repressure pump on when the upper tank high float is
+//     dry and the pump is off, off when the float is submerged (or can't be read)
+//     and the pump is on, so a manual change is undone at once either way
 //     (ON_RISING tasks: runs until stop()).
 class procedure : public procedure_control {
     public:
