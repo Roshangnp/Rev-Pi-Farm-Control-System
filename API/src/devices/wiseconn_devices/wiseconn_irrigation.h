@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 #include "devices.h"
 #include "wiseconn_link.h"
@@ -11,9 +12,10 @@
 //       POST /irrigations {zoneId, initTime, endTime, directSchedule: true}
 //   scheduleIrrigation(minutes): starting now for that long (1 min to 24 h).
 //       POST /irrigations {zoneId, duration}
-//   Each successful schedule saves the id WiseConn returns (replacing the
-//   previous one), readable with readScheduledIrrigation.
-//   cancelIrrigation: DELETE /irrigations/<saved id>; clears it on success.
+//   Each successful schedule adds the id WiseConn returns to a list (lost on a
+//   restart); readScheduledIrrigation returns the latest.
+//   cancelIrrigation: DELETE /irrigations/<id> for every id in the list; the
+//   deleted ones are removed, refused ones kept for the next cancel.
 // Bad arguments are refused without contacting WiseConn. A call blocks until
 // WiseConn answers (about 1 s) and returns true only if it accepted the
 // irrigation. THESE START REAL IRRIGATIONS on the live system.
@@ -37,5 +39,5 @@ class wiseconn_irrigation : public irrigation{
     wiseconn_link& link_;
     std::string name_;     // for log messages
     std::string zone_id_;
-    std::string scheduled_id_;   // last irrigation created here, "" if none
+    std::vector<std::string> scheduled_ids_;   // every irrigation booked here and not yet cancelled
 };

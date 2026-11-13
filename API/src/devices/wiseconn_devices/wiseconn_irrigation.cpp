@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 #include <ctime>
 
 namespace {
@@ -88,24 +89,30 @@ void wiseconn_irrigation::saveScheduled(bool ok, const std::string& irrigation_i
     if (irrigation_id.empty()) {
         std::fprintf(stderr, "wiseconn: %s: WiseConn's reply had no irrigation id, it can't be cancelled from here\n",
                      name_.c_str());
-    } else if (!scheduled_id_.empty()) {
-        std::fprintf(stderr, "wiseconn: %s: irrigation %s replaces %s as the one to cancel\n", name_.c_str(),
-                     irrigation_id.c_str(), scheduled_id_.c_str());
+        return;
     }
-    scheduled_id_ = irrigation_id;
+    scheduled_ids_.push_back(irrigation_id);
 }
 
 bool wiseconn_irrigation::readScheduledIrrigation(int& id) {
-    if (scheduled_id_.empty()) return false;
-    id = std::atoi(scheduled_id_.c_str());
+    if (scheduled_ids_.empty()) return false;
+    id = std::atoi(scheduled_ids_.back().c_str());
     return true;
 }
 
+// Deletes every irrigation booked from here; the ones WiseConn refuses (or that
+// can't be reached) stay in the list, so a later cancel retries them
 bool wiseconn_irrigation::cancelIrrigation() {
-    std::string what = "cancel irrigation " + (scheduled_id_.empty() ? std::string("(none)") : scheduled_id_);
-    if (scheduled_id_.empty()) return report(false, what, "no irrigation scheduled from here");
-    std::string error;
-    bool ok = link_.deleteIrrigation(scheduled_id_, error);
-    if (ok) scheduled_id_.clear();
-    return report(ok, what, error);
+    if (scheduled_ids_.empty()) return report(false, "cancel irrigations", "no irrigation scheduled from here");
+    bool ok = true;
+    std::vector<std::string> kept;
+    for (const std::string& id : scheduled_ids_) {
+        std::string error;
+        bool deleted = link_.deleteIrrigation(id, error);
+        report(deleted, "cancel irrigation " + id, error);
+        if (!deleted) kept.push_back(id);
+        ok = deleted && ok;
+    }
+    scheduled_ids_ = kept;
+    return ok;
 }
