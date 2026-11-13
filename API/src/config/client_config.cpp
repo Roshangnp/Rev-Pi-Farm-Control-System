@@ -3,11 +3,9 @@
 #include "devices/remote_devices/remote_conductivity_sensor.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "devices/remote_devices/remote_flow_sensor.h"
-#include "devices/remote_devices/remote_irrigation.h"
 #include "devices/remote_devices/remote_level_sensor.h"
 #include "devices/remote_devices/remote_pressure_transducer.h"
 #include "devices/remote_devices/remote_pump.h"
-#include "devices/remote_devices/remote_soil_sensor.h"
 #include "devices/remote_devices/remote_switched_load.h"
 #include "devices/remote_devices/remote_temperature_sensor.h"
 #include "devices/remote_devices/remote_toggle_switch.h"
@@ -22,10 +20,11 @@
 //   FARM_RO_HOST, FARM_UPPER_HOST : 127.0.0.1 for this machine's own RevPi (so its
 //                                   console keeps working with the network down),
 //                                   the LAN address for the other one
-//   FARM_CLIENT_LOCAL_RO / FARM_CLIENT_LOCAL_UPPER : this machine is that RevPi
-// WiseConn devices are read from this machine's own main (127.0.0.1), which
-// serves them, so a client needs no keys or internet and each machine polls
-// WiseConn once. Device names are the config.h names, as each owner serves them.
+//   FARM_HOST_PC_HOST : emerald-server, which owns the WiseConn devices and the
+//                       WiseConn procedures (127.0.0.1 in its own build)
+// WiseConn devices are bound in wiseconn_remote_devices.cpp, on host_pc, so a
+// client needs no keys or internet. Device names are the config.h names, as each
+// owner serves them.
 // ---------------------------------------------------------------------------
 
 #ifndef FARM_RO_HOST
@@ -34,25 +33,22 @@
 #ifndef FARM_UPPER_HOST
 #error "FARM_UPPER_HOST not set (API/api.cmake sets it for farm_client)"
 #endif
+#ifndef FARM_HOST_PC_HOST
+#error "FARM_HOST_PC_HOST not set (API/api.cmake sets it for farm_client)"
+#endif
 
 // The RO RevPi connection, also used by ro_client_config.cpp (remote_ro), so its
 // devices and the RO share one snapshot poll
 remote_link ro_revpi(FARM_RO_HOST);
 
+// The emerald-server connection, for the WiseConn devices
+// (wiseconn_remote_devices.cpp) and the WiseConn procedures
+// (procedure_client_config.cpp), so they share one snapshot poll
+remote_link host_pc(FARM_HOST_PC_HOST);
+
 namespace {
 
 remote_link upper_tank_revpi(FARM_UPPER_HOST);
-
-// This machine's own main, for WiseConn: the RevPi connection when it is local,
-// so the same main isn't polled twice
-#if defined(FARM_CLIENT_LOCAL_RO)
-remote_link& wiseconn_main = ro_revpi;
-#elif defined(FARM_CLIENT_LOCAL_UPPER)
-remote_link& wiseconn_main = upper_tank_revpi;
-#else
-remote_link local_main("127.0.0.1");
-remote_link& wiseconn_main = local_main;
-#endif
 
 remote_float_switch remote_upper_tank_high_float(upper_tank_revpi, "upper_tank_high_float");
 remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_water_level");
@@ -101,46 +97,6 @@ remote_valve remote_concentrate_cip_valve(ro_revpi, "concentrate_cip_valve");
 remote_valve remote_media_backwash_1_valve(ro_revpi, "media_backwash_1_valve");
 remote_valve remote_permeate_cip_valve(ro_revpi, "permeate_cip_valve");
 remote_valve remote_media_backwash_2_valve(ro_revpi, "media_backwash_2_valve");
-
-// The overheads come from emerald-server's main, which holds their bookings
-// (the WiseConn procedures run there), so every console sees what's scheduled
-remote_link overheads_main(FARM_OVERHEADS_HOST);
-
-// WiseConn, through this machine's main
-remote_soil_sensor remote_zone_7_soil(wiseconn_main, "zone_7_soil");
-remote_soil_sensor remote_zone_8_soil(wiseconn_main, "zone_8_soil");
-remote_soil_sensor remote_zone_10_3_soil(wiseconn_main, "zone_10_3_soil");
-remote_irrigation remote_valve_1_1(wiseconn_main, "valve_1_1");
-remote_irrigation remote_valve_1_2(wiseconn_main, "valve_1_2");
-remote_irrigation remote_valve_2_1(wiseconn_main, "valve_2_1");
-remote_irrigation remote_valve_3_1(wiseconn_main, "valve_3_1");
-remote_irrigation remote_valve_4_1(wiseconn_main, "valve_4_1");
-remote_irrigation remote_valve_5_1(wiseconn_main, "valve_5_1");
-remote_irrigation remote_valve_5_2(wiseconn_main, "valve_5_2");
-remote_irrigation remote_valve_5_3(wiseconn_main, "valve_5_3");
-remote_irrigation remote_valve_5_4(wiseconn_main, "valve_5_4");
-remote_irrigation remote_valve_6_1(wiseconn_main, "valve_6_1");
-remote_irrigation remote_valve_6_2(wiseconn_main, "valve_6_2");
-remote_irrigation remote_valve_7_1(wiseconn_main, "valve_7_1");
-remote_irrigation remote_valve_8_1(wiseconn_main, "valve_8_1");
-remote_irrigation remote_valve_9_1(wiseconn_main, "valve_9_1");
-remote_irrigation remote_valve_10_1(wiseconn_main, "valve_10_1");
-remote_irrigation remote_valve_10_2(wiseconn_main, "valve_10_2");
-remote_irrigation remote_valve_10_3(wiseconn_main, "valve_10_3");
-remote_irrigation remote_overhead_1(overheads_main, "overhead_1");
-remote_irrigation remote_overhead_2(overheads_main, "overhead_2");
-remote_irrigation remote_overhead_3(overheads_main, "overhead_3");
-remote_irrigation remote_overhead_4(overheads_main, "overhead_4");
-remote_irrigation remote_overhead_5(overheads_main, "overhead_5");
-remote_irrigation remote_overhead_6(overheads_main, "overhead_6");
-remote_irrigation remote_city_water_fill_valve(wiseconn_main, "city_water_fill_valve");
-remote_flow_sensor remote_main_flow(wiseconn_main, "main_flow");
-remote_flow_sensor remote_city_water_flow(wiseconn_main, "city_water_flow");
-remote_flow_sensor remote_well_1_flow(wiseconn_main, "well_1_flow");
-remote_flow_sensor remote_well_2_flow(wiseconn_main, "well_2_flow");
-remote_flow_sensor remote_well_3_flow(wiseconn_main, "well_3_flow");
-remote_flow_sensor remote_well_4_flow(wiseconn_main, "well_4_flow");
-remote_flow_sensor remote_well_5_flow(wiseconn_main, "well_5_flow");
 
 }  // namespace
 
@@ -192,40 +148,6 @@ valve& concentrate_cip_valve = remote_concentrate_cip_valve;
 valve& media_backwash_1_valve = remote_media_backwash_1_valve;
 valve& permeate_cip_valve = remote_permeate_cip_valve;
 valve& media_backwash_2_valve = remote_media_backwash_2_valve;
-soil_sensor& zone_7_soil = remote_zone_7_soil;
-soil_sensor& zone_8_soil = remote_zone_8_soil;
-soil_sensor& zone_10_3_soil = remote_zone_10_3_soil;
-irrigation& valve_1_1 = remote_valve_1_1;
-irrigation& valve_1_2 = remote_valve_1_2;
-irrigation& valve_2_1 = remote_valve_2_1;
-irrigation& valve_3_1 = remote_valve_3_1;
-irrigation& valve_4_1 = remote_valve_4_1;
-irrigation& valve_5_1 = remote_valve_5_1;
-irrigation& valve_5_2 = remote_valve_5_2;
-irrigation& valve_5_3 = remote_valve_5_3;
-irrigation& valve_5_4 = remote_valve_5_4;
-irrigation& valve_6_1 = remote_valve_6_1;
-irrigation& valve_6_2 = remote_valve_6_2;
-irrigation& valve_7_1 = remote_valve_7_1;
-irrigation& valve_8_1 = remote_valve_8_1;
-irrigation& valve_9_1 = remote_valve_9_1;
-irrigation& valve_10_1 = remote_valve_10_1;
-irrigation& valve_10_2 = remote_valve_10_2;
-irrigation& valve_10_3 = remote_valve_10_3;
-irrigation& overhead_1 = remote_overhead_1;
-irrigation& overhead_2 = remote_overhead_2;
-irrigation& overhead_3 = remote_overhead_3;
-irrigation& overhead_4 = remote_overhead_4;
-irrigation& overhead_5 = remote_overhead_5;
-irrigation& overhead_6 = remote_overhead_6;
-irrigation& city_water_fill_valve = remote_city_water_fill_valve;
-flow_sensor& main_flow = remote_main_flow;
-flow_sensor& city_water_flow = remote_city_water_flow;
-flow_sensor& well_1_flow = remote_well_1_flow;
-flow_sensor& well_2_flow = remote_well_2_flow;
-flow_sensor& well_3_flow = remote_well_3_flow;
-flow_sensor& well_4_flow = remote_well_4_flow;
-flow_sensor& well_5_flow = remote_well_5_flow;
 
 // Nothing wired here
 bool attachAllInterfaces() {

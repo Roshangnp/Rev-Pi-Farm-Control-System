@@ -7,7 +7,7 @@ One file per machine. Exactly one is compiled, chosen with `cmake -DDEVICE_CONFI
 |---|---|---|---|---|---|
 | `config_uppertank.cpp` | Upper tank RevPi, 192.168.1.21 | 2 | - | yes | yes |
 | `config_ro.cpp` | RO RevPi, 192.168.1.20 | 41 | - | yes | no |
-| `config_host_pc.cpp` | Ubuntu PC | - | all 43 | no | yes, localhost only |
+| `config_host_pc.cpp` | emerald-server | WiseConn (owner) | all RevPi devices | yes, WiseConn only | no |
 | `config_test.cpp` | Test bench, 192.168.1.20 | 6 examples | - | yes | yes |
 
 ## What a config does
@@ -57,6 +57,16 @@ level_sensor& upper_tank_water_level = remote_upper_tank_water_level;
 
 Everything except the public references lives in an anonymous namespace, so user programs
 can't reach around the interfaces.
+
+## WiseConn devices
+
+Owned by emerald-server: `wiseconn_farm_devices.cpp` (the real devices, polling the
+WiseConn cloud) is built only with `config_host_pc.cpp`, which serves them. Every other
+config (`config_ro.cpp`, `config_uppertank.cpp`, `client_config.cpp`) gets
+`wiseconn_remote_devices.cpp`: the same names as `remote_*` proxies on `host_pc`, a
+`remote_link` to emerald-server that the config defines (outside the anonymous namespace)
+and shares with its procedure config. `config_test.cpp` binds none. API/api.cmake picks
+the file.
 
 ## Adding a device
 

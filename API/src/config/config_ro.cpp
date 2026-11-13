@@ -12,7 +12,6 @@
 #include "devices/local_devices/local_switched_load.h"
 #include "devices/local_devices/local_switch.h"
 #include "devices/remote_devices/device_server.h"
-#include "wiseconn_farm_devices.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "devices/remote_devices/remote_level_sensor.h"
 #include "devices/remote_devices/remote_pump.h"
@@ -20,7 +19,13 @@
 
 // ---------------------------------------------------------------------------
 // RO RevPi (192.168.1.20). Wiring from API/hardware_setup.csv.
+// WiseConn devices: wiseconn_remote_devices.cpp, on host_pc.
 // ---------------------------------------------------------------------------
+
+// The connection to emerald-server, which owns the WiseConn devices
+// (wiseconn_remote_devices.cpp) and the WiseConn procedures
+// (procedure_config_ro.cpp), so they share one snapshot poll
+remote_link host_pc("192.168.1.194");
 
 namespace {
 
@@ -125,8 +130,8 @@ remote_level_sensor remote_upper_tank_water_level(upper_tank_revpi, "upper_tank_
 remote_pump remote_irrigation_pump(upper_tank_revpi, "irrigation_pump");
 remote_pump remote_well_4_pump(upper_tank_revpi, "well_4_pump");
 
-// Shares the devices wired to this RevPi, and the WiseConn devices, with the other
-// machines and local programs (each device is served by its owner only)
+// Shares the devices wired to this RevPi with the other machines and local
+// programs (each device is served by its owner only)
 device_server devices;
 
 }  // namespace
@@ -246,7 +251,6 @@ bool addLocalDevices(line_server& server) {
            && devices.addDevice("permeate_cip_valve", local_permeate_cip_valve)
            && devices.addDevice("media_backwash_2_valve", local_media_backwash_2_valve)
            && devices.addDevice("repressure_toggle_switch", local_repressure_toggle_switch)
-           && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch)
-           && addWiseconnDevices(devices);
+           && devices.addDevice("ro_toggle_switch", local_ro_toggle_switch);
     return ok && devices.registerWith(server);
 }

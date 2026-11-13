@@ -13,13 +13,14 @@
 #include "devices/remote_devices/device_server.h"
 
 // ---------------------------------------------------------------------------
-// WiseConn cloud devices, bound the same way on every machine (built into
-// farm_api next to whichever config_<name>.cpp is chosen), so every program
-// has the same WiseConn access. Read only by policy: never call
-// scheduleIrrigation against the real API. Keys from wiseconn_keys.txt (built
-// in by CMake); missing = the link is off and every read fails. Every config
-// serves them on its device_server (addWiseconnDevices, from addLocalDevices).
-// To be replaced by more RevPis eventually.
+// WiseConn cloud devices, owned by emerald-server: built only into the host_pc
+// farm (next to config_host_pc.cpp), so main_host_pc is the one program that
+// polls WiseConn and holds the irrigation bookings. It serves them on its
+// device_server (addWiseconnDevices, from addLocalDevices); every other machine
+// binds them remote to it (wiseconn_remote_devices.cpp). Read only by policy:
+// never call scheduleIrrigation against the real API. Keys from
+// wiseconn_keys.txt (built in by CMake); missing = the link is off and every
+// read fails. To be replaced by more RevPis eventually.
 // ---------------------------------------------------------------------------
 
 namespace {

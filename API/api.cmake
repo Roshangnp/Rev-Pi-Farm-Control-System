@@ -2,11 +2,13 @@
 # (farm_objects: all of API/src except the configs, compiled once):
 #   farm (libfarm.a), for main_*: this machine's config
 #     (src/config/config_<DEVICE_CONFIG>.cpp: its own I/O local, the other RevPi's
-#     devices remote, served by device_server) and the WiseConn bindings shared by
-#     every config (src/config/wiseconn_farm_devices.cpp)
+#     devices remote, served by device_server) and the WiseConn devices: the real
+#     ones on their owner, emerald-server (host_pc: src/config/wiseconn_farm_devices.cpp,
+#     the only build that needs wiseconn_keys.txt), remote to it on the RevPis
+#     (src/config/wiseconn_remote_devices.cpp); the test config binds none
 #   farm_client (libfarm_client.a), for ro_console: src/config/client_config.cpp,
 #     every config.h device remote on a connection to its owner (127.0.0.1 for this
-#     machine's own RevPi), WiseConn from this machine's main; nothing served
+#     machine's own RevPi or emerald-server), WiseConn included; nothing served
 # Both machine specific. Programs include API/include (devices.h, config.h).
 set(api_dir ${CMAKE_CURRENT_LIST_DIR})
 set(config_dir ${api_dir}/src/config)
@@ -27,7 +29,15 @@ add_library(farm_objects OBJECT ${api_sources})
 target_include_directories(farm_objects PUBLIC ${api_dir}/include ${api_dir}/src)
 target_link_libraries(farm_objects PUBLIC comms Threads::Threads)
 
-add_library(farm STATIC $<TARGET_OBJECTS:farm_objects> ${config_file} ${config_dir}/wiseconn_farm_devices.cpp)
+# WiseConn devices: owned by emerald-server (host_pc), remote to it elsewhere
+if(DEVICE_CONFIG STREQUAL "host_pc")
+    set(wiseconn_config_file ${config_dir}/wiseconn_farm_devices.cpp)
+elseif(DEVICE_CONFIG STREQUAL "test")
+    set(wiseconn_config_file "")
+else()
+    set(wiseconn_config_file ${config_dir}/wiseconn_remote_devices.cpp)
+endif()
+add_library(farm STATIC $<TARGET_OBJECTS:farm_objects> ${config_file} ${wiseconn_config_file})
 target_link_libraries(farm PUBLIC farm_objects)
 
 # The RevPis' addresses, for the client config. This machine's own RevPi is
@@ -36,43 +46,45 @@ set(FARM_RO_REVPI_IP 192.168.1.20)
 set(FARM_UPPER_REVPI_IP 192.168.1.21)
 set(client_ro_host ${FARM_RO_REVPI_IP})
 set(client_upper_host ${FARM_UPPER_REVPI_IP})
-set(client_local "")
 if(DEVICE_CONFIG STREQUAL "ro")
     set(client_ro_host 127.0.0.1)
-    set(client_local FARM_CLIENT_LOCAL_RO)
 elseif(DEVICE_CONFIG STREQUAL "uppertank")
     set(client_upper_host 127.0.0.1)
-    set(client_local FARM_CLIENT_LOCAL_UPPER)
 endif()
-add_library(farm_client STATIC $<TARGET_OBJECTS:farm_objects> ${config_dir}/client_config.cpp)
+add_library(farm_client STATIC $<TARGET_OBJECTS:farm_objects> ${config_dir}/client_config.cpp
+            ${config_dir}/wiseconn_remote_devices.cpp)
 target_link_libraries(farm_client PUBLIC farm_objects)
-# emerald-server's main holds the overheads' bookings (the WiseConn procedures run there)
+# emerald-server owns the WiseConn devices and procedures: 127.0.0.1 in its own build
+set(FARM_HOST_PC_IP 192.168.1.194)
 if(DEVICE_CONFIG STREQUAL "host_pc")
-    set(client_overheads_host 127.0.0.1)
+    set(client_host_pc_host 127.0.0.1)
 else()
-    set(client_overheads_host 192.168.1.194)
+    set(client_host_pc_host ${FARM_HOST_PC_IP})
 endif()
 target_compile_definitions(farm_client PRIVATE
     FARM_RO_HOST="${client_ro_host}" FARM_UPPER_HOST="${client_upper_host}"
-    FARM_OVERHEADS_HOST="${client_overheads_host}" ${client_local})
+    FARM_HOST_PC_HOST="${client_host_pc_host}")
 
 # WiseConn keys: wiseconn_keys.txt (repo root, git-ignored: API key, farm, zone and
 # measure ids) built in as text, parsed by wiseconn_farm_devices.cpp at startup.
-# Only farm sees it. Missing: the WiseConn devices are off. Editing it re-runs cmake.
-set(wiseconn_file ${CMAKE_SOURCE_DIR}/wiseconn_keys.txt)
-set(WISECONN_KEYS_TEXT "")
-if(EXISTS ${wiseconn_file})
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${wiseconn_file})
-    file(READ ${wiseconn_file} WISECONN_KEYS_TEXT)
-else()
-    message(WARNING "No ${wiseconn_file}: WiseConn devices are off")
+# Only farm sees it, and only in the host_pc build (the owner). Missing: the WiseConn
+# devices are off. Editing it re-runs cmake.
+if(DEVICE_CONFIG STREQUAL "host_pc")
+    set(wiseconn_file ${CMAKE_SOURCE_DIR}/wiseconn_keys.txt)
+    set(WISECONN_KEYS_TEXT "")
+    if(EXISTS ${wiseconn_file})
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${wiseconn_file})
+        file(READ ${wiseconn_file} WISECONN_KEYS_TEXT)
+    else()
+        message(WARNING "No ${wiseconn_file}: WiseConn devices are off")
+    endif()
+    string(REPLACE "\\" "\\\\" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
+    string(REPLACE "\"" "\\\"" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
+    string(REPLACE "\r" "" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
+    string(REPLACE "\n" "\\n\"\n    \"" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
+    set(wiseconn_generated_dir ${CMAKE_BINARY_DIR}/generated/wiseconn)
+    file(CONFIGURE OUTPUT ${wiseconn_generated_dir}/wiseconn_keys_text.h
+         CONTENT "#pragma once\n// Generated by CMake from wiseconn_keys.txt, do not edit or commit\ninline constexpr char WISECONN_KEYS_TEXT[] =\n    \"@WISECONN_KEYS_TEXT@\";\n"
+         @ONLY)
+    target_include_directories(farm PRIVATE ${wiseconn_generated_dir})
 endif()
-string(REPLACE "\\" "\\\\" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
-string(REPLACE "\"" "\\\"" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
-string(REPLACE "\r" "" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
-string(REPLACE "\n" "\\n\"\n    \"" WISECONN_KEYS_TEXT "${WISECONN_KEYS_TEXT}")
-set(wiseconn_generated_dir ${CMAKE_BINARY_DIR}/generated/wiseconn)
-file(CONFIGURE OUTPUT ${wiseconn_generated_dir}/wiseconn_keys_text.h
-     CONTENT "#pragma once\n// Generated by CMake from wiseconn_keys.txt, do not edit or commit\ninline constexpr char WISECONN_KEYS_TEXT[] =\n    \"@WISECONN_KEYS_TEXT@\";\n"
-     @ONLY)
-target_include_directories(farm PRIVATE ${wiseconn_generated_dir})

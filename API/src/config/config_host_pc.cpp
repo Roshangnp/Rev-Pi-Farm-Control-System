@@ -16,7 +16,8 @@
 
 // ---------------------------------------------------------------------------
 // Ubuntu host PC: no local I/O, every device is owned by a RevPi.
-// WiseConn devices are bound in wiseconn_farm_devices.cpp (every config).
+// Owns the WiseConn devices (wiseconn_farm_devices.cpp, host_pc only) and
+// serves them to every other machine.
 // Each RevPi must open port 47100 to this PC's IP (see CLAUDE.md).
 // ---------------------------------------------------------------------------
 
@@ -137,8 +138,9 @@ bool attachAllInterfaces() {
     return true;
 }
 
-// No I/O wired here: serves only the WiseConn devices (on main_host_pc's
-// loopback server, for the local console); RevPi devices are served by their owners
+// No I/O wired here: serves only the WiseConn devices, to this machine's console
+// and the other machines (main_host_pc's allowOnly list); RevPi devices are served
+// by their owners
 bool addLocalDevices(line_server& server) {
     return addWiseconnDevices(devices) && devices.registerWith(server);
 }

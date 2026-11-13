@@ -9,15 +9,15 @@
 // ---------------------------------------------------------------------------
 
 extern remote_link ro_revpi;   // client_config.cpp (127.0.0.1 on the RO RevPi)
+extern remote_link host_pc;    // client_config.cpp (127.0.0.1 on emerald-server)
 
 namespace {
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
 remote_procedure remote_repressure_procedure(ro_revpi, "repressure_procedure");
 
-// The WiseConn procedures are owned by emerald-server: 127.0.0.1 when built for it,
-// else its LAN address (FARM_HOST_PC_HOST, set by procedure.cmake)
-remote_link host_pc(FARM_HOST_PC_HOST);
+// The WiseConn procedures are owned by emerald-server, on the connection its
+// WiseConn devices use
 remote_procedure remote_overhead_pattern_procedure(host_pc, "overhead_pattern_procedure");
 remote_procedure remote_irrigation_pattern_procedure(host_pc, "irrigation_pattern_procedure");
 remote_procedure remote_city_fill_valve_procedure(host_pc, "city_fill_valve_procedure");

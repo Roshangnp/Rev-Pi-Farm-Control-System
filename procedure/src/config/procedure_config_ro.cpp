@@ -15,6 +15,8 @@
 
 extern scheduler sched;
 
+extern remote_link host_pc;   // config_ro.cpp (emerald-server)
+
 namespace {
 
 // The RO procedures; the RO goes OFF when a user stops one
@@ -27,8 +29,8 @@ procedure local_repressure_procedure(sched, [] { return repressure_pump.setOff()
 procedure_server ro_procedure_server(local_ro_procedure, "ro_procedure");
 procedure_server repressure_procedure_server(local_repressure_procedure, "repressure_procedure");
 
-// The WiseConn procedures are owned by emerald-server (procedure_config_host_pc.cpp)
-remote_link host_pc("192.168.1.194");
+// The WiseConn procedures are owned by emerald-server (procedure_config_host_pc.cpp),
+// on the connection its WiseConn devices use
 remote_procedure remote_overhead_pattern_procedure(host_pc, "overhead_pattern_procedure");
 remote_procedure remote_irrigation_pattern_procedure(host_pc, "irrigation_pattern_procedure");
 remote_procedure remote_city_fill_valve_procedure(host_pc, "city_fill_valve_procedure");

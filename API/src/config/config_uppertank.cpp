@@ -5,7 +5,6 @@
 #include "devices/local_devices/local_level_sensor.h"
 #include "devices/local_devices/local_pump.h"
 #include "devices/remote_devices/device_server.h"
-#include "wiseconn_farm_devices.h"
 #include "devices/remote_devices/remote_conductivity_sensor.h"
 #include "devices/remote_devices/remote_float_switch.h"
 #include "devices/remote_devices/remote_flow_sensor.h"
@@ -20,7 +19,13 @@
 
 // ---------------------------------------------------------------------------
 // Upper tank RevPi (192.168.1.21). Wiring from API/hardware_setup.csv.
+// WiseConn devices: wiseconn_remote_devices.cpp, on host_pc.
 // ---------------------------------------------------------------------------
+
+// The connection to emerald-server, which owns the WiseConn devices
+// (wiseconn_remote_devices.cpp) and the WiseConn procedures
+// (procedure_config_uppertank.cpp), so they share one snapshot poll
+remote_link host_pc("192.168.1.194");
 
 // The one connection to the RO RevPi, used by its devices below and by
 // ro_config_uppertank.cpp (remote_ro), so they share one snapshot poll.
@@ -157,7 +162,6 @@ bool addLocalDevices(line_server& server) {
     bool ok = devices.addDevice("upper_tank_high_float", local_upper_tank_high_float)
            && devices.addDevice("upper_tank_water_level", local_upper_tank_water_level)
            && devices.addDevice("irrigation_pump", local_irrigation_pump)
-           && devices.addDevice("well_4_pump", local_well_4_pump)
-           && addWiseconnDevices(devices);
+           && devices.addDevice("well_4_pump", local_well_4_pump);
     return ok && devices.registerWith(server);
 }
