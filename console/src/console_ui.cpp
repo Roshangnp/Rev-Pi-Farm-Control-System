@@ -708,6 +708,8 @@ Component console_ui::mainDashboard() {
     const std::vector<procedure_entry> procedures = {
         {"overhead pattern 1", &overhead_pattern_procedure, procedure_types::OVERHEAD_PATTERN_1,
          "books 18 real irrigations, today 14:00-16:15"},
+        {"irrigation pattern 1", &irrigation_pattern_procedure, procedure_types::IRRIGATION_PATTERN_1,
+         "books 17 real 1 h irrigations back to back, starting 1 h from now, today only"},
         {"repressure", &repressure_procedure, procedure_types::REPRESSURE_CONTROL, ""},
     };
     Components procedure_rows;
