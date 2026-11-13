@@ -27,3 +27,10 @@ add_library(procedure_client STATIC
     ${procedure_dir}/src/config/procedure_client_config.cpp)
 target_include_directories(procedure_client PUBLIC ${procedure_dir}/include ${procedure_dir}/src)
 target_link_libraries(procedure_client PUBLIC farm_client scheduler comms)
+# emerald-server's address for irrigation_procedure: 127.0.0.1 in its own build
+if(DEVICE_CONFIG STREQUAL "host_pc")
+    set(client_host_pc_host 127.0.0.1)
+else()
+    set(client_host_pc_host 192.168.1.194)
+endif()
+target_compile_definitions(procedure_client PRIVATE FARM_HOST_PC_HOST="${client_host_pc_host}")

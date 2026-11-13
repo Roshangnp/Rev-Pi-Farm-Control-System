@@ -20,3 +20,7 @@ bool addLocalProcedures(line_server& server);
 // The RO procedures (CIP cycles, media backwash, empty feed tank). Owner: the RO RevPi, served as "ro_procedure"; a user stop sets the
 // RO OFF (finished procedures leave the RO as their last step left it)
 extern procedure_control& ro_procedure;
+
+// The irrigation procedures (OVERHEAD_PATTERN_1: WiseConn irrigations). Owner:
+// emerald-server (procedure_config_host_pc.cpp), served as "irrigation_procedure"
+extern procedure_control& irrigation_procedure;

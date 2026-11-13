@@ -14,9 +14,14 @@ namespace {
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
 
+// irrigation_procedure is owned by emerald-server (procedure_config_host_pc.cpp)
+remote_link host_pc("192.168.1.194");
+remote_procedure remote_irrigation_procedure(host_pc, "irrigation_procedure");
+
 }  // namespace
 
 // Public procedures declared in procedure_config.h
+procedure_control& irrigation_procedure = remote_irrigation_procedure;
 procedure_control& ro_procedure = remote_ro_procedure;
 
 // Nothing owned here, so nothing to share

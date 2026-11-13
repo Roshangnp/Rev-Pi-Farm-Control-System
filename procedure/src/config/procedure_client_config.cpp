@@ -14,9 +14,15 @@ namespace {
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
 
+// irrigation_procedure is owned by emerald-server: 127.0.0.1 when built for it,
+// else its LAN address (FARM_HOST_PC_HOST, set by procedure.cmake)
+remote_link host_pc(FARM_HOST_PC_HOST);
+remote_procedure remote_irrigation_procedure(host_pc, "irrigation_procedure");
+
 }  // namespace
 
 // Public procedures declared in procedure_config.h
+procedure_control& irrigation_procedure = remote_irrigation_procedure;
 procedure_control& ro_procedure = remote_ro_procedure;
 
 // Nothing owned here, so nothing to share
