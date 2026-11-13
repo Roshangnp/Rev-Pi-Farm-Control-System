@@ -124,11 +124,13 @@ class procedure_control {
 //     float that can't be read pauses it (OFF) until both read again (ON_RISING).
 //   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
 //     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
-//     one every 2 s; WiseConn runs them at those times.
+//     one every 2 s; WiseConn runs them at those times. Running until 16:15 (the
+//     last one ends), so a user stop cancels the bookings until then.
 //   IRRIGATION_PATTERN_1: schedules the 17 WiseConn irrigation valves (valve_1_1 ..
 //     valve_10_3) for 1 hour each, back to back, the first starting 1 hour after
 //     run() (farm local time), one every 2 s. Today only: a valve whose hour would
 //     end after 23:59 is refused by the device (logged), the rest still go out.
+//     Running until the last booked one ends, so a user stop cancels them until then.
 //   REPRESSURE_CONTROL: repressure pump on when the upper tank high float is
 //     dry and the pump is off, off when the float is submerged (or can't be read)
 //     and the pump is on, so a manual change is undone at once either way

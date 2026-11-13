@@ -3,6 +3,7 @@
 #include "config.h"
 #include "ro_config.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <ctime>
@@ -311,8 +312,22 @@ bool procedure::run_overhead1_pattern() {
     sched_.addTask({"schedule_overhead_6_1600", [] {return overhead_6.scheduleIrrigation(16, 0, 16, 15);}, {step_17_id}, task_mode::ONCE}, irrigation_17_id);
     sched_.addTask({"schedule_overhead_5_1600", [] {return overhead_5.scheduleIrrigation(16, 0, 16, 15);}, {step_18_id}, task_mode::ONCE}, irrigation_18_id);
 
-    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id};
-    task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, irrigation_18_id};
+
+    // Stays running until the last irrigation ends (today 16:15), so a user stop
+    // still cancels the bookings until then
+    std::time_t now_time = std::time(nullptr);
+    std::tm end_tm{};
+    localtime_r(&now_time, &end_tm);
+    end_tm.tm_hour = 16;
+    end_tm.tm_min = 15;
+    end_tm.tm_sec = 0;
+    end_tm.tm_isdst = -1;
+    condition_id pattern_end_id = sched_.addCondition(condition::after("overhead_pattern_end", schedule_clock::from_time_t(std::mktime(&end_tm))));
+    task_id pattern_end_task_id;
+    sched_.addTask({"overhead_pattern_end", [] { return true; }, {pattern_end_id}, task_mode::ONCE}, pattern_end_task_id);
+
+    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id, pattern_end_id};
+    task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, irrigation_18_id, pattern_end_task_id};
     return true;
 }
 
@@ -380,8 +395,21 @@ bool procedure::run_irrigation_pattern_1() {
     sched_.addTask({"schedule_valve_10_2", [h, m] {return valve_10_2.scheduleIrrigation(h + 15, m, h + 16, m);}, {step_16_id}, task_mode::ONCE}, irrigation_16_id);
     sched_.addTask({"schedule_valve_10_3", [h, m] {return valve_10_3.scheduleIrrigation(h + 16, m, h + 17, m);}, {step_17_id}, task_mode::ONCE}, irrigation_17_id);
 
-    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id};
-    task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id};
+
+    // Stays running until the last irrigation that fits today ends (the device
+    // refuses any ending after 23:59), so a user stop still cancels the bookings until then
+    int booked = std::min(17, (23 * 60 + 59 - (h * 60 + m)) / 60);   // valves that fit today
+    std::tm end_tm = now;
+    end_tm.tm_hour = booked > 0 ? h : now.tm_hour;
+    end_tm.tm_min = booked > 0 ? m + 60 * booked : now.tm_min;   // mktime carries minutes into hours
+    end_tm.tm_sec = 0;
+    end_tm.tm_isdst = -1;
+    condition_id pattern_end_id = sched_.addCondition(condition::after("irrigation_pattern_end", schedule_clock::from_time_t(std::mktime(&end_tm))));
+    task_id pattern_end_task_id;
+    sched_.addTask({"irrigation_pattern_end", [] { return true; }, {pattern_end_id}, task_mode::ONCE}, pattern_end_task_id);
+
+    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, pattern_end_id};
+    task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, pattern_end_task_id};
     return true;
 }
 
