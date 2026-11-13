@@ -8,22 +8,6 @@
 // This machine's one scheduler: procedures and user space schedule tasks on it.
 scheduler sched;
 
-void schedule_RO_operation(){
-    condition_id feed_tank_low_submerged = sched.addCondition(condition::when("feed tank low float submerged", [] { bool s; return feed_tank_low_float.readSubmerged(s) && s; }));
-    condition_id product_tank_high_dry = sched.addCondition(condition::when("product tank high float not submerged", [] { bool s; return permeate_tank_high_float.readSubmerged(s) && !s; }));
-    condition_id upper_tank_high_dry = sched.addCondition(condition::when("upper tank high float not submerged", [] { bool s; return upper_tank_high_float.readSubmerged(s) && !s; }));
-    condition_id upper_tank_high_submerged = sched.addCondition(condition::when("upper tank high float submerged", [] { bool s; return upper_tank_high_float.readSubmerged(s) && s; }));
-    condition_id upper_tank_high_read_failed = sched.addCondition(condition::when("upper tank high float read failed", [] { bool s; return !upper_tank_high_float.readSubmerged(s); }));
-    condition_id repressure_toggle_on = sched.addCondition(condition::when("repressure toggle switch on", [] { bool on; return repressure_toggle_switch.readValue(on) && on; }));
-    condition_id ro_toggle_on = sched.addCondition(condition::when("RO toggle switch on", [] { bool on; return ro_toggle_switch.readValue(on) && on; }));
-    condition_id repressure_pump_off = sched.addCondition(condition::when("repressure pump off", [] { bool on; return repressure_pump.readOn(on) && !on; }));
-
-    task_id id;
-    sched.addTask({"repressure pump on: upper tank not full", [] { return repressure_pump.setOn(); }, {upper_tank_high_dry, repressure_pump_off}, task_mode::ON_RISING}, id);
-    sched.addTask({"repressure pump off: upper tank full", [] { return repressure_pump.setOff(); }, {upper_tank_high_submerged}, task_mode::ON_RISING}, id);
-    sched.addTask({"repressure pump off: upper tank float read failed", [] { return repressure_pump.setOff(); }, {upper_tank_high_read_failed}, task_mode::ON_RISING}, id);
-}
-
 // RO RevPi: attaches its I/O, shares its devices with the other machines, and
 // runs the RO controller (state set remotely, e.g. from the web UI via remote_ro).
 int main() {
@@ -37,7 +21,8 @@ int main() {
     // Not fatal: the device server keeps running so the outputs can still be read and switched
     if (!addRO(server, sched)) std::fprintf(stderr, "RO controller failed to start cleanly\n");
     if (!addLocalProcedures(server)) std::fprintf(stderr, "Procedure server failed to register\n");
-    schedule_RO_operation();   // after addRO: the RO is OFF before any scheduled task can run
+    // The repressure pump control runs from startup (stop / run it from the console)
+    if (!repressure_procedure.run(procedure_types::REPRESSURE_CONTROL)) std::fprintf(stderr, "Repressure procedure failed to start\n");
     if (!server.start()) {
         std::fprintf(stderr, "Device server failed to start\n");
         return 1;

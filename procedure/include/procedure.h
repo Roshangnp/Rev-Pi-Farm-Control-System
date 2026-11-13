@@ -12,14 +12,15 @@ enum class procedure_types {
     HIGH_PH_CIP_CYCLE,
     MEDIA_BACKWASH_CYCLE,
     EMPTY_FEED_TANK,
-    OVERHEAD_PATTERN_1
+    OVERHEAD_PATTERN_1,
+    REPRESSURE_CONTROL
 };
 
 // Every procedure, in enum order: add new ones here too, or fromString() can't parse them
 inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
     procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
     procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK,
-    procedure_types::OVERHEAD_PATTERN_1,
+    procedure_types::OVERHEAD_PATTERN_1, procedure_types::REPRESSURE_CONTROL,
 };
 
 // The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
@@ -30,6 +31,7 @@ inline const char* toString(procedure_types p) {
     case procedure_types::MEDIA_BACKWASH_CYCLE: return "MEDIA_BACKWASH_CYCLE";
     case procedure_types::EMPTY_FEED_TANK: return "EMPTY_FEED_TANK";
     case procedure_types::OVERHEAD_PATTERN_1: return "OVERHEAD_PATTERN_1";
+    case procedure_types::REPRESSURE_CONTROL: return "REPRESSURE_CONTROL";
     }
     return "UNKNOWN";
 }
@@ -120,6 +122,9 @@ class procedure_control {
 //   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
 //     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
 //     one every 2 s; WiseConn runs them at those times.
+//   REPRESSURE_CONTROL: repressure pump on while the upper tank high float is
+//     dry and the pump is off, off when it is submerged or can't be read
+//     (ON_RISING tasks: runs until stop()).
 class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object.
@@ -157,6 +162,7 @@ class procedure : public procedure_control {
     bool media_backwash_cycle();
     bool empty_feed_tank();
     bool run_overhead1_pattern();
+    bool repressure_control();
 
     scheduler& sched_;
     std::function<bool()> on_user_stop_;

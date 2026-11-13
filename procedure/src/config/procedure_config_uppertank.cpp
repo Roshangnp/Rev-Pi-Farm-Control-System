@@ -13,6 +13,7 @@ extern remote_link ro_revpi;   // config_uppertank.cpp
 namespace {
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
+remote_procedure remote_repressure_procedure(ro_revpi, "repressure_procedure");
 
 // irrigation_procedure is owned by emerald-server (procedure_config_host_pc.cpp)
 remote_link host_pc("192.168.1.194");
@@ -23,6 +24,7 @@ remote_procedure remote_irrigation_procedure(host_pc, "irrigation_procedure");
 // Public procedures declared in procedure_config.h
 procedure_control& irrigation_procedure = remote_irrigation_procedure;
 procedure_control& ro_procedure = remote_ro_procedure;
+procedure_control& repressure_procedure = remote_repressure_procedure;
 
 // Nothing owned here, so nothing to share
 bool addLocalProcedures(line_server&) {

@@ -24,3 +24,8 @@ extern procedure_control& ro_procedure;
 // The irrigation procedures (OVERHEAD_PATTERN_1: WiseConn irrigations). Owner:
 // emerald-server (procedure_config_host_pc.cpp), served as "irrigation_procedure"
 extern procedure_control& irrigation_procedure;
+
+// The repressure pump control (REPRESSURE_CONTROL). Owner: the RO RevPi
+// (procedure_config_ro.cpp), served as "repressure_procedure"; main_ro starts it
+// at startup; a user stop switches the repressure pump off
+extern procedure_control& repressure_procedure;

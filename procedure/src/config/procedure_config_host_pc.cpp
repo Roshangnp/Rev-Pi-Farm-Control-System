@@ -34,11 +34,13 @@ procedure local_irrigation_procedure(sched, [] {
 procedure_server irrigation_procedure_server(local_irrigation_procedure, "irrigation_procedure");
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
+remote_procedure remote_repressure_procedure(ro_revpi, "repressure_procedure");
 
 }  // namespace
 
 // Public procedures declared in procedure_config.h
 procedure_control& ro_procedure = remote_ro_procedure;
+procedure_control& repressure_procedure = remote_repressure_procedure;
 procedure_control& irrigation_procedure = local_irrigation_procedure;
 
 bool addLocalProcedures(line_server& server) {

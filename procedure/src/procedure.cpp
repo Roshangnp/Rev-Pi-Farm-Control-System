@@ -40,6 +40,7 @@ bool procedure::run(procedure_types procedure_type) {
     case procedure_types::MEDIA_BACKWASH_CYCLE: ok = media_backwash_cycle(); break;
     case procedure_types::EMPTY_FEED_TANK: ok = empty_feed_tank(); break;
     case procedure_types::OVERHEAD_PATTERN_1: ok = run_overhead1_pattern(); break;
+    case procedure_types::REPRESSURE_CONTROL: ok = repressure_control(); break;
     }
     if (!ok) clear();   // don't leave half a procedure scheduled
     return ok;
@@ -310,5 +311,30 @@ bool procedure::run_overhead1_pattern() {
 
     condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id};
     task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, irrigation_18_id};
+    return true;
+}
+
+bool procedure::repressure_control() {
+
+    // Moved from main_ro.cpp's schedule_RO_operation()
+    condition_id feed_tank_low_submerged = sched_.addCondition(condition::when("feed tank low float submerged", [] { bool s; return feed_tank_low_float.readSubmerged(s) && s; }));
+    condition_id product_tank_high_dry = sched_.addCondition(condition::when("product tank high float not submerged", [] { bool s; return permeate_tank_high_float.readSubmerged(s) && !s; }));
+    condition_id upper_tank_high_dry = sched_.addCondition(condition::when("upper tank high float not submerged", [] { bool s; return upper_tank_high_float.readSubmerged(s) && !s; }));
+    condition_id upper_tank_high_submerged = sched_.addCondition(condition::when("upper tank high float submerged", [] { bool s; return upper_tank_high_float.readSubmerged(s) && s; }));
+    condition_id upper_tank_high_read_failed = sched_.addCondition(condition::when("upper tank high float read failed", [] { bool s; return !upper_tank_high_float.readSubmerged(s); }));
+    condition_id repressure_toggle_on = sched_.addCondition(condition::when("repressure toggle switch on", [] { bool on; return repressure_toggle_switch.readValue(on) && on; }));
+    condition_id ro_toggle_on = sched_.addCondition(condition::when("RO toggle switch on", [] { bool on; return ro_toggle_switch.readValue(on) && on; }));
+    condition_id repressure_pump_off = sched_.addCondition(condition::when("repressure pump off", [] { bool on; return repressure_pump.readOn(on) && !on; }));
+
+    task_id pump_on_id;
+    task_id pump_off_full_id;
+    task_id pump_off_read_failed_id;
+    sched_.addTask({"repressure pump on: upper tank not full", [] { return repressure_pump.setOn(); }, {upper_tank_high_dry, repressure_pump_off}, task_mode::ON_RISING}, pump_on_id);
+    sched_.addTask({"repressure pump off: upper tank full", [] { return repressure_pump.setOff(); }, {upper_tank_high_submerged}, task_mode::ON_RISING}, pump_off_full_id);
+    sched_.addTask({"repressure pump off: upper tank float read failed", [] { return repressure_pump.setOff(); }, {upper_tank_high_read_failed}, task_mode::ON_RISING}, pump_off_read_failed_id);
+
+    condition_ids_ = {feed_tank_low_submerged, product_tank_high_dry, upper_tank_high_dry, upper_tank_high_submerged,
+                      upper_tank_high_read_failed, repressure_toggle_on, ro_toggle_on, repressure_pump_off};
+    task_ids_ = {pump_on_id, pump_off_full_id, pump_off_read_failed_id};
     return true;
 }
