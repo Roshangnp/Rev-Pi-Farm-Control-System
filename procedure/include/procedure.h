@@ -13,6 +13,7 @@ enum class procedure_types {
     MEDIA_BACKWASH_CYCLE,
     EMPTY_FEED_TANK,
     OVERHEAD_PATTERN_1,
+    IRRIGATION_PATTERN_1,
     REPRESSURE_CONTROL
 };
 
@@ -20,7 +21,8 @@ enum class procedure_types {
 inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
     procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
     procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK,
-    procedure_types::OVERHEAD_PATTERN_1, procedure_types::REPRESSURE_CONTROL,
+    procedure_types::OVERHEAD_PATTERN_1, procedure_types::IRRIGATION_PATTERN_1,
+    procedure_types::REPRESSURE_CONTROL,
 };
 
 // The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
@@ -31,6 +33,7 @@ inline const char* toString(procedure_types p) {
     case procedure_types::MEDIA_BACKWASH_CYCLE: return "MEDIA_BACKWASH_CYCLE";
     case procedure_types::EMPTY_FEED_TANK: return "EMPTY_FEED_TANK";
     case procedure_types::OVERHEAD_PATTERN_1: return "OVERHEAD_PATTERN_1";
+    case procedure_types::IRRIGATION_PATTERN_1: return "IRRIGATION_PATTERN_1";
     case procedure_types::REPRESSURE_CONTROL: return "REPRESSURE_CONTROL";
     }
     return "UNKNOWN";
@@ -122,6 +125,10 @@ class procedure_control {
 //   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
 //     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
 //     one every 2 s; WiseConn runs them at those times.
+//   IRRIGATION_PATTERN_1: schedules the 17 WiseConn irrigation valves (valve_1_1 ..
+//     valve_10_3) for 1 hour each, back to back, the first starting 1 hour after
+//     run() (farm local time), one every 2 s. Today only: a valve whose hour would
+//     end after 23:59 is refused by the device (logged), the rest still go out.
 //   REPRESSURE_CONTROL: repressure pump on when the upper tank high float is
 //     dry and the pump is off, off when the float is submerged (or can't be read)
 //     and the pump is on, so a manual change is undone at once either way
@@ -163,6 +170,7 @@ class procedure : public procedure_control {
     bool media_backwash_cycle();
     bool empty_feed_tank();
     bool run_overhead1_pattern();
+    bool run_irrigation_pattern_1();
     bool repressure_control();
 
     scheduler& sched_;

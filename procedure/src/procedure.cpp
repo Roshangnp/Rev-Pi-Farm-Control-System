@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <functional>
 #include <string>
 #include <vector>
@@ -40,6 +41,7 @@ bool procedure::run(procedure_types procedure_type) {
     case procedure_types::MEDIA_BACKWASH_CYCLE: ok = media_backwash_cycle(); break;
     case procedure_types::EMPTY_FEED_TANK: ok = empty_feed_tank(); break;
     case procedure_types::OVERHEAD_PATTERN_1: ok = run_overhead1_pattern(); break;
+    case procedure_types::IRRIGATION_PATTERN_1: ok = run_irrigation_pattern_1(); break;
     case procedure_types::REPRESSURE_CONTROL: ok = repressure_control(); break;
     }
     if (!ok) clear();   // don't leave half a procedure scheduled
@@ -311,6 +313,75 @@ bool procedure::run_overhead1_pattern() {
 
     condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id};
     task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, irrigation_18_id};
+    return true;
+}
+
+bool procedure::run_irrigation_pattern_1() {
+
+    // Every irrigation valve for 1 hour, back to back, the first starting 1 hour from
+    // now (farm local time, today: a valve whose hour would run past 23:59 is refused
+    // by the device). Each scheduleIrrigation is one WiseConn request (about 1 s,
+    // blocking the loop it runs in), so they go out 2 s apart
+    std::time_t now_time = std::time(nullptr);
+    std::tm now{};
+    localtime_r(&now_time, &now);
+    int h = now.tm_hour + 1;   // start of the first irrigation: 1 hour from now
+    int m = now.tm_min;
+
+    condition_id step_2_id = sched_.addCondition(condition::afterDuration("irrigation_step_2", std::chrono::seconds(2)));
+    condition_id step_3_id = sched_.addCondition(condition::afterDuration("irrigation_step_3", std::chrono::seconds(4)));
+    condition_id step_4_id = sched_.addCondition(condition::afterDuration("irrigation_step_4", std::chrono::seconds(6)));
+    condition_id step_5_id = sched_.addCondition(condition::afterDuration("irrigation_step_5", std::chrono::seconds(8)));
+    condition_id step_6_id = sched_.addCondition(condition::afterDuration("irrigation_step_6", std::chrono::seconds(10)));
+    condition_id step_7_id = sched_.addCondition(condition::afterDuration("irrigation_step_7", std::chrono::seconds(12)));
+    condition_id step_8_id = sched_.addCondition(condition::afterDuration("irrigation_step_8", std::chrono::seconds(14)));
+    condition_id step_9_id = sched_.addCondition(condition::afterDuration("irrigation_step_9", std::chrono::seconds(16)));
+    condition_id step_10_id = sched_.addCondition(condition::afterDuration("irrigation_step_10", std::chrono::seconds(18)));
+    condition_id step_11_id = sched_.addCondition(condition::afterDuration("irrigation_step_11", std::chrono::seconds(20)));
+    condition_id step_12_id = sched_.addCondition(condition::afterDuration("irrigation_step_12", std::chrono::seconds(22)));
+    condition_id step_13_id = sched_.addCondition(condition::afterDuration("irrigation_step_13", std::chrono::seconds(24)));
+    condition_id step_14_id = sched_.addCondition(condition::afterDuration("irrigation_step_14", std::chrono::seconds(26)));
+    condition_id step_15_id = sched_.addCondition(condition::afterDuration("irrigation_step_15", std::chrono::seconds(28)));
+    condition_id step_16_id = sched_.addCondition(condition::afterDuration("irrigation_step_16", std::chrono::seconds(30)));
+    condition_id step_17_id = sched_.addCondition(condition::afterDuration("irrigation_step_17", std::chrono::seconds(32)));
+
+    task_id irrigation_1_id;
+    task_id irrigation_2_id;
+    task_id irrigation_3_id;
+    task_id irrigation_4_id;
+    task_id irrigation_5_id;
+    task_id irrigation_6_id;
+    task_id irrigation_7_id;
+    task_id irrigation_8_id;
+    task_id irrigation_9_id;
+    task_id irrigation_10_id;
+    task_id irrigation_11_id;
+    task_id irrigation_12_id;
+    task_id irrigation_13_id;
+    task_id irrigation_14_id;
+    task_id irrigation_15_id;
+    task_id irrigation_16_id;
+    task_id irrigation_17_id;
+    sched_.addTask({"schedule_valve_1_1", [h, m] {return valve_1_1.scheduleIrrigation(h, m, h + 1, m);}, {}, task_mode::ONCE}, irrigation_1_id);
+    sched_.addTask({"schedule_valve_1_2", [h, m] {return valve_1_2.scheduleIrrigation(h + 1, m, h + 2, m);}, {step_2_id}, task_mode::ONCE}, irrigation_2_id);
+    sched_.addTask({"schedule_valve_2_1", [h, m] {return valve_2_1.scheduleIrrigation(h + 2, m, h + 3, m);}, {step_3_id}, task_mode::ONCE}, irrigation_3_id);
+    sched_.addTask({"schedule_valve_3_1", [h, m] {return valve_3_1.scheduleIrrigation(h + 3, m, h + 4, m);}, {step_4_id}, task_mode::ONCE}, irrigation_4_id);
+    sched_.addTask({"schedule_valve_4_1", [h, m] {return valve_4_1.scheduleIrrigation(h + 4, m, h + 5, m);}, {step_5_id}, task_mode::ONCE}, irrigation_5_id);
+    sched_.addTask({"schedule_valve_5_1", [h, m] {return valve_5_1.scheduleIrrigation(h + 5, m, h + 6, m);}, {step_6_id}, task_mode::ONCE}, irrigation_6_id);
+    sched_.addTask({"schedule_valve_5_2", [h, m] {return valve_5_2.scheduleIrrigation(h + 6, m, h + 7, m);}, {step_7_id}, task_mode::ONCE}, irrigation_7_id);
+    sched_.addTask({"schedule_valve_5_3", [h, m] {return valve_5_3.scheduleIrrigation(h + 7, m, h + 8, m);}, {step_8_id}, task_mode::ONCE}, irrigation_8_id);
+    sched_.addTask({"schedule_valve_5_4", [h, m] {return valve_5_4.scheduleIrrigation(h + 8, m, h + 9, m);}, {step_9_id}, task_mode::ONCE}, irrigation_9_id);
+    sched_.addTask({"schedule_valve_6_1", [h, m] {return valve_6_1.scheduleIrrigation(h + 9, m, h + 10, m);}, {step_10_id}, task_mode::ONCE}, irrigation_10_id);
+    sched_.addTask({"schedule_valve_6_2", [h, m] {return valve_6_2.scheduleIrrigation(h + 10, m, h + 11, m);}, {step_11_id}, task_mode::ONCE}, irrigation_11_id);
+    sched_.addTask({"schedule_valve_7_1", [h, m] {return valve_7_1.scheduleIrrigation(h + 11, m, h + 12, m);}, {step_12_id}, task_mode::ONCE}, irrigation_12_id);
+    sched_.addTask({"schedule_valve_8_1", [h, m] {return valve_8_1.scheduleIrrigation(h + 12, m, h + 13, m);}, {step_13_id}, task_mode::ONCE}, irrigation_13_id);
+    sched_.addTask({"schedule_valve_9_1", [h, m] {return valve_9_1.scheduleIrrigation(h + 13, m, h + 14, m);}, {step_14_id}, task_mode::ONCE}, irrigation_14_id);
+    sched_.addTask({"schedule_valve_10_1", [h, m] {return valve_10_1.scheduleIrrigation(h + 14, m, h + 15, m);}, {step_15_id}, task_mode::ONCE}, irrigation_15_id);
+    sched_.addTask({"schedule_valve_10_2", [h, m] {return valve_10_2.scheduleIrrigation(h + 15, m, h + 16, m);}, {step_16_id}, task_mode::ONCE}, irrigation_16_id);
+    sched_.addTask({"schedule_valve_10_3", [h, m] {return valve_10_3.scheduleIrrigation(h + 16, m, h + 17, m);}, {step_17_id}, task_mode::ONCE}, irrigation_17_id);
+
+    condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id};
+    task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id};
     return true;
 }
 
