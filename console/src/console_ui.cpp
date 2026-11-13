@@ -730,7 +730,7 @@ Component console_ui::mainDashboard() {
                           : running && current == entry.type ? text("running") | color(Color::Green) | bold
                           : running ? text("busy") | color(Color::Yellow)
                           : text("idle") | color(Color::Yellow);
-            return hbox({label(entry.name, 20), state | size(WIDTH, EQUAL, 8), text("  "), buttons->Render()});
+            return hbox({label(entry.name, 22), state | size(WIDTH, EQUAL, 8), text("  "), buttons->Render()});
         }));
     }
     return dashboardOf({
