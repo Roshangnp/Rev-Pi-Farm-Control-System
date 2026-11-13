@@ -18,33 +18,20 @@ extern remote_link ro_revpi;   // config_host_pc.cpp
 
 namespace {
 
-// The WiseConn procedures, one per set of valves. A user stop cancels the
-// irrigations each of its valves still has booked (cancelIrrigation: only ones
-// not yet sent to the field; valves with nothing booked from here are skipped)
+// The WiseConn procedures, one per set of valves. Stopping a pattern does nothing
+// to its bookings (cancelling them all in the stop blocked the loop for seconds,
+// past the console's command timeout, and hit WiseConn's rate limit); the cancel
+// procedures cancel them, one zone every 2 s
 
-// Overheads (OVERHEAD_PATTERN_1)
-procedure local_overhead_pattern_procedure(sched, [] {
-    bool ok = true;
-    for (irrigation* overhead : {&overhead_1, &overhead_2, &overhead_3, &overhead_4, &overhead_5, &overhead_6}) {
-        int id;
-        if (overhead->readScheduledIrrigation(id)) ok = overhead->cancelIrrigation() && ok;
-    }
-    return ok;
-});
+// Overheads (OVERHEAD_PATTERN_1) and their cancel (CANCEL_OVERHEAD_PATTERN_1)
+procedure local_overhead_pattern_procedure(sched, [] { return true; });
+procedure local_overhead_cancel_procedure(sched);
 
-// Irrigation valves
-procedure local_irrigation_pattern_procedure(sched, [] {
-    bool ok = true;
-    for (irrigation* valve : {&valve_1_1, &valve_1_2, &valve_2_1, &valve_3_1, &valve_4_1, &valve_5_1,
-                              &valve_5_2, &valve_5_3, &valve_5_4, &valve_6_1, &valve_6_2, &valve_7_1,
-                              &valve_8_1, &valve_9_1, &valve_10_1, &valve_10_2, &valve_10_3}) {
-        int id;
-        if (valve->readScheduledIrrigation(id)) ok = valve->cancelIrrigation() && ok;
-    }
-    return ok;
-});
+// Irrigation valves (IRRIGATION_PATTERN_1) and their cancel (CANCEL_IRRIGATION_PATTERN_1)
+procedure local_irrigation_pattern_procedure(sched, [] { return true; });
+procedure local_irrigation_cancel_procedure(sched);
 
-// City water fill valve
+// City water fill valve: a user stop cancels its booking (one zone, one request)
 procedure local_city_fill_valve_procedure(sched, [] {
     int id;
     return !city_water_fill_valve.readScheduledIrrigation(id) || city_water_fill_valve.cancelIrrigation();
@@ -53,6 +40,8 @@ procedure local_city_fill_valve_procedure(sched, [] {
 // Shares the procedures owned here
 procedure_server overhead_pattern_procedure_server(local_overhead_pattern_procedure, "overhead_pattern_procedure");
 procedure_server irrigation_pattern_procedure_server(local_irrigation_pattern_procedure, "irrigation_pattern_procedure");
+procedure_server overhead_cancel_procedure_server(local_overhead_cancel_procedure, "overhead_cancel_procedure");
+procedure_server irrigation_cancel_procedure_server(local_irrigation_cancel_procedure, "irrigation_cancel_procedure");
 procedure_server city_fill_valve_procedure_server(local_city_fill_valve_procedure, "city_fill_valve_procedure");
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
@@ -65,10 +54,14 @@ procedure_control& ro_procedure = remote_ro_procedure;
 procedure_control& repressure_procedure = remote_repressure_procedure;
 procedure_control& overhead_pattern_procedure = local_overhead_pattern_procedure;
 procedure_control& irrigation_pattern_procedure = local_irrigation_pattern_procedure;
+procedure_control& overhead_cancel_procedure = local_overhead_cancel_procedure;
+procedure_control& irrigation_cancel_procedure = local_irrigation_cancel_procedure;
 procedure_control& city_fill_valve_procedure = local_city_fill_valve_procedure;
 
 bool addLocalProcedures(line_server& server) {
     return overhead_pattern_procedure_server.registerWith(server) &&
            irrigation_pattern_procedure_server.registerWith(server) &&
+           overhead_cancel_procedure_server.registerWith(server) &&
+           irrigation_cancel_procedure_server.registerWith(server) &&
            city_fill_valve_procedure_server.registerWith(server);
 }

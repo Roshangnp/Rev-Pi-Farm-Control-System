@@ -22,11 +22,14 @@ bool addLocalProcedures(line_server& server);
 extern procedure_control& ro_procedure;
 
 // The WiseConn procedures, one per set of valves. Owner: emerald-server
-// (procedure_config_host_pc.cpp), served under the same names; a user stop
-// cancels the irrigations its own valves still have booked
+// (procedure_config_host_pc.cpp), served under the same names. Stopping a pattern
+// leaves its bookings; its cancel procedure cancels them (one zone every 2 s, so
+// it can run while the pattern still counts as running)
 extern procedure_control& overhead_pattern_procedure;     // overhead_1..overhead_6 (OVERHEAD_PATTERN_1)
-extern procedure_control& irrigation_pattern_procedure;   // valve_1_1..valve_10_3
-extern procedure_control& city_fill_valve_procedure;      // city_water_fill_valve
+extern procedure_control& irrigation_pattern_procedure;   // valve_1_1..valve_10_3 (IRRIGATION_PATTERN_1)
+extern procedure_control& overhead_cancel_procedure;      // CANCEL_OVERHEAD_PATTERN_1
+extern procedure_control& irrigation_cancel_procedure;    // CANCEL_IRRIGATION_PATTERN_1
+extern procedure_control& city_fill_valve_procedure;      // city_water_fill_valve; a user stop cancels its booking
 
 // The repressure pump control (REPRESSURE_CONTROL). Owner: the RO RevPi
 // (procedure_config_ro.cpp), served as "repressure_procedure"; main_ro starts it

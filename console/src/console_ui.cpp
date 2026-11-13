@@ -710,6 +710,10 @@ Component console_ui::mainDashboard() {
          "books 18 real irrigations, today 14:00-16:15"},
         {"irrigation pattern 1", &irrigation_pattern_procedure, procedure_types::IRRIGATION_PATTERN_1,
          "books 17 real 1 h irrigations back to back, starting 1 h from now, today only"},
+        {"cancel overhead 1", &overhead_cancel_procedure, procedure_types::CANCEL_OVERHEAD_PATTERN_1,
+         "cancels every overhead booking from emerald-server, one zone every 2 s"},
+        {"cancel irrigation 1", &irrigation_cancel_procedure, procedure_types::CANCEL_IRRIGATION_PATTERN_1,
+         "cancels every valve booking from emerald-server, one valve every 2 s"},
         {"repressure", &repressure_procedure, procedure_types::REPRESSURE_CONTROL, ""},
     };
     Components procedure_rows;

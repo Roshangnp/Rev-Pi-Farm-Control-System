@@ -20,6 +20,8 @@ remote_procedure remote_repressure_procedure(ro_revpi, "repressure_procedure");
 // WiseConn devices use
 remote_procedure remote_overhead_pattern_procedure(host_pc, "overhead_pattern_procedure");
 remote_procedure remote_irrigation_pattern_procedure(host_pc, "irrigation_pattern_procedure");
+remote_procedure remote_overhead_cancel_procedure(host_pc, "overhead_cancel_procedure");
+remote_procedure remote_irrigation_cancel_procedure(host_pc, "irrigation_cancel_procedure");
 remote_procedure remote_city_fill_valve_procedure(host_pc, "city_fill_valve_procedure");
 
 }  // namespace
@@ -27,6 +29,8 @@ remote_procedure remote_city_fill_valve_procedure(host_pc, "city_fill_valve_proc
 // Public procedures declared in procedure_config.h
 procedure_control& overhead_pattern_procedure = remote_overhead_pattern_procedure;
 procedure_control& irrigation_pattern_procedure = remote_irrigation_pattern_procedure;
+procedure_control& overhead_cancel_procedure = remote_overhead_cancel_procedure;
+procedure_control& irrigation_cancel_procedure = remote_irrigation_cancel_procedure;
 procedure_control& city_fill_valve_procedure = remote_city_fill_valve_procedure;
 procedure_control& ro_procedure = remote_ro_procedure;
 procedure_control& repressure_procedure = remote_repressure_procedure;

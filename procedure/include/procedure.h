@@ -14,7 +14,9 @@ enum class procedure_types {
     EMPTY_FEED_TANK,
     OVERHEAD_PATTERN_1,
     IRRIGATION_PATTERN_1,
-    REPRESSURE_CONTROL
+    REPRESSURE_CONTROL,
+    CANCEL_OVERHEAD_PATTERN_1,
+    CANCEL_IRRIGATION_PATTERN_1
 };
 
 // Every procedure, in enum order: add new ones here too, or fromString() can't parse them
@@ -23,6 +25,7 @@ inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
     procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK,
     procedure_types::OVERHEAD_PATTERN_1, procedure_types::IRRIGATION_PATTERN_1,
     procedure_types::REPRESSURE_CONTROL,
+    procedure_types::CANCEL_OVERHEAD_PATTERN_1, procedure_types::CANCEL_IRRIGATION_PATTERN_1,
 };
 
 // The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
@@ -35,6 +38,8 @@ inline const char* toString(procedure_types p) {
     case procedure_types::OVERHEAD_PATTERN_1: return "OVERHEAD_PATTERN_1";
     case procedure_types::IRRIGATION_PATTERN_1: return "IRRIGATION_PATTERN_1";
     case procedure_types::REPRESSURE_CONTROL: return "REPRESSURE_CONTROL";
+    case procedure_types::CANCEL_OVERHEAD_PATTERN_1: return "CANCEL_OVERHEAD_PATTERN_1";
+    case procedure_types::CANCEL_IRRIGATION_PATTERN_1: return "CANCEL_IRRIGATION_PATTERN_1";
     }
     return "UNKNOWN";
 }
@@ -125,16 +130,23 @@ class procedure_control {
 //   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
 //     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
 //     one every 2 s; WiseConn runs them at those times. Running until 16:15 (the
-//     last one ends), so a user stop cancels the bookings until then.
+//     last one ends). A stop leaves the bookings: CANCEL_OVERHEAD_PATTERN_1 cancels them.
 //   IRRIGATION_PATTERN_1: schedules the 17 WiseConn irrigation valves (valve_1_1 ..
 //     valve_10_3) for 1 hour each, back to back, the first starting 1 hour after
 //     run() (farm local time), one every 2 s. Today only: a valve whose hour would
 //     end after 23:59 is refused by the device (logged), the rest still go out.
-//     Running until the last booked one ends, so a user stop cancels them until then.
+//     Running until the last booked one ends. A stop leaves the bookings:
+//     CANCEL_IRRIGATION_PATTERN_1 cancels them.
 //   REPRESSURE_CONTROL: repressure pump on when the upper tank high float is
 //     dry and the pump is off, off when the float is submerged (or can't be read)
 //     and the pump is on, so a manual change is undone at once either way
 //     (ON_RISING tasks: runs until stop()).
+//   CANCEL_OVERHEAD_PATTERN_1: cancels what overhead_1..overhead_6 have booked
+//     (cancelIrrigation, every booking each zone made; zones with none skipped), one
+//     zone every 2 s, so the WiseConn DELETEs don't block the loop for long or hit
+//     WiseConn's rate limit in one burst. A zone WiseConn refuses keeps its bookings
+//     for the next run. WiseConn only deletes ones not yet sent to the field.
+//   CANCEL_IRRIGATION_PATTERN_1: the same for valve_1_1..valve_10_3.
 class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object.
@@ -174,6 +186,8 @@ class procedure : public procedure_control {
     bool run_overhead1_pattern();
     bool run_irrigation_pattern_1();
     bool repressure_control();
+    bool cancel_overhead1_pattern();
+    bool cancel_irrigation_pattern_1();
 
     scheduler& sched_;
     std::function<bool()> on_user_stop_;
