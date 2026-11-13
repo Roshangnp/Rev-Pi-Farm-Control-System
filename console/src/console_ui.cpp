@@ -30,6 +30,12 @@ constexpr int MENU_WIDTH = 17;    // tab list on the left
 constexpr int PUMP_LABEL_WIDTH = 17;
 constexpr auto REFRESH_PERIOD = std::chrono::milliseconds(500);
 
+// The procedures run on ro_procedure (the RO tile and the RO-Dashboard list);
+// other procedures are in the Procedures tile
+constexpr procedure_types RO_PROCEDURES[] = {
+    procedure_types::LOW_PH_CIP_CYCLE, procedure_types::HIGH_PH_CIP_CYCLE,
+    procedure_types::MEDIA_BACKWASH_CYCLE, procedure_types::EMPTY_FEED_TANK};
+
 std::string formatFloat(float value, int decimals) {
     char text[32];
     std::snprintf(text, sizeof(text), "%.*f", decimals, static_cast<double>(value));
@@ -474,7 +480,7 @@ class console_ui{
 console_ui::console_ui(console_devices& farm)
     : farm_(farm) {
     for (RO_state s : ALL_RO_STATES) states_.push_back(toString(s));
-    for (procedure_types p : ALL_PROCEDURE_TYPES) procedures_.push_back(toString(p));
+    for (procedure_types p : RO_PROCEDURES) procedures_.push_back(toString(p));
 }
 
 Component console_ui::button(const std::string& text_value, std::function<void()> on_press) {
@@ -627,7 +633,7 @@ Element console_ui::roStatus(bool with_settling) {
 Component console_ui::procedureControls() {
     auto list = dropdown(&procedures_, &procedure_selected_);
     auto run_button = button("Run", [this] {
-        procedure_types p = ALL_PROCEDURE_TYPES[procedure_selected_];
+        procedure_types p = RO_PROCEDURES[procedure_selected_];
         ask("Run " + std::string(toString(p)) + "?", [this, p] { return ro_procedure.run(p); });
     });
     auto stop_button = button("Stop", [this] {
@@ -658,7 +664,7 @@ Component console_ui::stateControls(const std::string& row_label) {
 // each press asks Yes/No. The running procedure is marked
 Component console_ui::procedureButtons() {
     Components buttons;
-    for (procedure_types p : ALL_PROCEDURE_TYPES) {
+    for (procedure_types p : RO_PROCEDURES) {
         buttons.push_back(button("Start " + std::string(toString(p)), [this, p] {
             ask("Start " + std::string(toString(p)) + "?", [this, p] { return ro_procedure.run(p); });
         }));
@@ -675,7 +681,7 @@ Component console_ui::procedureButtons() {
         bool ok = ro_procedure.readProcedure(running, current);
         Elements lines;
         for (size_t i = 0; i < buttons.size(); ++i) {
-            bool this_one = ok && running && current == ALL_PROCEDURE_TYPES[i];
+            bool this_one = ok && running && current == RO_PROCEDURES[i];
             lines.push_back(hbox({buttons[i]->Render(), this_one ? text("  running") | color(Color::Green) | bold : text("")}));
         }
         lines.push_back(stop_button->Render());
@@ -690,6 +696,40 @@ Component console_ui::mainDashboard() {
     auto level_width = labelWidth(farm_.tank_levels);
     auto flow_width = labelWidth(farm_.wiseconn_flows);
     nav_ = std::make_shared<nav_map>();
+
+    // Procedures tile: one row per procedure (name, idle/running, Run, Stop).
+    // Add a line to procedures to show another one
+    struct procedure_entry {
+        std::string name;
+        procedure_control* instance;
+        procedure_types type;
+        std::string warning;   // added to the Run question
+    };
+    const std::vector<procedure_entry> procedures = {
+        {"overhead pattern 1", &irrigation_procedure, procedure_types::OVERHEAD_PATTERN_1,
+         "books 18 real irrigations, today 14:00-16:15"},
+    };
+    Components procedure_rows;
+    for (const procedure_entry& entry : procedures) {
+        auto run_button = button("Run", [this, entry] {
+            std::string question = "Run " + entry.name + (entry.warning.empty() ? "" : " (" + entry.warning + ")") + "?";
+            ask(question, [entry] { return entry.instance->run(entry.type); });
+        });
+        auto stop_button = button("Stop", [this, entry] {
+            ask("Stop " + entry.name + "?", [entry] { return entry.instance->stop(); });
+        });
+        auto buttons = Container::Horizontal({run_button, stop_button});
+        procedure_rows.push_back(Renderer(buttons, [entry, buttons] {
+            bool running = false;
+            procedure_types current;
+            bool ok = entry.instance->readProcedure(running, current);
+            Element state = !ok ? text("---") | color(Color::Red)
+                          : running && current == entry.type ? text("running") | color(Color::Green) | bold
+                          : running ? text("busy") | color(Color::Yellow)
+                          : text("idle") | color(Color::Yellow);
+            return hbox({label(entry.name, 20), state | size(WIDTH, EQUAL, 8), text("  "), buttons->Render()});
+        }));
+    }
     return dashboardOf({
         controlTile(*nav_, "RO", procedureButtons(), [this] { return roStatus(false); }),
         readTile(*nav_, "Water tank floats", [this, water_width] { return floatList(farm_.water_floats, water_width); }),
@@ -698,34 +738,7 @@ Component console_ui::mainDashboard() {
         readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
         readTile(*nav_, "Soil probes (WiseConn)", [this] { return soilTable(farm_.soil_probes); }),
         readTile(*nav_, "Flow meters (WiseConn)", [this, flow_width] { return sensorList(farm_.wiseconn_flows, 1, flow_width); }),
-        // Overhead pattern 1 on irrigation_procedure (emerald-server): run / stop
-        // (stop also cancels the overheads' booked irrigations), and what's booked
-        controlTile(*nav_, "Overhead pattern 1 (WiseConn)", Container::Horizontal({
-            button("Run", [this] {
-                ask("Run overhead pattern 1 (books 18 real irrigations, today 14:00-16:15)?",
-                    [] { return irrigation_procedure.run(procedure_types::OVERHEAD_PATTERN_1); });
-            }),
-            button("Stop", [this] {
-                ask("Stop overhead pattern 1 and cancel its booked irrigations?",
-                    [] { return irrigation_procedure.stop(); });
-            }),
-        }), [] {
-            bool running = false;
-            procedure_types p;
-            bool ok = irrigation_procedure.readProcedure(running, p);
-            std::string booked;
-            irrigation* overheads[] = {&overhead_1, &overhead_2, &overhead_3, &overhead_4, &overhead_5, &overhead_6};
-            for (int i = 0; i < 6; ++i) {
-                int id;
-                if (overheads[i]->readScheduledIrrigation(id)) booked += (booked.empty() ? "" : " ") + std::to_string(i + 1);
-            }
-            Element state = !ok ? text("---") | color(Color::Red)
-                          : running ? text("booking...") | color(Color::Green) | bold
-                          : text("idle") | color(Color::Yellow);
-            Element scheduled = booked.empty() ? text("none") | color(Color::Yellow)
-                                               : text("overheads " + booked) | color(Color::Green) | bold;
-            return vbox({hbox({label("procedure", 12), state}), hbox({label("scheduled", 12), scheduled})});
-        }),
+        controlTile(*nav_, "Procedures", Container::Vertical(procedure_rows)),
     });
 }
 
