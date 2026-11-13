@@ -40,7 +40,6 @@ bool procedure::run(procedure_types procedure_type) {
     case procedure_types::MEDIA_BACKWASH_CYCLE: ok = media_backwash_cycle(); break;
     case procedure_types::EMPTY_FEED_TANK: ok = empty_feed_tank(); break;
     case procedure_types::OVERHEAD_PATTERN_1: ok = run_overhead1_pattern(); break;
-    case procedure_types::OVERHEAD_6_IRRIGATION: ok = run_overhead6_irrigation(); break;
     }
     if (!ok) stop();   // don't leave half a procedure scheduled
     return ok;
@@ -304,16 +303,5 @@ bool procedure::run_overhead1_pattern() {
 
     condition_ids_ = {step_2_id, step_3_id, step_4_id, step_5_id, step_6_id, step_7_id, step_8_id, step_9_id, step_10_id, step_11_id, step_12_id, step_13_id, step_14_id, step_15_id, step_16_id, step_17_id, step_18_id};
     task_ids_ = {irrigation_1_id, irrigation_2_id, irrigation_3_id, irrigation_4_id, irrigation_5_id, irrigation_6_id, irrigation_7_id, irrigation_8_id, irrigation_9_id, irrigation_10_id, irrigation_11_id, irrigation_12_id, irrigation_13_id, irrigation_14_id, irrigation_15_id, irrigation_16_id, irrigation_17_id, irrigation_18_id};
-    return true;
-}
-
-bool procedure::run_overhead6_irrigation() {
-
-    // One WiseConn irrigation on overhead 6, today 20:00-21:00
-    task_id irrigation_id;
-    sched_.addTask({"schedule_overhead_6_2000", [] {return overhead_6.scheduleIrrigation(20, 0, 21, 0);}, {}, task_mode::ONCE}, irrigation_id);
-
-    condition_ids_ = {};
-    task_ids_ = {irrigation_id};
     return true;
 }
