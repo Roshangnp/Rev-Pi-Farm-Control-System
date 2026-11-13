@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -121,8 +122,9 @@ class procedure_control {
 //     one every 2 s; WiseConn runs them at those times.
 class procedure : public procedure_control {
     public:
-    // Nothing is scheduled until run(). sched must outlive this object
-    explicit procedure(scheduler& sched);
+    // Nothing is scheduled until run(). sched must outlive this object.
+    // on_user_stop: runs when a user stops a running procedure (stop())
+    explicit procedure(scheduler& sched, std::function<bool()> on_user_stop = {});
     ~procedure(); // removes all tasks and conditions from the scheduler
 
     // Holds ids in one scheduler: a copy would remove the same tasks twice
@@ -137,13 +139,18 @@ class procedure : public procedure_control {
     bool isRunning() const;
     // The procedure run() last started (meaningful while isRunning())
     procedure_types type() const { return procedure_type_; }
-    // Removes all tasks and conditions from the scheduler, so no further steps run.
-    // Leaves the RO in its current state: setState(OFF) is up to the caller
+    // User stop (clients reach it through procedure_server / remote_procedure):
+    // clear(), then on_user_stop if something was running
     bool stop() override;
     // running = isRunning(), p = type()
     bool readProcedure(bool& running, procedure_types& p) override;
 
     private:
+    // Removes all tasks and conditions from the scheduler, so no further steps
+    // run; leaves everything as it is. Used by run(), the destructor and the
+    // procedures' own steps (never runs on_user_stop)
+    bool clear();
+
     // Procedure helpers: each schedules its steps and populates task_ids_ and condition_ids_
     bool low_ph_cip_cycle();
     bool high_ph_cip_cycle();
@@ -152,6 +159,7 @@ class procedure : public procedure_control {
     bool run_overhead1_pattern();
 
     scheduler& sched_;
+    std::function<bool()> on_user_stop_;
     std::vector<task_id> task_ids_;
     std::vector<condition_id> condition_ids_;
     procedure_types procedure_type_ = procedure_types::LOW_PH_CIP_CYCLE;   // the one run() last started

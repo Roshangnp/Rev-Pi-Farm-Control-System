@@ -1,6 +1,7 @@
 #include "procedure_config.h"
 
 #include "line_server.h"
+#include "ro_config.h"
 #include "scheduler.h"
 #include "remote_procedure/procedure_server.h"
 
@@ -13,8 +14,8 @@ extern scheduler sched;
 
 namespace {
 
-// The RO procedures
-procedure local_ro_procedure(sched);
+// The RO procedures; the RO goes OFF when a user stops one
+procedure local_ro_procedure(sched, [] { return setROState(RO_state::OFF); });
 
 // Shares the procedures owned here with the other machines
 procedure_server ro_procedure_server(local_ro_procedure, "ro_procedure");

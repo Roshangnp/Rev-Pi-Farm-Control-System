@@ -9,11 +9,11 @@
 #include <string>
 #include <vector>
 
-procedure::procedure(scheduler& sched)
-    : sched_(sched) {}
+procedure::procedure(scheduler& sched, std::function<bool()> on_user_stop)
+    : sched_(sched), on_user_stop_(std::move(on_user_stop)) {}
 
 procedure::~procedure() {
-    stop();
+    clear();
 }
 
 bool procedure::isRunning() const {
@@ -31,7 +31,7 @@ bool procedure::run(procedure_types procedure_type) {
                      toString(procedure_type_), toString(procedure_type));
         return false;
     }
-    stop();   // a finished run's leftovers
+    clear();   // a finished run's leftovers
     procedure_type_ = procedure_type;
     bool ok = false;
     switch (procedure_type_) {
@@ -41,7 +41,7 @@ bool procedure::run(procedure_types procedure_type) {
     case procedure_types::EMPTY_FEED_TANK: ok = empty_feed_tank(); break;
     case procedure_types::OVERHEAD_PATTERN_1: ok = run_overhead1_pattern(); break;
     }
-    if (!ok) stop();   // don't leave half a procedure scheduled
+    if (!ok) clear();   // don't leave half a procedure scheduled
     return ok;
 }
 
@@ -52,6 +52,13 @@ bool procedure::readProcedure(bool& running, procedure_types& p) {
 }
 
 bool procedure::stop() {
+    bool was_running = isRunning();
+    bool ok = clear();
+    if (was_running && on_user_stop_) ok = on_user_stop_() && ok;
+    return ok;
+}
+
+bool procedure::clear() {
     // Tasks first: a condition still used by a task can't be removed
     for (task_id id : task_ids_) sched_.removeTask(id);
     bool ok = true;
@@ -221,7 +228,7 @@ bool procedure::empty_feed_tank() {
     // RO state, so a tank that is already full at the start ends it on the first pass
     sched_.addTask({"empty_feed_tank_stop_permeate_full", [this] {
                         bool ok = setROState(RO_state::OFF);
-                        return stop() && ok;
+                        return clear() && ok;
                     }, {permeate_tank_high_submerged_id}, task_mode::ONCE}, stop_permeate_full_id);
     // A float that can't be read pauses the RO; it resumes once both read again
     sched_.addTask({"empty_feed_tank_pause_permeate_read_failed", [] {return setROState(RO_state::OFF);},
@@ -233,7 +240,7 @@ bool procedure::empty_feed_tank() {
     // The scheduler allows a task to remove itself.
     sched_.addTask({"empty_feed_tank_done", [this] {
                         bool ok = setROState(RO_state::OFF);
-                        return stop() && ok;
+                        return clear() && ok;
                     }, {feed_tank_low_dry_id}, task_mode::ONCE}, done_id);
 
     task_ids_ = {run_id, stop_permeate_full_id, pause_permeate_read_failed_id,

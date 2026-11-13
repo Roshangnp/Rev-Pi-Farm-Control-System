@@ -8,27 +8,6 @@
 // This machine's one scheduler: procedures and user space schedule tasks on it.
 scheduler sched;
 
-namespace {
-
-// Moves the RO to OFF on the pass ro_procedure stops running (stopped, or its last
-// step ran). Only on that edge: a state set by hand while nothing runs (the
-// manual override) is left alone. To be replaced by procedure's planned on-stop hook.
-bool ro_procedure_was_running = false;
-procedure_types ro_procedure_last = procedure_types::LOW_PH_CIP_CYCLE;
-void offWhenROProcedureEnds() {
-    bool running = false;
-    procedure_types p;
-    if (!ro_procedure.readProcedure(running, p)) return;
-    if (running) ro_procedure_last = p;
-    bool ended = ro_procedure_was_running && !running;
-    ro_procedure_was_running = running;
-    if (!ended) return;
-    std::fprintf(stderr, "RO procedure %s ended, moving the RO to OFF\n", toString(ro_procedure_last));
-    if (!setROState(RO_state::OFF)) std::fprintf(stderr, "RO procedure: moving the RO to OFF failed\n");
-}
-
-}  // namespace
-
 void schedule_RO_operation(){
     condition_id feed_tank_low_submerged = sched.addCondition(condition::when("feed tank low float submerged", [] { bool s; return feed_tank_low_float.readSubmerged(s) && s; }));
     condition_id product_tank_high_dry = sched.addCondition(condition::when("product tank high float not submerged", [] { bool s; return permeate_tank_high_float.readSubmerged(s) && !s; }));
@@ -71,7 +50,6 @@ int main() {
         feed_flow.update();
 
         if (!sched.update()) std::fprintf(stderr, "Scheduler: a task failed\n");   // procedure steps
-        offWhenROProcedureEnds();
         if (!updateRO()) std::fprintf(stderr, "RO controller: starting a pump failed\n");
         server.poll(20);   // handles remote requests, doubles as the loop sleep
     }
