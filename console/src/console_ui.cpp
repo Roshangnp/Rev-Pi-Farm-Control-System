@@ -1,4 +1,5 @@
 #include "console_ui.h"
+#include "config.h"
 #include "procedure_config.h"
 #include "ro_config.h"
 
@@ -697,6 +698,34 @@ Component console_ui::mainDashboard() {
         readTile(*nav_, "Irrigation zones (WiseConn)", [this] { return irrigationList(farm_.irrigations); }),
         readTile(*nav_, "Soil probes (WiseConn)", [this] { return soilTable(farm_.soil_probes); }),
         readTile(*nav_, "Flow meters (WiseConn)", [this, flow_width] { return sensorList(farm_.wiseconn_flows, 1, flow_width); }),
+        // Overhead pattern 1 on irrigation_procedure (emerald-server): run / stop
+        // (stop also cancels the overheads' booked irrigations), and what's booked
+        controlTile(*nav_, "Overhead pattern 1 (WiseConn)", Container::Horizontal({
+            button("Run", [this] {
+                ask("Run overhead pattern 1 (books 18 real irrigations, today 14:00-16:15)?",
+                    [] { return irrigation_procedure.run(procedure_types::OVERHEAD_PATTERN_1); });
+            }),
+            button("Stop", [this] {
+                ask("Stop overhead pattern 1 and cancel its booked irrigations?",
+                    [] { return irrigation_procedure.stop(); });
+            }),
+        }), [] {
+            bool running = false;
+            procedure_types p;
+            bool ok = irrigation_procedure.readProcedure(running, p);
+            std::string booked;
+            irrigation* overheads[] = {&overhead_1, &overhead_2, &overhead_3, &overhead_4, &overhead_5, &overhead_6};
+            for (int i = 0; i < 6; ++i) {
+                int id;
+                if (overheads[i]->readScheduledIrrigation(id)) booked += (booked.empty() ? "" : " ") + std::to_string(i + 1);
+            }
+            Element state = !ok ? text("---") | color(Color::Red)
+                          : running ? text("booking...") | color(Color::Green) | bold
+                          : text("idle") | color(Color::Yellow);
+            Element scheduled = booked.empty() ? text("none") | color(Color::Yellow)
+                                               : text("overheads " + booked) | color(Color::Green) | bold;
+            return vbox({hbox({label("procedure", 12), state}), hbox({label("scheduled", 12), scheduled})});
+        }),
     });
 }
 
