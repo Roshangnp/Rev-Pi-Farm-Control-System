@@ -116,9 +116,9 @@ class procedure_control {
 //     permeate_tank_high_float is dry; done (OFF, removes its tasks) when the
 //     permeate tank is full or feed_tank_low_float is dry (at once if so at the start). A
 //     float that can't be read pauses it (OFF) until both read again (ON_RISING).
-//   OVERHEAD_PATTERN_1: schedules the WiseConn irrigations listed in
-//     wiseconn_irrigation_tables/overhead_pattern_1.csv (one row = zone,start,minutes,
-//     today), one row every 2 s; WiseConn runs them at those times.
+//   OVERHEAD_PATTERN_1: schedules the 18 WiseConn overhead irrigations of
+//     wiseconn_irrigation_tables/overhead_pattern_1.csv (hard coded, today, 14:00-16:15),
+//     one every 2 s; WiseConn runs them at those times.
 class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object
@@ -149,10 +149,7 @@ class procedure : public procedure_control {
     bool high_ph_cip_cycle();
     bool media_backwash_cycle();
     bool empty_feed_tank();
-    // Schedules the WiseConn irrigations in wiseconn_irrigation_tables/overhead_pattern_1.csv
     bool run_overhead1_pattern();
-    // Schedules every row of an irrigation table (zone,HH:MM:SS,minutes; today)
-    bool scheduleIrrigationTable(const std::string& file_name);
 
     scheduler& sched_;
     std::vector<task_id> task_ids_;

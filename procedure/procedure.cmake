@@ -18,8 +18,6 @@ if(EXISTS ${procedure_config_file})
     list(APPEND procedure_sources ${procedure_config_file})
 endif()
 add_library(procedure STATIC ${procedure_sources})
-# Irrigation tables (zone,HH:MM:SS,minutes), read at run time by the procedures
-target_compile_definitions(procedure PRIVATE IRRIGATION_TABLES_DIR="${CMAKE_SOURCE_DIR}/wiseconn_irrigation_tables")
 target_include_directories(procedure PUBLIC ${procedure_dir}/include ${procedure_dir}/src)
 # The procedure steps use config.h devices and the ro_config.h functions
 target_link_libraries(procedure PUBLIC ro farm scheduler comms)
