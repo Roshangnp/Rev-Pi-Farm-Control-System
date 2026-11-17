@@ -716,6 +716,9 @@ Component console_ui::mainDashboard() {
         {"irrigation pattern 1", &irrigation_pattern_procedure, procedure_types::IRRIGATION_PATTERN_1,
          "books 17 real 1 h irrigations back to back, starting 1 h from now, today only",
          &irrigation_cancel_procedure, procedure_types::CANCEL_IRRIGATION_PATTERN_1},
+        {"irrigation pattern 2", &irrigation_pattern_2_procedure, procedure_types::IRRIGATION_PATTERN_2,
+         "books 17 real 15 min irrigations back to back, starting 15 min from now, today only",
+         &irrigation_cancel_2_procedure, procedure_types::CANCEL_IRRIGATION_PATTERN_2},
         {"repressure", &repressure_procedure, procedure_types::REPRESSURE_CONTROL, ""},
     };
     Components procedure_rows;

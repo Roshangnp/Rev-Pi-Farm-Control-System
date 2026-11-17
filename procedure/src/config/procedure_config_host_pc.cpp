@@ -31,6 +31,10 @@ procedure local_overhead_cancel_procedure(sched);
 procedure local_irrigation_pattern_procedure(sched, [] { return true; });
 procedure local_irrigation_cancel_procedure(sched);
 
+// Irrigation valves in 15 min blocks (IRRIGATION_PATTERN_2) and their cancel (CANCEL_IRRIGATION_PATTERN_2)
+procedure local_irrigation_pattern_2_procedure(sched, [] { return true; });
+procedure local_irrigation_cancel_2_procedure(sched);
+
 // City water fill valve: a user stop cancels its booking (one zone, one request)
 procedure local_city_fill_valve_procedure(sched, [] {
     int id;
@@ -42,6 +46,8 @@ procedure_server overhead_pattern_procedure_server(local_overhead_pattern_proced
 procedure_server irrigation_pattern_procedure_server(local_irrigation_pattern_procedure, "irrigation_pattern_procedure");
 procedure_server overhead_cancel_procedure_server(local_overhead_cancel_procedure, "overhead_cancel_procedure");
 procedure_server irrigation_cancel_procedure_server(local_irrigation_cancel_procedure, "irrigation_cancel_procedure");
+procedure_server irrigation_pattern_2_procedure_server(local_irrigation_pattern_2_procedure, "irrigation_pattern_2_procedure");
+procedure_server irrigation_cancel_2_procedure_server(local_irrigation_cancel_2_procedure, "irrigation_cancel_2_procedure");
 procedure_server city_fill_valve_procedure_server(local_city_fill_valve_procedure, "city_fill_valve_procedure");
 
 remote_procedure remote_ro_procedure(ro_revpi, "ro_procedure");
@@ -56,6 +62,8 @@ procedure_control& overhead_pattern_procedure = local_overhead_pattern_procedure
 procedure_control& irrigation_pattern_procedure = local_irrigation_pattern_procedure;
 procedure_control& overhead_cancel_procedure = local_overhead_cancel_procedure;
 procedure_control& irrigation_cancel_procedure = local_irrigation_cancel_procedure;
+procedure_control& irrigation_pattern_2_procedure = local_irrigation_pattern_2_procedure;
+procedure_control& irrigation_cancel_2_procedure = local_irrigation_cancel_2_procedure;
 procedure_control& city_fill_valve_procedure = local_city_fill_valve_procedure;
 
 bool addLocalProcedures(line_server& server) {
@@ -63,5 +71,7 @@ bool addLocalProcedures(line_server& server) {
            irrigation_pattern_procedure_server.registerWith(server) &&
            overhead_cancel_procedure_server.registerWith(server) &&
            irrigation_cancel_procedure_server.registerWith(server) &&
+           irrigation_pattern_2_procedure_server.registerWith(server) &&
+           irrigation_cancel_2_procedure_server.registerWith(server) &&
            city_fill_valve_procedure_server.registerWith(server);
 }

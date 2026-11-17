@@ -16,7 +16,9 @@ enum class procedure_types {
     IRRIGATION_PATTERN_1,
     REPRESSURE_CONTROL,
     CANCEL_OVERHEAD_PATTERN_1,
-    CANCEL_IRRIGATION_PATTERN_1
+    CANCEL_IRRIGATION_PATTERN_1,
+    IRRIGATION_PATTERN_2,
+    CANCEL_IRRIGATION_PATTERN_2
 };
 
 // Every procedure, in enum order: add new ones here too, or fromString() can't parse them
@@ -26,6 +28,7 @@ inline constexpr procedure_types ALL_PROCEDURE_TYPES[] = {
     procedure_types::OVERHEAD_PATTERN_1, procedure_types::IRRIGATION_PATTERN_1,
     procedure_types::REPRESSURE_CONTROL,
     procedure_types::CANCEL_OVERHEAD_PATTERN_1, procedure_types::CANCEL_IRRIGATION_PATTERN_1,
+    procedure_types::IRRIGATION_PATTERN_2, procedure_types::CANCEL_IRRIGATION_PATTERN_2,
 };
 
 // The enum name, e.g. "LOW_PH_CIP_CYCLE". Used on the wire by ro_server / remote_ro
@@ -40,6 +43,8 @@ inline const char* toString(procedure_types p) {
     case procedure_types::REPRESSURE_CONTROL: return "REPRESSURE_CONTROL";
     case procedure_types::CANCEL_OVERHEAD_PATTERN_1: return "CANCEL_OVERHEAD_PATTERN_1";
     case procedure_types::CANCEL_IRRIGATION_PATTERN_1: return "CANCEL_IRRIGATION_PATTERN_1";
+    case procedure_types::IRRIGATION_PATTERN_2: return "IRRIGATION_PATTERN_2";
+    case procedure_types::CANCEL_IRRIGATION_PATTERN_2: return "CANCEL_IRRIGATION_PATTERN_2";
     }
     return "UNKNOWN";
 }
@@ -148,6 +153,11 @@ class procedure_control {
 //     with nothing left is skipped, a refused booking stays for the next round or run.
 //     WiseConn only deletes ones not yet sent to the field.
 //   CANCEL_IRRIGATION_PATTERN_1: the same for valve_1_1..valve_10_3, one round.
+//   IRRIGATION_PATTERN_2: like IRRIGATION_PATTERN_1 with 15 minute blocks: the 17
+//     valves for 15 minutes each, back to back, the first starting 15 minutes after
+//     run(). Today only, running until the last booked one ends. A stop leaves the
+//     bookings: CANCEL_IRRIGATION_PATTERN_2 cancels them.
+//   CANCEL_IRRIGATION_PATTERN_2: the same as CANCEL_IRRIGATION_PATTERN_1.
 class procedure : public procedure_control {
     public:
     // Nothing is scheduled until run(). sched must outlive this object.
@@ -189,6 +199,8 @@ class procedure : public procedure_control {
     bool repressure_control();
     bool cancel_overhead1_pattern();
     bool cancel_irrigation_pattern_1();
+    bool run_irrigation_pattern_2();
+    bool cancel_irrigation_pattern_2();
 
     scheduler& sched_;
     std::function<bool()> on_user_stop_;

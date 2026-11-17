@@ -29,6 +29,8 @@ extern procedure_control& overhead_pattern_procedure;     // overhead_1..overhea
 extern procedure_control& irrigation_pattern_procedure;   // valve_1_1..valve_10_3 (IRRIGATION_PATTERN_1)
 extern procedure_control& overhead_cancel_procedure;      // CANCEL_OVERHEAD_PATTERN_1
 extern procedure_control& irrigation_cancel_procedure;    // CANCEL_IRRIGATION_PATTERN_1
+extern procedure_control& irrigation_pattern_2_procedure;   // valve_1_1..valve_10_3, 15 min blocks (IRRIGATION_PATTERN_2)
+extern procedure_control& irrigation_cancel_2_procedure;    // CANCEL_IRRIGATION_PATTERN_2
 extern procedure_control& city_fill_valve_procedure;      // city_water_fill_valve; a user stop cancels its booking
 
 // The repressure pump control (REPRESSURE_CONTROL). Owner: the RO RevPi
