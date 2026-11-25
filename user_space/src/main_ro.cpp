@@ -9,7 +9,7 @@
 scheduler sched;
 
 // RO RevPi: attaches its I/O, shares its devices with the other machines, and
-// runs the RO controller (state set remotely, e.g. from the web UI via remote_ro).
+// runs the RO controller (state set remotely, e.g. from the console via remote_ro).
 int main() {
     if (!attachAllInterfaces()) std::fprintf(stderr, "Some interfaces failed to attach (check PiCtory pin names)\n");
 
